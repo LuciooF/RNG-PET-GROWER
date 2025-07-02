@@ -1,0 +1,31 @@
+# Roblox Studio files
+*.rbxl
+*.rbxl.lock
+*.rbxlx
+*.rbxlx.lock
+*.rbxm
+*.rbxmx
+
+# Packages
+/Packages
+node_modules/
+
+# Rojo build artifacts
+/build
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build tools and binaries
+foreman
+foreman-*
+*.zip
+
+# Lock files and temporary
+*.lock.toml
+cleanup-report.md
+
+# IDE and editor files
+.vscode/
+.idea/

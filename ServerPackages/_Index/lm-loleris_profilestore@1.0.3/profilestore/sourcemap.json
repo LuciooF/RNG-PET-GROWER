@@ -1,0 +1,5 @@
+{
+    "name":"lm-loleris/profilestore",
+    "className":"ModuleScript",
+    "filePaths":["ProfileStore.luau","default.project.json"]
+}

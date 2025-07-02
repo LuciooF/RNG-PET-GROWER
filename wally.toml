@@ -1,0 +1,14 @@
+[package]
+name = "your-username/pet-grower-rng"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+react = "jsdotlua/react@^17.1.0"
+react-roblox = "jsdotlua/react-roblox@^17.1.0"
+rodux = "roblox/rodux@^3.0.0"
+promise = "evaera/promise@^4.0.0"
+
+[server-dependencies]
+profilestore = "lm-loleris/profilestore@^1.0.3"

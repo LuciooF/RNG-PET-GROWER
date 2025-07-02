@@ -1,0 +1,44 @@
+{
+  "name": "PetGrowerRNG",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$path": "src/shared",
+      "Packages": {
+        "$path": "Packages"
+      },
+      "assets": {
+        "$path": "assets"
+      }
+    },
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "src/server"
+    },
+
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "Packages": {
+        "$path": "ServerPackages"
+      }
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "src/client"
+      }
+    },
+
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  }
+}
