@@ -261,4 +261,14 @@ function PlayerService:ResetPlayerData(player)
     return success
 end
 
+function PlayerService:AssignPet(player, petUniqueId)
+    local success = DataService:AssignPet(player, petUniqueId)
+    return success
+end
+
+function PlayerService:UnassignPet(player, petUniqueId)
+    local success = DataService:UnassignPet(player, petUniqueId)
+    return success
+end
+
 return PlayerService

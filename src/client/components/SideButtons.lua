@@ -6,58 +6,16 @@ local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages.react)
 local e = React.createElement
 
--- Simple scaling function
-local function getProportionalScale(currentSize, referenceSize, minScale, maxScale)
-    local scaleX = currentSize.X / referenceSize.X
-    local scaleY = currentSize.Y / referenceSize.Y
-    local scale = math.min(scaleX, scaleY)
-    
-    return math.clamp(scale, minScale or 0.5, maxScale or 2.0)
-end
+-- Import shared utilities
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local AnimationHelpers = require(ReplicatedStorage.utils.AnimationHelpers)
 
-local function getProportionalSize(currentSize, baseSize)
-    local scale = getProportionalScale(currentSize, Vector2.new(1920, 1080), 0.7, 1.5)
-    return math.floor(baseSize * scale)
-end
+-- Use shared utility functions
+local getProportionalScale = ScreenUtils.getProportionalScale
+local getProportionalSize = ScreenUtils.getProportionalSize
 
--- Function to create icon spin animation
-local function createIconSpin(iconRef, animationTracker)
-    if not iconRef.current then return end
-    
-    -- Cancel any existing animation for this icon
-    if animationTracker.current then
-        animationTracker.current:Cancel()
-        if animationTracker.current and animationTracker.current.Destroy then
-            animationTracker.current:Destroy()
-        end
-        animationTracker.current = nil
-    end
-    
-    -- Reset rotation to 0 to prevent accumulation
-    iconRef.current.Rotation = 0
-    
-    -- Create new animation
-    local spinTween = TweenService:Create(iconRef.current,
-        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Rotation = 360}
-    )
-    
-    -- Store reference to current animation
-    animationTracker.current = spinTween
-    
-    spinTween:Play()
-    spinTween.Completed:Connect(function()
-        -- Reset rotation after animation
-        if iconRef.current then
-            iconRef.current.Rotation = 0
-        end
-        -- Clear the tracker
-        if animationTracker.current == spinTween then
-            animationTracker.current = nil
-        end
-        spinTween:Destroy()
-    end)
-end
+-- Use shared animation helper (createFlipAnimation works for spin too)
+local createIconSpin = AnimationHelpers.createFlipAnimation
 
 local function SideButtons(props)
     local onShopClick = props.onShopClick or function() end
@@ -69,7 +27,7 @@ local function SideButtons(props)
     
     -- Screen size detection for responsive design
     local screenSize = props.screenSize or Vector2.new(1024, 768)
-    local scale = getProportionalScale(screenSize, Vector2.new(1920, 1080), 0.7, 1.5)
+    local scale = getProportionalScale(screenSize)
     
     -- Proportional sizing (made buttons bigger)
     local buttonSize = getProportionalSize(screenSize, 65)

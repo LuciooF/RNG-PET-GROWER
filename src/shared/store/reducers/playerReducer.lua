@@ -46,80 +46,195 @@ end
 
 local playerReducer = Rodux.createReducer(initialState, {
     [PlayerActions.SET_RESOURCES] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            resources = {
-                money = action.money,
-                rebirths = action.rebirths,
-                diamonds = action.diamonds,
-            }
-        })
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        
+        -- Create new state using table copy instead of Rodux.Dictionary.join
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.resources = {
+            money = action.money or 0,
+            rebirths = action.rebirths or 0,
+            diamonds = action.diamonds or 0,
+        }
+        return newState
     end,
     
     [PlayerActions.ADD_MONEY] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            resources = Rodux.Dictionary.join(state.resources, {
-                money = state.resources.money + action.amount
-            })
-        })
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        if not state.resources then
+            state = {
+                resources = initialState.resources,
+                boughtPlots = state.boughtPlots or {},
+                ownedPets = state.ownedPets or {},
+                companionPets = state.companionPets or {},
+                activeBoosts = state.activeBoosts or {},
+                settings = state.settings or initialState.settings,
+                stats = state.stats or initialState.stats,
+            }
+        end
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        -- Create new resources object
+        local newResources = {}
+        for k, v in pairs(state.resources) do
+            newResources[k] = v
+        end
+        newResources.money = (state.resources.money or 0) + (action.amount or 0)
+        newState.resources = newResources
+        
+        return newState
     end,
     
     [PlayerActions.SPEND_MONEY] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            resources = Rodux.Dictionary.join(state.resources, {
-                money = math.max(0, state.resources.money - action.amount)
-            })
-        })
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        local newResources = {}
+        for k, v in pairs(state.resources) do
+            newResources[k] = v
+        end
+        newResources.money = math.max(0, state.resources.money - action.amount)
+        
+        newState.resources = newResources
+        return newState
     end,
     
     [PlayerActions.ADD_DIAMONDS] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            resources = Rodux.Dictionary.join(state.resources, {
-                diamonds = state.resources.diamonds + action.amount
-            })
-        })
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        local newResources = {}
+        for k, v in pairs(state.resources) do
+            newResources[k] = v
+        end
+        newResources.diamonds = state.resources.diamonds + action.amount
+        
+        newState.resources = newResources
+        return newState
     end,
     
     [PlayerActions.SPEND_DIAMONDS] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            resources = Rodux.Dictionary.join(state.resources, {
-                diamonds = math.max(0, state.resources.diamonds - action.amount)
-            })
-        })
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        local newResources = {}
+        for k, v in pairs(state.resources) do
+            newResources[k] = v
+        end
+        newResources.diamonds = math.max(0, state.resources.diamonds - action.amount)
+        
+        newState.resources = newResources
+        return newState
     end,
     
     [PlayerActions.SET_REBIRTHS] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            resources = Rodux.Dictionary.join(state.resources, {
-                rebirths = action.amount
-            })
-        })
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        local newResources = {}
+        for k, v in pairs(state.resources) do
+            newResources[k] = v
+        end
+        newResources.rebirths = action.amount
+        
+        newState.resources = newResources
+        return newState
     end,
     
     [PlayerActions.ADD_PLOT] = function(state, action)
-        local newBoughtPlots = Rodux.List.join(state.boughtPlots, {action.plotId})
-        return Rodux.Dictionary.join(state, {
-            boughtPlots = newBoughtPlots
-        })
+        local newBoughtPlots = {}
+        for i, plotId in ipairs(state.boughtPlots) do
+            newBoughtPlots[i] = plotId
+        end
+        table.insert(newBoughtPlots, action.plotId)
+        
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.boughtPlots = newBoughtPlots
+        return newState
     end,
     
     [PlayerActions.ADD_PET] = function(state, action)
-        local newOwnedPets = Rodux.List.join(state.ownedPets, {action.petData})
-        return Rodux.Dictionary.join(state, {
-            ownedPets = newOwnedPets,
-            stats = Rodux.Dictionary.join(state.stats, {
-                totalPetsCollected = state.stats.totalPetsCollected + 1
-            })
-        })
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        if not state.ownedPets then
+            state = {
+                resources = state.resources or initialState.resources,
+                boughtPlots = state.boughtPlots or {},
+                ownedPets = {},
+                companionPets = state.companionPets or {},
+                activeBoosts = state.activeBoosts or {},
+                settings = state.settings or initialState.settings,
+                stats = state.stats or initialState.stats,
+            }
+        end
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        -- Add pet to owned pets array
+        local newOwnedPets = {}
+        for i, pet in ipairs(state.ownedPets) do
+            newOwnedPets[i] = pet
+        end
+        table.insert(newOwnedPets, action.petData)
+        newState.ownedPets = newOwnedPets
+        
+        -- Update stats
+        local newStats = {}
+        for k, v in pairs(state.stats or {}) do
+            newStats[k] = v
+        end
+        newStats.totalPetsCollected = (newStats.totalPetsCollected or 0) + 1
+        newState.stats = newStats
+        
+        return newState
     end,
     
     [PlayerActions.REMOVE_PET] = function(state, action)
         local petIndex = findPetIndex(state.ownedPets, action.petId)
         if petIndex then
-            local newOwnedPets = Rodux.List.join(state.ownedPets)
-            table.remove(newOwnedPets, petIndex)
-            return Rodux.Dictionary.join(state, {
-                ownedPets = newOwnedPets
-            })
+            local newOwnedPets = {}
+            for i, pet in ipairs(state.ownedPets) do
+                if i ~= petIndex then
+                    table.insert(newOwnedPets, pet)
+                end
+            end
+            
+            local newState = {}
+            for k, v in pairs(state) do
+                newState[k] = v
+            end
+            newState.ownedPets = newOwnedPets
+            return newState
         end
         return state
     end,
@@ -129,53 +244,163 @@ local playerReducer = Rodux.createReducer(initialState, {
             return state
         end
         
-        local newCompanionPets = Rodux.List.join(state.companionPets, {action.petData})
-        return Rodux.Dictionary.join(state, {
-            companionPets = newCompanionPets
-        })
+        -- Create new companionPets array with plain Lua table operations
+        local newCompanionPets = {}
+        for i, pet in ipairs(state.companionPets) do
+            newCompanionPets[i] = pet
+        end
+        table.insert(newCompanionPets, action.petData)
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.companionPets = newCompanionPets
+        return newState
     end,
     
     [PlayerActions.UNEQUIP_COMPANION] = function(state, action)
         local petIndex = findPetIndex(state.companionPets, action.petId)
         if petIndex then
-            local newCompanionPets = Rodux.List.join(state.companionPets)
-            table.remove(newCompanionPets, petIndex)
-            return Rodux.Dictionary.join(state, {
-                companionPets = newCompanionPets
-            })
+            -- Create new companionPets array without the removed pet
+            local newCompanionPets = {}
+            for i, pet in ipairs(state.companionPets) do
+                if i ~= petIndex then
+                    table.insert(newCompanionPets, pet)
+                end
+            end
+            
+            -- Create new state using table copy
+            local newState = {}
+            for k, v in pairs(state) do
+                newState[k] = v
+            end
+            newState.companionPets = newCompanionPets
+            return newState
         end
         return state
     end,
     
     [PlayerActions.ADD_BOOST] = function(state, action)
-        local newActiveBoosts = Rodux.List.join(state.activeBoosts, {action.boostData})
-        return Rodux.Dictionary.join(state, {
-            activeBoosts = newActiveBoosts
-        })
+        -- Create new activeBoosts array with plain Lua table operations
+        local newActiveBoosts = {}
+        for i, boost in ipairs(state.activeBoosts) do
+            newActiveBoosts[i] = boost
+        end
+        table.insert(newActiveBoosts, action.boostData)
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.activeBoosts = newActiveBoosts
+        return newState
     end,
     
     [PlayerActions.REMOVE_BOOST] = function(state, action)
         local boostIndex = findBoostIndex(state.activeBoosts, action.boostId)
         if boostIndex then
-            local newActiveBoosts = Rodux.List.join(state.activeBoosts)
-            table.remove(newActiveBoosts, boostIndex)
-            return Rodux.Dictionary.join(state, {
-                activeBoosts = newActiveBoosts
-            })
+            local newActiveBoosts = {}
+            for i, boost in ipairs(state.activeBoosts) do
+                if i ~= boostIndex then
+                    table.insert(newActiveBoosts, boost)
+                end
+            end
+            
+            local newState = {}
+            for k, v in pairs(state) do
+                newState[k] = v
+            end
+            newState.activeBoosts = newActiveBoosts
+            return newState
         end
         return state
     end,
     
     [PlayerActions.UPDATE_STATS] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            stats = Rodux.Dictionary.join(state.stats, action.stats)
-        })
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        if not state.stats then
+            state = {
+                resources = state.resources or initialState.resources,
+                boughtPlots = state.boughtPlots or {},
+                ownedPets = state.ownedPets or {},
+                companionPets = state.companionPets or {},
+                activeBoosts = state.activeBoosts or {},
+                settings = state.settings or initialState.settings,
+                stats = initialState.stats,
+            }
+        end
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        -- Update stats
+        local newStats = {}
+        for k, v in pairs(state.stats) do
+            newStats[k] = v
+        end
+        for k, v in pairs(action.stats or {}) do
+            newStats[k] = v
+        end
+        newState.stats = newStats
+        
+        return newState
     end,
     
     [PlayerActions.UPDATE_SETTINGS] = function(state, action)
-        return Rodux.Dictionary.join(state, {
-            settings = Rodux.Dictionary.join(state.settings, action.settings)
-        })
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        
+        local newSettings = {}
+        for k, v in pairs(state.settings) do
+            newSettings[k] = v
+        end
+        for k, v in pairs(action.settings or {}) do
+            newSettings[k] = v
+        end
+        
+        newState.settings = newSettings
+        return newState
+    end,
+    
+    [PlayerActions.SET_PETS] = function(state, action)
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.ownedPets = action.pets or {}
+        return newState
+    end,
+    
+    [PlayerActions.SET_COMPANIONS] = function(state, action)
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.companionPets = action.companions or {}
+        return newState
     end,
 })
 

@@ -23,6 +23,8 @@ PlayerActions.UPDATE_BOOST = "UPDATE_BOOST"
 
 PlayerActions.UPDATE_STATS = "UPDATE_STATS"
 PlayerActions.UPDATE_SETTINGS = "UPDATE_SETTINGS"
+PlayerActions.SET_PETS = "SET_PETS"
+PlayerActions.SET_COMPANIONS = "SET_COMPANIONS"
 
 function PlayerActions.setResources(money, rebirths, diamonds)
     return {
@@ -121,6 +123,20 @@ function PlayerActions.updateStats(stats)
     return {
         type = PlayerActions.UPDATE_STATS,
         stats = stats,
+    }
+end
+
+function PlayerActions.setPets(pets)
+    return {
+        type = PlayerActions.SET_PETS,
+        pets = pets,
+    }
+end
+
+function PlayerActions.setCompanions(companions)
+    return {
+        type = PlayerActions.SET_COMPANIONS,
+        companions = companions,
     }
 end
 

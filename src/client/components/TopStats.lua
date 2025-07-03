@@ -7,11 +7,11 @@ local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages.react)
 local e = React.createElement
 
--- Assets - TODO: Upload to Roblox and replace with proper asset IDs
-local assets = {}
--- For now, we'll use TextLabel with emojis instead of ImageLabel
--- assets["Currency/Cash/Cash Outline 256.png"] = "rbxassetid://YOUR_CASH_ASSET_ID"
--- assets["General/Rebirth/Rebirth Outline 256.png"] = "rbxassetid://YOUR_REBIRTH_ASSET_ID"
+-- Assets
+local assets = require(ReplicatedStorage.assets)
+
+-- Import shared utilities
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 
 -- Simple NumberFormatter
 local function formatNumber(number)
@@ -32,19 +32,9 @@ local function formatNumber(number)
     end
 end
 
--- Simple ScreenUtils
-local function getProportionalScale(currentSize, referenceSize, minScale, maxScale)
-    local scaleX = currentSize.X / referenceSize.X
-    local scaleY = currentSize.Y / referenceSize.Y
-    local scale = math.min(scaleX, scaleY)
-    
-    return math.clamp(scale, minScale or 0.5, maxScale or 2.0)
-end
-
-local function getProportionalTextSize(currentSize, baseTextSize)
-    local scale = getProportionalScale(currentSize, Vector2.new(1920, 1080), 0.7, 1.5)
-    return math.floor(baseTextSize * scale)
-end
+-- Use shared utility functions
+local getProportionalScale = ScreenUtils.getProportionalScale
+local getProportionalTextSize = ScreenUtils.getProportionalTextSize
 
 local function TopStats(props)
     local playerData = props.playerData or {}
@@ -54,7 +44,7 @@ local function TopStats(props)
     local diamonds = playerData.diamonds or 0
     
     local screenSize = props.screenSize or Vector2.new(1024, 768)
-    local scale = getProportionalScale(screenSize, Vector2.new(1920, 1080), 0.7, 1.5)
+    local scale = getProportionalScale(screenSize)
     
     local titleTextSize = getProportionalTextSize(screenSize, 24)
     local popupTextSize = getProportionalTextSize(screenSize, 18)
@@ -133,13 +123,14 @@ local function TopStats(props)
                 task.wait(0.1)
                 
                 if moneyPopupRef.current and moneyAnimationId.current == currentAnimationId then
-                    moneyPopupRef.current.Position = UDim2.new(0, moneyWidth/2 - 100, 1, 10)
+                    local moneyContainerX = diamondWidth + containerSpacing
+                    moneyPopupRef.current.Position = UDim2.new(0, moneyContainerX + moneyWidth/2 - 100, 1, 10)
                     moneyPopupRef.current.TextTransparency = 0
                     
                     local floatTween = TweenService:Create(moneyPopupRef.current,
                         TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
                         {
-                            Position = UDim2.new(0, moneyWidth/2 - 100, 1, -30),
+                            Position = UDim2.new(0, moneyContainerX + moneyWidth/2 - 100, 1, -30),
                             TextTransparency = 1
                         }
                     )
@@ -184,12 +175,10 @@ local function TopStats(props)
                 setRebirthPopupText("+" .. difference .. " Rebirth" .. (difference > 1 and "s" or ""))
                 setShowRebirthPopup(true)
                 
-                local connection
-                connection = RunService.Heartbeat:Connect(function()
-                    connection:Disconnect()
-                    
+                -- Use task.defer instead of RunService for one-time delays
+                task.defer(function()
                     if rebirthPopupRef.current and rebirthAnimationId.current == currentAnimationId then
-                        local rebirthContainerX = moneyWidth + containerSpacing
+                        local rebirthContainerX = diamondWidth + moneyWidth + (containerSpacing * 2)
                         rebirthPopupRef.current.Position = UDim2.new(0, rebirthContainerX + rebirthWidth/2 - 100, 1, 10)
                         rebirthPopupRef.current.TextTransparency = 0
                         
@@ -250,7 +239,7 @@ local function TopStats(props)
                 task.wait(0.1)
                 
                 if diamondPopupRef.current and diamondAnimationId.current == currentAnimationId then
-                    local diamondContainerX = moneyWidth + rebirthWidth + (containerSpacing * 2)
+                    local diamondContainerX = 0
                     diamondPopupRef.current.Position = UDim2.new(0, diamondContainerX + diamondWidth/2 - 100, 1, 10)
                     diamondPopupRef.current.TextTransparency = 0
                     
@@ -287,7 +276,7 @@ local function TopStats(props)
         MoneyContainer = e("Frame", {
             Name = "MoneyContainer",
             Size = UDim2.new(0, moneyWidth, 1, 0),
-            Position = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0, diamondWidth + containerSpacing, 0, 0),
             BackgroundColor3 = Color3.fromRGB(255, 255, 255),
             BackgroundTransparency = 0,
             BorderSizePixel = 0,
@@ -303,13 +292,14 @@ local function TopStats(props)
                 Transparency = 0
             }),
             
-            CashIcon = e("TextLabel", {
+            CashIcon = e("ImageLabel", {
                 Name = "CashIcon",
                 Size = UDim2.new(0, iconSize, 0, iconSize),
                 Position = UDim2.new(0, -iconSize * 0.3, 0.5, -iconSize/2),
-                Text = "💰",
-                TextScaled = true,
+                Image = assets["vector-icon-pack-2/Currency/Cash/Cash Outline 256.png"] or "",
                 BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
+                ImageColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
                 ZIndex = 12,
                 ref = cashIconRef
             }),
@@ -355,7 +345,7 @@ local function TopStats(props)
         RebirthContainer = e("Frame", {
             Name = "RebirthContainer",
             Size = UDim2.new(0, rebirthWidth, 1, 0),
-            Position = UDim2.new(0, moneyWidth + containerSpacing, 0, 0),
+            Position = UDim2.new(0, diamondWidth + moneyWidth + (containerSpacing * 2), 0, 0),
             BackgroundColor3 = Color3.fromRGB(255, 255, 255),
             BackgroundTransparency = 0,
             BorderSizePixel = 0,
@@ -371,13 +361,13 @@ local function TopStats(props)
                 Transparency = 0
             }),
             
-            RebirthIcon = e("TextLabel", {
+            RebirthIcon = e("ImageLabel", {
                 Name = "RebirthIcon",
                 Size = UDim2.new(0, iconSize, 0, iconSize),
                 Position = UDim2.new(0, -iconSize * 0.3, 0.5, -iconSize/2),
-                Text = "🔄",
-                TextScaled = true,
+                Image = assets["vector-icon-pack-2/General/Rebirth/Rebirth Outline 256.png"] or "",
                 BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 12,
                 ref = rebirthIconRef
             }),
@@ -407,7 +397,7 @@ local function TopStats(props)
         DiamondContainer = e("Frame", {
             Name = "DiamondContainer",
             Size = UDim2.new(0, diamondWidth, 1, 0),
-            Position = UDim2.new(0, moneyWidth + rebirthWidth + (containerSpacing * 2), 0, 0),
+            Position = UDim2.new(0, 0, 0, 0),
             BackgroundColor3 = Color3.fromRGB(255, 255, 255),
             BackgroundTransparency = 0,
             BorderSizePixel = 0,
@@ -423,13 +413,14 @@ local function TopStats(props)
                 Transparency = 0
             }),
             
-            DiamondIcon = e("TextLabel", {
+            DiamondIcon = e("ImageLabel", {
                 Name = "DiamondIcon",
                 Size = UDim2.new(0, iconSize, 0, iconSize),
                 Position = UDim2.new(0, -iconSize * 0.3, 0.5, -iconSize/2),
-                Text = "💎",
-                TextScaled = true,
+                Image = assets["vector-icon-pack-2/Currency/Gem/Gem Blue Outline 256.png"] or "",
                 BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
+                ImageColor3 = Color3.fromRGB(100, 200, 255), -- Blue diamond color
                 ZIndex = 12,
                 ref = diamondIconRef
             }),
@@ -459,7 +450,7 @@ local function TopStats(props)
         RebirthPopup = showRebirthPopup and e("TextLabel", {
             Name = "RebirthPopup",
             Size = UDim2.new(0, 200, 0, 30),
-            Position = UDim2.new(0, moneyWidth + containerSpacing + rebirthWidth/2 - 100, 1, 10),
+            Position = UDim2.new(0, diamondWidth + moneyWidth + (containerSpacing * 2) + rebirthWidth/2 - 100, 1, 10),
             Text = rebirthPopupText,
             TextColor3 = Color3.fromRGB(255, 200, 0),
             TextSize = popupTextSize,
@@ -475,7 +466,7 @@ local function TopStats(props)
         DiamondPopup = showDiamondPopup and e("TextLabel", {
             Name = "DiamondPopup",
             Size = UDim2.new(0, 200, 0, 30),
-            Position = UDim2.new(0, moneyWidth + rebirthWidth + (containerSpacing * 2) + diamondWidth/2 - 100, 1, 10),
+            Position = UDim2.new(0, diamondWidth/2 - 100, 1, 10),
             Text = diamondPopupText,
             TextColor3 = Color3.fromRGB(0, 200, 255),
             TextSize = popupTextSize,

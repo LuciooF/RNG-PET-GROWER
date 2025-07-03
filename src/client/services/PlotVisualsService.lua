@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local PlotConfig = require(ReplicatedStorage.Shared.config.PlotConfig)
+local assets = require(ReplicatedStorage.assets)
 
 local PlotVisualsService = {}
 PlotVisualsService.__index = PlotVisualsService
@@ -26,15 +27,6 @@ local TOUCH_COOLDOWN_TIME = 2
 
 function PlotVisualsService:Initialize()
     
-    -- Test PlotConfig loading
-    local success, error = pcall(function()
-        local testData = PlotConfig:GetPlotData(1)
-    end)
-    
-    if not success then
-        warn("PlotVisualsService: Failed to load PlotConfig:", error)
-        return
-    end
     
     -- Wait for PlayerAreas to be created
     local playerAreas = Workspace:WaitForChild("PlayerAreas", 10)
@@ -69,9 +61,16 @@ function PlotVisualsService:Initialize()
         end)
     end
     
-    -- Update plots every frame (for proximity-based GUI visibility)
+    -- Update plot GUI visibility at a reasonable rate (10 times per second)
+    local lastVisibilityUpdate = 0
+    local VISIBILITY_UPDATE_RATE = 0.1 -- 10 times per second
+    
     connection = RunService.Heartbeat:Connect(function()
-        self:UpdatePlotGUIVisibility()
+        local currentTime = tick()
+        if currentTime - lastVisibilityUpdate >= VISIBILITY_UPDATE_RATE then
+            lastVisibilityUpdate = currentTime
+            self:UpdatePlotGUIVisibility()
+        end
     end)
     
     -- Set up plot touch handlers (initially)
@@ -289,29 +288,80 @@ function PlotVisualsService:UpdatePlotGUI(plot, plotId, state)
     billboardGui.Enabled = false -- Start disabled, proximity will enable it
     billboardGui.Parent = guiAnchor
     
-    -- Create text label
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "PlotText"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.Position = UDim2.new(0, 0, 0, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = guiText
-    textLabel.TextColor3 = PlotConfig:GetPlotGUIColor(state)
-    textLabel.TextSize = 28
-    textLabel.TextWrapped = true
-    textLabel.TextXAlignment = Enum.TextXAlignment.Center
-    textLabel.TextYAlignment = Enum.TextYAlignment.Center
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.ZIndex = 2
-    textLabel.Parent = billboardGui
+    -- Check if this is a price display (should show cash icon)
+    local shouldShowCashIcon = (state == PlotConfig.STATES.UNLOCKED_CANT_AFFORD or state == PlotConfig.STATES.UNLOCKED_CAN_AFFORD) and guiText ~= ""
     
-    -- Add black text stroke
-    local textStroke = Instance.new("UIStroke")
-    textStroke.Color = Color3.fromRGB(0, 0, 0)
-    textStroke.Thickness = 2
-    textStroke.Transparency = 0
-    textStroke.Parent = textLabel
-    
+    if shouldShowCashIcon then
+        -- Create frame to hold icon and text
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Name = "ContentFrame"
+        contentFrame.Size = UDim2.new(1, 0, 1, 0)
+        contentFrame.Position = UDim2.new(0, 0, 0, 0)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.Parent = billboardGui
+        
+        -- Create layout for horizontal arrangement
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, 5)
+        layout.Parent = contentFrame
+        
+        -- Create cash icon
+        local cashIcon = Instance.new("ImageLabel")
+        cashIcon.Name = "CashIcon"
+        cashIcon.Size = UDim2.new(0, 24, 0, 24)
+        cashIcon.BackgroundTransparency = 1
+        cashIcon.Image = assets["vector-icon-pack-2/Currency/Cash/Cash Outline 256.png"] or ""
+        cashIcon.ScaleType = Enum.ScaleType.Fit
+        cashIcon.ZIndex = 2
+        cashIcon.Parent = contentFrame
+        
+        -- Create text label for price
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Name = "PlotText"
+        textLabel.Size = UDim2.new(0, 0, 1, 0)
+        textLabel.AutomaticSize = Enum.AutomaticSize.X
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = guiText
+        textLabel.TextColor3 = PlotConfig:GetPlotGUIColor(state)
+        textLabel.TextSize = 28
+        textLabel.TextWrapped = false
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.ZIndex = 2
+        textLabel.Parent = contentFrame
+        
+        -- Add black text stroke
+        local textStroke = Instance.new("UIStroke")
+        textStroke.Color = Color3.fromRGB(0, 0, 0)
+        textStroke.Thickness = 2
+        textStroke.Transparency = 0
+        textStroke.Parent = textLabel
+    else
+        -- Create regular text label for non-price displays
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Name = "PlotText"
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Position = UDim2.new(0, 0, 0, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = guiText
+        textLabel.TextColor3 = PlotConfig:GetPlotGUIColor(state)
+        textLabel.TextSize = 28
+        textLabel.TextWrapped = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.ZIndex = 2
+        textLabel.Parent = billboardGui
+        
+        -- Add black text stroke
+        local textStroke = Instance.new("UIStroke")
+        textStroke.Color = Color3.fromRGB(0, 0, 0)
+        textStroke.Thickness = 2
+        textStroke.Transparency = 0
+        textStroke.Parent = textLabel
+    end
     
     -- Store reference
     plotGUIs[plotId] = {
@@ -346,13 +396,7 @@ function PlotVisualsService:UpdatePlotGUIVisibility()
         end
     end
     
-    -- Debug visibility every 10 seconds (reduced spam)
-    if tick() % 10 < 0.1 then
-        local totalGUIs = 0
-        for _ in pairs(plotGUIs) do
-            totalGUIs = totalGUIs + 1
-        end
-    end
+    -- Debug visibility removed for performance (was causing unnecessary calculations)
 end
 
 function PlotVisualsService:GetPlotCenter(plot)

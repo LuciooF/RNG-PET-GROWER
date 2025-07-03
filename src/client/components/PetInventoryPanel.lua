@@ -9,82 +9,52 @@ local React = require(ReplicatedStorage.Packages.react)
 local e = React.createElement
 
 local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
+local assets = require(ReplicatedStorage.assets)
+local Store = require(ReplicatedStorage.store)
+local PlayerActions = require(ReplicatedStorage.store.actions.PlayerActions)
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local AnimationHelpers = require(ReplicatedStorage.utils.AnimationHelpers)
+local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+local PetAssignmentService = require(script.Parent.Parent.services.PetAssignmentService)
 
--- Utility functions for responsive design
-local function getProportionalScale(screenSize)
-    local baseScreenSize = Vector2.new(1024, 768)
-    return math.min(screenSize.X / baseScreenSize.X, screenSize.Y / baseScreenSize.Y)
-end
+-- Using shared responsive design utilities
 
-local function getProportionalSize(screenSize, size)
-    return size * getProportionalScale(screenSize)
-end
-
-local function getProportionalTextSize(screenSize, size)
-    return math.max(12, size * getProportionalScale(screenSize))
-end
+-- Using shared animation helpers
 
 -- Sound effects (simplified for now)
 local function playSound(soundType)
     -- Placeholder for sound effects
 end
 
--- Function to create flip animation for icons
-local function createFlipAnimation(iconRef, animationTracker)
-    if not iconRef.current then return end
-    
-    -- Cancel any existing animation for this icon
-    if animationTracker.current then
-        animationTracker.current:Cancel()
-        animationTracker.current:Destroy()
-        animationTracker.current = nil
+-- Function to get pet asset model (same approach as PetModelFactory)
+local function getPetAssetModel(petData)
+    -- Find the assets Folder in ReplicatedStorage (not the ModuleScript)
+    local assets = nil
+    for _, child in pairs(ReplicatedStorage:GetChildren()) do
+        if child.Name == "assets" and child.ClassName == "Folder" then
+            assets = child
+            break
+        end
     end
     
-    -- Reset rotation to 0 to prevent accumulation
-    iconRef.current.Rotation = 0
-    
-    -- Create new animation
-    animationTracker.current = TweenService:Create(
-        iconRef.current,
-        TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        { Rotation = 360 }
-    )
-    
-    animationTracker.current:Play()
-end
-
--- Function to create bounce animation for cards
-local function createBounceAnimation(cardElement)
-    if not cardElement then return end
-    
-    -- Store the original size since GridLayout controls position
-    local originalSize = cardElement.Size
-    
-    -- Create bounce animation (scale up slightly)
-    local bounceUpTween = TweenService:Create(
-        cardElement,
-        TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        { 
-            Size = originalSize + UDim2.new(0, 6, 0, 6) -- Grow by 6 pixels each way
-        }
-    )
-    
-    bounceUpTween:Play()
-    
-    -- Create return animation
-    bounceUpTween.Completed:Connect(function()
-        -- Safety check: make sure the card still exists
-        if not cardElement or not cardElement.Parent then return end
+    if assets and petData.assetPath then
+        local pathParts = string.split(petData.assetPath, "/")
+        local currentFolder = assets
         
-        local returnTween = TweenService:Create(
-            cardElement,
-            TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-            { 
-                Size = originalSize -- Return to original size
-            }
-        )
-        returnTween:Play()
-    end)
+        -- Navigate through the path
+        for _, pathPart in ipairs(pathParts) do
+            currentFolder = currentFolder:FindFirstChild(pathPart)
+            if not currentFolder then
+                break
+            end
+        end
+        
+        if currentFolder and currentFolder:IsA("Model") then
+            return currentFolder:Clone()
+        end
+    end
+    
+    return nil
 end
 
 local function PetInventoryPanel(props)
@@ -95,33 +65,61 @@ local function PetInventoryPanel(props)
     
     -- Responsive sizing (same as original)
     local screenSize = props.screenSize or Vector2.new(1024, 768)
-    local scale = getProportionalScale(screenSize)
+    local scale = ScreenUtils.getProportionalScale(screenSize)
     local aspectRatio = screenSize.X / screenSize.Y
     
     -- Proportional text sizes
-    local titleTextSize = getProportionalTextSize(screenSize, 32)
-    local normalTextSize = getProportionalTextSize(screenSize, 18)
-    local smallTextSize = getProportionalTextSize(screenSize, 14)
-    local buttonTextSize = getProportionalTextSize(screenSize, 16)
-    local cardTitleSize = getProportionalTextSize(screenSize, 20)
-    local cardValueSize = getProportionalTextSize(screenSize, 16)
+    local titleTextSize = ScreenUtils.getProportionalTextSize(screenSize, 32)
+    local normalTextSize = ScreenUtils.getProportionalTextSize(screenSize, 18)
+    local smallTextSize = ScreenUtils.getProportionalTextSize(screenSize, 14)
+    local buttonTextSize = ScreenUtils.getProportionalTextSize(screenSize, 16)
+    local cardTitleSize = ScreenUtils.getProportionalTextSize(screenSize, 20)
+    local cardValueSize = ScreenUtils.getProportionalTextSize(screenSize, 16)
     
     -- Panel sizing (exact same as original)
-    local panelWidth = math.min(screenSize.X * 0.9, getProportionalSize(screenSize, 900))
-    local panelHeight = math.min(screenSize.Y * 0.85, getProportionalSize(screenSize, 600))
+    local panelWidth = math.min(screenSize.X * 0.9, ScreenUtils.getProportionalSize(screenSize, 900))
+    local panelHeight = math.min(screenSize.Y * 0.85, ScreenUtils.getProportionalSize(screenSize, 600))
     
     -- Calculate grid for pet cards - responsive layout
-    local minCardWidth = getProportionalSize(screenSize, 250)
+    local minCardWidth = ScreenUtils.getProportionalSize(screenSize, 250)
     local cardsPerRow = math.max(2, math.min(4, math.floor((panelWidth - 120) / (minCardWidth + 20))))
     local cardWidth = (panelWidth - 120) / cardsPerRow - 20
-    local cardHeight = getProportionalSize(screenSize, 280)
+    local cardHeight = ScreenUtils.getProportionalSize(screenSize, 280)
+    
+    -- Get assigned pets (companionPets) and owned pets
+    local assignedPets = playerData.companionPets or {}
+    local assignedPetIds = {}
+    
+    -- Create lookup table for assigned pets
+    for _, assignedPet in ipairs(assignedPets) do
+        if assignedPet.uniqueId then
+            assignedPetIds[assignedPet.uniqueId] = true
+        end
+    end
     
     -- Get pets from player data and group by type AND aura
     local petGroups = {}
     
+    -- Debug: Check if we have any pets and available assets
+    print("PetInventory Debug: ownedPets count:", playerData.ownedPets and #playerData.ownedPets or 0)
+    
+    -- Debug: Show some available assets for pets
+    local assetCount = 0
+    for assetPath, asset in pairs(assets) do
+        if string.find(assetPath, "Pet") then
+            print("PetInventory Debug: Found pet asset:", assetPath)
+            assetCount = assetCount + 1
+            if assetCount >= 5 then break end -- Only show first 5
+        end
+    end
+    
     if playerData.ownedPets then
         for i, pet in ipairs(playerData.ownedPets) do
-            local petKey = (pet.name or "Unknown") .. "_" .. (pet.aura or "none")
+            local isAssigned = pet.uniqueId and assignedPetIds[pet.uniqueId] or false
+            -- Create separate keys for assigned and unassigned pets
+            local baseKey = (pet.name or "Unknown") .. "_" .. (pet.aura or "none") .. "_" .. (pet.size or 1)
+            local petKey = baseKey .. "_" .. (isAssigned and "assigned" or "unassigned")
+            
             if not petGroups[petKey] then
                 petGroups[petKey] = {
                     petType = pet,
@@ -129,11 +127,19 @@ local function PetInventoryPanel(props)
                     latestCollectionTime = 0,
                     petConfig = PetConfig:GetPetData(pet.id or 1),
                     aura = pet.aura or "none",
-                    auraData = PetConfig.AURAS[pet.aura or "none"] or PetConfig.AURAS.none
+                    auraData = PetConfig.AURAS[pet.aura or "none"] or PetConfig.AURAS.none,
+                    size = pet.size or 1,
+                    sizeData = PetConfig:GetSizeData(pet.size or 1),
+                    isAssigned = isAssigned,
+                    samplePet = pet -- Store one pet for assign/unassign operations
                 }
             end
+            
             petGroups[petKey].quantity = petGroups[petKey].quantity + 1
             petGroups[petKey].latestCollectionTime = math.max(petGroups[petKey].latestCollectionTime, pet.collectedAt or 0)
+            
+            -- Always update sample pet to ensure we have a valid one
+            petGroups[petKey].samplePet = pet
         end
     end
     
@@ -142,21 +148,57 @@ local function PetInventoryPanel(props)
     for petKey, groupData in pairs(petGroups) do
         table.insert(petItems, {
             name = groupData.petType.name,
+            id = groupData.petType.id or 1, -- Add the pet ID here
             pet = groupData.petType,
             quantity = groupData.quantity,
             latestCollectionTime = groupData.latestCollectionTime,
             petConfig = groupData.petConfig,
             aura = groupData.aura,
-            auraData = groupData.auraData
+            auraData = groupData.auraData,
+            size = groupData.size,
+            sizeData = groupData.sizeData,
+            rarity = groupData.petType.rarity or 1, -- Add rarity here too
+            isAssigned = groupData.isAssigned,
+            samplePet = groupData.samplePet
         })
     end
     
-    -- Sort by rarity, then by latest collection time (newest first)
+    -- Sort by: 1) assigned pets first, 2) boost/rarity (higher first), 3) collection time
     table.sort(petItems, function(a, b)
-        if a.pet.rarity == b.pet.rarity then
-            return a.latestCollectionTime > b.latestCollectionTime
+        -- Assigned pets go first
+        if a.isAssigned ~= b.isAssigned then
+            return a.isAssigned
         end
-        return a.pet.rarity > b.pet.rarity -- Higher rarity first
+        
+        -- Get comprehensive info for both pets to compare boosts
+        local aInfo = PetConfig:GetComprehensivePetInfo(a.pet.id, a.pet.aura, a.pet.size)
+        local bInfo = PetConfig:GetComprehensivePetInfo(b.pet.id, b.pet.aura, b.pet.size)
+        
+        if aInfo and bInfo then
+            -- Sort by dynamic boost (higher boost = rarer = first)
+            if aInfo.dynamicBoost ~= bInfo.dynamicBoost then
+                return aInfo.dynamicBoost > bInfo.dynamicBoost
+            end
+            
+            -- If boost is same, sort by combined probability (rarer first)
+            if aInfo.combinedProbability ~= bInfo.combinedProbability then
+                return aInfo.combinedProbability < bInfo.combinedProbability -- Lower probability = rarer = first
+            end
+        end
+        
+        -- Fallback: sort by pet rarity then aura multiplier
+        if a.pet.rarity ~= b.pet.rarity then
+            return a.pet.rarity > b.pet.rarity
+        end
+        
+        local aAuraMultiplier = a.auraData and a.auraData.multiplier or 1
+        local bAuraMultiplier = b.auraData and b.auraData.multiplier or 1
+        if aAuraMultiplier ~= bAuraMultiplier then
+            return aAuraMultiplier > bAuraMultiplier
+        end
+        
+        -- Finally by collection time (newest first)
+        return a.latestCollectionTime > b.latestCollectionTime
     end)
     
     -- Calculate grid dimensions
@@ -164,31 +206,7 @@ local function PetInventoryPanel(props)
     local totalHeight = ((totalRows * cardHeight) + ((totalRows - 1) * 20) + 40) * 1.3
     
     -- Pet emojis based on name
-    local petEmojis = {
-        ["Mighty Duck"] = "🦆",
-        ["Golden Duck"] = "🦆",
-        ["Fire Duck"] = "🔥",
-        ["Ice Duck"] = "🧊",
-        ["Shadow Duck"] = "🌑"
-    }
-    
-    -- Rarity colors for borders and effects
-    local rarityColors = {
-        [1] = {Color3.fromRGB(150, 150, 150), Color3.fromRGB(180, 180, 180)}, -- Basic - Gray
-        [2] = {Color3.fromRGB(100, 255, 100), Color3.fromRGB(150, 255, 150)}, -- Advanced - Green
-        [3] = {Color3.fromRGB(100, 100, 255), Color3.fromRGB(150, 150, 255)}, -- Premium - Blue
-        [4] = {Color3.fromRGB(255, 100, 255), Color3.fromRGB(255, 150, 255)}, -- Elite - Purple
-        [5] = {Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 235, 50)}     -- Master - Gold
-    }
-    
-    -- Rarity names
-    local rarityNames = {
-        [1] = "BASIC",
-        [2] = "ADVANCED", 
-        [3] = "PREMIUM",
-        [4] = "ELITE",
-        [5] = "MASTER"
-    }
+    -- Using shared pet constants
     
     return e("Frame", {
         Name = "PetInventoryContainer",
@@ -212,7 +230,7 @@ local function PetInventoryPanel(props)
             -- Floating Title
             FloatingTitle = e("Frame", {
                 Name = "FloatingTitle",
-                Size = UDim2.new(0, getProportionalSize(screenSize, 280), 0, getProportionalSize(screenSize, 40)),
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(screenSize, 280), 0, ScreenUtils.getProportionalSize(screenSize, 40)),
                 Position = UDim2.new(0, -10, 0, -25),
                 BackgroundColor3 = Color3.fromRGB(255, 150, 50), -- Orange theme for pets
                 BorderSizePixel = 0,
@@ -250,7 +268,7 @@ local function PetInventoryPanel(props)
                 
                 PetIcon = e("TextLabel", {
                     Name = "PetIcon",
-                    Size = UDim2.new(0, getProportionalSize(screenSize, 24), 0, getProportionalSize(screenSize, 24)),
+                    Size = UDim2.new(0, ScreenUtils.getProportionalSize(screenSize, 24), 0, ScreenUtils.getProportionalSize(screenSize, 24)),
                     Text = "🐾",
                     BackgroundTransparency = 1,
                     TextScaled = true,
@@ -300,11 +318,11 @@ local function PetInventoryPanel(props)
         -- Close Button
         CloseButton = e("TextButton", {
             Name = "CloseButton",
-            Size = UDim2.new(0, getProportionalSize(screenSize, 32), 0, getProportionalSize(screenSize, 32)),
+            Size = UDim2.new(0, ScreenUtils.getProportionalSize(screenSize, 32), 0, ScreenUtils.getProportionalSize(screenSize, 32)),
             Position = UDim2.new(1, -16, 0, -16),
             Text = "✕",
             TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = getProportionalTextSize(screenSize, 20),
+            TextSize = ScreenUtils.getProportionalTextSize(screenSize, 20),
             BackgroundColor3 = Color3.fromRGB(255, 100, 100),
             BorderSizePixel = 0,
             ZIndex = 34,
@@ -467,10 +485,14 @@ local function PetInventoryPanel(props)
                         local pet = petItem.pet
                         local quantity = petItem.quantity
                         local petConfig = petItem.petConfig
+                        -- Get comprehensive pet information using new rarity system
+                        local comprehensiveInfo = PetConfig:GetComprehensivePetInfo(pet.id, pet.aura, pet.size)
+                        
                         local rarity = pet.rarity or 1
-                        local colors = rarityColors[rarity] or rarityColors[1]
-                        local rarityName = rarityNames[rarity] or "BASIC"
-                        local emoji = petEmojis[pet.name] or "🐾"
+                        local colors = PetConstants.getRarityColor(rarity, true)
+                        local rarityName = PetConstants.getRarityName(rarity)
+                        -- Get the actual pet model instead of emoji
+                        local petModel = getPetAssetModel(petItem.petConfig)
                         
                         -- Format collection time (use latest collection time)
                         local collectedTime = ""
@@ -485,25 +507,28 @@ local function PetInventoryPanel(props)
                             end
                         end
                         
-                        -- Get description and boost info from config
+                        -- Use new comprehensive rarity and boost calculation
                         local description = petConfig and petConfig.description or "A mysterious pet with hidden powers."
                         local boostText = ""
-                        if petConfig and petConfig.boosts then
-                            if petConfig.boosts.moneyMultiplier then
-                                local basePercentage = math.floor((petConfig.boosts.moneyMultiplier - 1) * 100)
-                                local auraMultiplier = petItem.auraData and petItem.auraData.multiplier or 1
-                                local totalPercentage = math.floor(basePercentage * auraMultiplier)
-                                boostText = "💰 +" .. totalPercentage .. "% Money"
-                                if auraMultiplier > 1 then
-                                    boostText = boostText .. " (+" .. basePercentage .. "% × " .. auraMultiplier .. ")"
-                                end
-                            end
+                        local combinedRarityText = "1/1"
+                        local rarityTierName = "Common"
+                        local rarityTierColor = Color3.fromRGB(200, 200, 200)
+                        
+                        if comprehensiveInfo then
+                            -- Dynamic boost based on combined rarity
+                            local boostPercentage = math.floor((comprehensiveInfo.moneyMultiplier - 1) * 100)
+                            boostText = "+" .. boostPercentage .. "% Money"
+                            
+                            -- Combined rarity display (e.g., "1/1000")
+                            combinedRarityText = comprehensiveInfo.rarityText
+                            rarityTierName = comprehensiveInfo.rarityTier
+                            rarityTierColor = comprehensiveInfo.rarityColor
                         end
                         
-                        -- Animation refs - simplified
-                        local petIconRef = {current = nil}
+                        -- Animation refs - removed to fix React hooks rule violation
+                        local petIconRef = nil
                         local cardElement = nil
-                        local petAnimTracker = {current = nil}
+                        
                         
                         cards["pet_" .. i] = e("TextButton", {
                             Name = "PetCard_" .. i,
@@ -519,11 +544,13 @@ local function PetInventoryPanel(props)
                             end,
                             [React.Event.MouseEnter] = function()
                                 playSound("hover")
-                                createFlipAnimation(petIconRef, petAnimTracker)
+                                -- Animation removed to fix React hooks issue
                             end,
                             [React.Event.Activated] = function()
-                                createFlipAnimation(petIconRef, petAnimTracker)
-                                createBounceAnimation(cardElement)
+                                -- Animation removed to fix React hooks issue
+                                if cardElement then
+                                    AnimationHelpers.createBounceAnimation(cardElement)
+                                end
                             end
                         }, {
                             Corner = e("UICorner", {
@@ -540,30 +567,119 @@ local function PetInventoryPanel(props)
                             }),
                             
                             Stroke = e("UIStroke", {
-                                Color = colors[1],
+                                Color = colors.primary, -- Rarity-colored outline
                                 Thickness = 3,
-                                Transparency = 0.1
+                                Transparency = 0.3
                             }),
                             
-                            -- Pet Emoji/Icon
-                            PetIcon = e("TextLabel", {
+                            -- Rarity Header (above existing rarity badge at 0.54)
+                            RarityHeader = e("TextLabel", {
+                                Name = "RarityHeader",
+                                Size = UDim2.new(0.4, 0, 0.03, 0),
+                                Position = UDim2.new(0.3, 0, 0.51, 0), -- Just above rarity badge
+                                AnchorPoint = Vector2.new(0.5, 0),
+                                Text = "RARITY",
+                                TextColor3 = Color3.fromRGB(80, 80, 80),
+                                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 8),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBold,
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 34
+                            }),
+                            
+                            -- Aura Header (above existing aura badge at 0.54)  
+                            AuraHeader = e("TextLabel", {
+                                Name = "AuraHeader",
+                                Size = UDim2.new(0.4, 0, 0.03, 0),
+                                Position = UDim2.new(0.7, 0, 0.51, 0), -- Just above aura badge
+                                AnchorPoint = Vector2.new(0.5, 0),
+                                Text = "AURA",
+                                TextColor3 = Color3.fromRGB(80, 80, 80),
+                                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 8),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBold,
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 34
+                            }),
+                            
+                            -- Pet Model Display
+                            PetIcon = petModel and e("ViewportFrame", {
                                 Name = "PetIcon",
-                                Size = UDim2.new(0.4, 0, 0.3, 0),
+                                Size = UDim2.new(0.6, 0, 0.35, 0),
                                 Position = UDim2.new(0.5, 0, 0.15, 0),
                                 AnchorPoint = Vector2.new(0.5, 0.5),
-                                Text = emoji,
+                                BackgroundTransparency = 1,
+                                BorderSizePixel = 0,
+                                ZIndex = 33,
+                                ref = function(viewportFrame)
+                                    petIconRef = viewportFrame
+                                    if viewportFrame and petModel then
+                                        -- Set up the viewport to display the pet model
+                                        local clonedModel = petModel:Clone()
+                                        clonedModel.Parent = viewportFrame
+                                        
+                                        -- Create camera for viewport
+                                        local camera = Instance.new("Camera")
+                                        camera.Parent = viewportFrame
+                                        viewportFrame.CurrentCamera = camera
+                                        
+                                        -- Position camera to show the pet model nicely
+                                        local cf, size = clonedModel:GetBoundingBox()
+                                        local maxExtent = math.max(size.X, size.Y, size.Z)
+                                        local cameraDistance = maxExtent * 2.5
+                                        camera.CFrame = CFrame.lookAt(
+                                            cf.Position + Vector3.new(cameraDistance, cameraDistance * 0.5, cameraDistance),
+                                            cf.Position
+                                        )
+                                    end
+                                end
+                            }, {}) or e("TextLabel", {
+                                Name = "PetIcon",
+                                Size = UDim2.new(0.6, 0, 0.35, 0),
+                                Position = UDim2.new(0.5, 0, 0.15, 0),
+                                AnchorPoint = Vector2.new(0.5, 0.5),
+                                Text = "🐾",
                                 TextSize = normalTextSize,
                                 TextWrapped = true,
                                 BackgroundTransparency = 1,
                                 Font = Enum.Font.SourceSansBold,
                                 ZIndex = 33,
-                                ref = petIconRef
+                                ref = function(element)
+                                    petIconRef = element
+                                end
+                            }, {
+                                -- Size indicator on top of pet icon
+                                SizeIndicator = e("Frame", {
+                                    Name = "SizeIndicator",
+                                    Size = UDim2.new(0.8, 0, 0.3, 0),
+                                    Position = UDim2.new(0.5, 0, 0, 0),
+                                    AnchorPoint = Vector2.new(0.5, 0),
+                                    BackgroundColor3 = petItem.sizeData.color,
+                                    BorderSizePixel = 0,
+                                    ZIndex = 34
+                                }, {
+                                    Corner = e("UICorner", {
+                                        CornerRadius = UDim.new(0, 8) -- Match the badge corner radius
+                                    }),
+                                    SizeText = e("TextLabel", {
+                                        Size = UDim2.new(1, 0, 1, 0),
+                                        Text = petItem.sizeData.displayName:upper(), -- Full size name (TINY, SMALL, etc.)
+                                        TextColor3 = Color3.fromRGB(255, 255, 255),
+                                        TextSize = smallTextSize, -- Match the badge text size
+                                        BackgroundTransparency = 1,
+                                        Font = Enum.Font.SourceSansBold, -- Match the badge font
+                                        TextXAlignment = Enum.TextXAlignment.Center,
+                                        TextYAlignment = Enum.TextYAlignment.Center,
+                                        TextWrapped = true, -- Match the badge text wrapping
+                                        ZIndex = 35
+                                    })
+                                })
                             }),
                             
-                            -- Pet Name
+                            -- Pet Name with Combined Rarity
                             PetName = e("TextLabel", {
                                 Name = "PetName",
-                                Size = UDim2.new(0.9, 0, 0.08, 0),
+                                Size = UDim2.new(0.9, 0, 0.06, 0),
                                 Position = UDim2.new(0.05, 0, 0.32, 0),
                                 Text = pet.name:upper(),
                                 TextColor3 = Color3.fromRGB(40, 40, 40),
@@ -574,14 +690,34 @@ local function PetInventoryPanel(props)
                                 ZIndex = 33
                             }),
                             
+                            -- Combined Rarity Display (e.g., "1/1000")
+                            CombinedRarity = e("TextLabel", {
+                                Name = "CombinedRarity",
+                                Size = UDim2.new(0.9, 0, 0.04, 0),
+                                Position = UDim2.new(0.05, 0, 0.38, 0),
+                                Text = combinedRarityText .. " • " .. rarityTierName,
+                                TextColor3 = rarityTierColor,
+                                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 11),
+                                TextWrapped = true,
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBold,
+                                ZIndex = 33
+                            }, {
+                                TextStroke = e("UIStroke", {
+                                    Color = Color3.fromRGB(0, 0, 0),
+                                    Thickness = 1,
+                                    Transparency = 0.6
+                                })
+                            }),
+                            
                             -- Pet Description
                             PetDescription = e("TextLabel", {
                                 Name = "PetDescription",
-                                Size = UDim2.new(0.9, 0, 0.12, 0),
-                                Position = UDim2.new(0.05, 0, 0.40, 0),
+                                Size = UDim2.new(0.9, 0, 0.10, 0),
+                                Position = UDim2.new(0.05, 0, 0.42, 0),
                                 Text = description,
                                 TextColor3 = Color3.fromRGB(70, 80, 120),
-                                TextSize = getProportionalTextSize(screenSize, 12),
+                                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
                                 BackgroundTransparency = 1,
                                 Font = Enum.Font.Gotham,
                                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -594,7 +730,7 @@ local function PetInventoryPanel(props)
                             -- Rarity Badge
                             RarityBadge = e("Frame", {
                                 Name = "RarityBadge",
-                                Size = UDim2.new(0.3, 0, 0.06, 0),
+                                Size = UDim2.new(0.4, 0, 0.06, 0),
                                 Position = UDim2.new(0.3, 0, 0.54, 0),
                                 AnchorPoint = Vector2.new(0.5, 0),
                                 BackgroundColor3 = colors[1],
@@ -616,13 +752,13 @@ local function PetInventoryPanel(props)
                                 })
                             }),
                             
-                            -- Aura Badge
-                            AuraBadge = petItem.aura ~= "none" and e("Frame", {
+                            -- Aura Badge (always shown, "Basic" for no aura)
+                            AuraBadge = e("Frame", {
                                 Name = "AuraBadge",
-                                Size = UDim2.new(0.3, 0, 0.06, 0),
+                                Size = UDim2.new(0.4, 0, 0.06, 0),
                                 Position = UDim2.new(0.7, 0, 0.54, 0),
                                 AnchorPoint = Vector2.new(0.5, 0),
-                                BackgroundColor3 = petItem.auraData.color,
+                                BackgroundColor3 = petItem.aura ~= "none" and petItem.auraData.color or Color3.fromRGB(150, 150, 150),
                                 BorderSizePixel = 0,
                                 ZIndex = 33
                             }, {
@@ -631,7 +767,7 @@ local function PetInventoryPanel(props)
                                 }),
                                 AuraText = e("TextLabel", {
                                     Size = UDim2.new(1, 0, 1, 0),
-                                    Text = petItem.auraData.name:upper(),
+                                    Text = petItem.aura ~= "none" and petItem.auraData.name:upper() or "BASIC",
                                     TextColor3 = Color3.fromRGB(255, 255, 255),
                                     TextSize = smallTextSize,
                                     TextWrapped = true,
@@ -639,57 +775,183 @@ local function PetInventoryPanel(props)
                                     Font = Enum.Font.SourceSansBold,
                                     ZIndex = 34
                                 })
-                            }) or nil,
+                            }),
                             
-                            -- Boost Display
-                            BoostLabel = boostText ~= "" and e("TextLabel", {
-                                Name = "Boost",
+                            -- Boost Display with Icon
+                            BoostContainer = boostText ~= "" and e("Frame", {
+                                Name = "BoostContainer",
                                 Size = UDim2.new(0.9, 0, 0.06, 0),
                                 Position = UDim2.new(0.05, 0, 0.62, 0),
-                                Text = boostText,
-                                TextColor3 = Color3.fromRGB(255, 200, 100),
-                                TextSize = getProportionalTextSize(screenSize, 14),
-                                TextWrapped = true,
                                 BackgroundTransparency = 1,
-                                Font = Enum.Font.SourceSansBold,
                                 ZIndex = 33
+                            }, {
+                                Layout = e("UIListLayout", {
+                                    FillDirection = Enum.FillDirection.Horizontal,
+                                    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                                    VerticalAlignment = Enum.VerticalAlignment.Center,
+                                    Padding = UDim.new(0, 4),
+                                    SortOrder = Enum.SortOrder.LayoutOrder
+                                }),
+                                
+                                BoostIcon = e("ImageLabel", {
+                                    Name = "BoostIcon",
+                                    Size = UDim2.new(0, ScreenUtils.getProportionalTextSize(screenSize, 14), 0, ScreenUtils.getProportionalTextSize(screenSize, 14)),
+                                    Image = assets["vector-icon-pack-2/Player/Boost/Boost Yellow Outline 256.png"] or "",
+                                    BackgroundTransparency = 1,
+                                    ScaleType = Enum.ScaleType.Fit,
+                                    ImageColor3 = Color3.fromRGB(255, 200, 100),
+                                    ZIndex = 34,
+                                    LayoutOrder = 1
+                                }),
+                                
+                                BoostLabel = e("TextLabel", {
+                                    Name = "BoostText",
+                                    Size = UDim2.new(0, 0, 1, 0),
+                                    AutomaticSize = Enum.AutomaticSize.X,
+                                    Text = boostText,
+                                    TextColor3 = Color3.fromRGB(255, 200, 100),
+                                    TextSize = ScreenUtils.getProportionalTextSize(screenSize, 14),
+                                    TextWrapped = true,
+                                    BackgroundTransparency = 1,
+                                    Font = Enum.Font.SourceSansBold,
+                                    ZIndex = 34,
+                                    LayoutOrder = 2
+                                }, {
+                                    TextStroke = e("UIStroke", {
+                                        Color = Color3.fromRGB(0, 0, 0),
+                                        Thickness = 2,
+                                        Transparency = 0.3
+                                    })
+                                })
                             }) or nil,
                             
                             -- Value Display
-                            ValueLabel = e("TextLabel", {
-                                Name = "Value",
+                            ValueContainer = e("Frame", {
+                                Name = "ValueContainer",
                                 Size = UDim2.new(0.9, 0, 0.06, 0),
                                 Position = UDim2.new(0.05, 0, 0.70, 0),
-                                Text = (function()
-                                    local baseValue = pet.value or 1
-                                    local auraMultiplier = petItem.auraData and petItem.auraData.valueMultiplier or 1
-                                    local totalValue = math.floor(baseValue * auraMultiplier)
-                                    if auraMultiplier > 1 then
-                                        return "💰 " .. totalValue .. " each (" .. baseValue .. " × " .. auraMultiplier .. ")"
-                                    else
-                                        return "💰 " .. totalValue .. " each"
-                                    end
-                                end)(),
-                                TextColor3 = Color3.fromRGB(100, 255, 100),
-                                TextSize = cardValueSize,
-                                TextWrapped = true,
                                 BackgroundTransparency = 1,
-                                Font = Enum.Font.SourceSans,
                                 ZIndex = 33
+                            }, {
+                                Layout = e("UIListLayout", {
+                                    FillDirection = Enum.FillDirection.Horizontal,
+                                    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                                    VerticalAlignment = Enum.VerticalAlignment.Center,
+                                    Padding = UDim.new(0, 4),
+                                    SortOrder = Enum.SortOrder.LayoutOrder
+                                }),
+                                
+                                CashIcon = e("ImageLabel", {
+                                    Name = "CashIcon",
+                                    Size = UDim2.new(0, cardValueSize, 0, cardValueSize),
+                                    Image = assets["vector-icon-pack-2/Currency/Cash/Cash Outline 256.png"] or "",
+                                    BackgroundTransparency = 1,
+                                    ScaleType = Enum.ScaleType.Fit,
+                                    ImageColor3 = Color3.fromRGB(255, 215, 0),
+                                    ZIndex = 34,
+                                    LayoutOrder = 1
+                                }),
+                                
+                                ValueLabel = e("TextLabel", {
+                                    Name = "ValueText",
+                                    Size = UDim2.new(0, 0, 1, 0),
+                                    AutomaticSize = Enum.AutomaticSize.X,
+                                    Text = (function()
+                                        if comprehensiveInfo then
+                                            -- Use new enhanced value calculation
+                                            return comprehensiveInfo.enhancedValue .. " each"
+                                        else
+                                            -- Fallback to old calculation
+                                            local baseValue = pet.value or 1
+                                            local auraMultiplier = petItem.auraData and petItem.auraData.valueMultiplier or 1
+                                            local totalValue = math.floor(baseValue * auraMultiplier)
+                                            return totalValue .. " each"
+                                        end
+                                    end)(),
+                                    TextColor3 = Color3.fromRGB(100, 255, 100),
+                                    TextSize = cardValueSize,
+                                    TextWrapped = true,
+                                    BackgroundTransparency = 1,
+                                    Font = Enum.Font.SourceSans,
+                                    ZIndex = 34,
+                                    LayoutOrder = 2
+                                }, {
+                                    TextStroke = e("UIStroke", {
+                                        Color = Color3.fromRGB(0, 0, 0),
+                                        Thickness = 2,
+                                        Transparency = 0.3
+                                    })
+                                })
                             }),
                             
-                            -- Collection Time
-                            TimeLabel = collectedTime ~= "" and e("TextLabel", {
-                                Name = "CollectedTime",
-                                Size = UDim2.new(0.9, 0, 0.05, 0),
-                                Position = UDim2.new(0.05, 0, 0.78, 0),
-                                Text = "Latest: " .. collectedTime,
-                                TextColor3 = Color3.fromRGB(180, 180, 180),
-                                TextSize = getProportionalTextSize(screenSize, 11),
-                                TextWrapped = true,
-                                BackgroundTransparency = 1,
-                                Font = Enum.Font.SourceSans,
-                                ZIndex = 33
+                            
+                            -- Assign/Unassign Button (centered)
+                            AssignButton = e("TextButton", {
+                                Name = "AssignButton",
+                                Size = UDim2.new(0.4, 0, 0.08, 0),
+                                Position = UDim2.new(0.5, 0, 0.86, 0),
+                                AnchorPoint = Vector2.new(0.5, 0.5),
+                                Text = (function()
+                                    if petItem.isAssigned then
+                                        return "UNASSIGN"
+                                    elseif #assignedPets >= 3 then
+                                        return "FULL"
+                                    else
+                                        return "ASSIGN"
+                                    end
+                                end)(),
+                                TextColor3 = Color3.fromRGB(255, 255, 255),
+                                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
+                                BackgroundColor3 = (function()
+                                    if petItem.isAssigned then
+                                        return Color3.fromRGB(200, 80, 80) -- Red for unassign
+                                    elseif #assignedPets >= 3 then
+                                        return Color3.fromRGB(120, 120, 120) -- Gray for full
+                                    else
+                                        return Color3.fromRGB(80, 200, 80) -- Green for assign
+                                    end
+                                end)(),
+                                BorderSizePixel = 0,
+                                Font = Enum.Font.SourceSansBold,
+                                ZIndex = 34,
+                                Active = #assignedPets < 3 or petItem.isAssigned,
+                                [React.Event.Activated] = function()
+                                    if petItem.isAssigned and petItem.samplePet then
+                                        -- Unassign this pet using the service
+                                        PetAssignmentService.unassignPet(petItem.samplePet)
+                                    elseif #assignedPets < 3 and petItem.samplePet then
+                                        -- Assign this pet using the service
+                                        PetAssignmentService.assignPet(petItem.samplePet)
+                                    end
+                                end
+                            }, {
+                                Corner = e("UICorner", {
+                                    CornerRadius = UDim.new(0, 8)
+                                })
+                            }),
+                            
+                            -- Assignment Status Badge (if assigned)
+                            AssignmentBadge = petItem.isAssigned and e("Frame", {
+                                Name = "AssignmentBadge",
+                                Size = UDim2.new(0.15, 0, 0.08, 0),
+                                Position = UDim2.new(0.15, 0, 0.02, 0),
+                                AnchorPoint = Vector2.new(0.5, 0),
+                                BackgroundColor3 = Color3.fromRGB(80, 200, 80), -- Green for assigned
+                                BorderSizePixel = 0,
+                                ZIndex = 34
+                            }, {
+                                Corner = e("UICorner", {
+                                    CornerRadius = UDim.new(0.5, 0)
+                                }),
+                                AssignedText = e("TextLabel", {
+                                    Size = UDim2.new(1, 0, 1, 0),
+                                    Text = "✓",
+                                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                                    TextSize = ScreenUtils.getProportionalTextSize(screenSize, 11),
+                                    BackgroundTransparency = 1,
+                                    Font = Enum.Font.SourceSansBold,
+                                    ZIndex = 35
+                                })
                             }) or nil,
                             
                             -- Quantity Badge (top right)
@@ -721,7 +983,23 @@ local function PetInventoryPanel(props)
                                         Transparency = 0.5
                                     })
                                 })
-                            })
+                            }),
+                            
+                            -- Collection Time (below assign button, centered)
+                            TimeLabel = collectedTime ~= "" and e("TextLabel", {
+                                Name = "CollectedTime",
+                                Size = UDim2.new(0.8, 0, 0.04, 0),
+                                Position = UDim2.new(0.5, 0, 0.93, 0),
+                                AnchorPoint = Vector2.new(0.5, 0),
+                                Text = "Latest: " .. collectedTime,
+                                TextColor3 = Color3.fromRGB(180, 180, 180),
+                                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 10),
+                                TextWrapped = true,
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.SourceSans,
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 33
+                            }) or nil
                         })
                     end
                 end

@@ -7,6 +7,9 @@ local AreaService = require(ServerScriptService.services.AreaService)
 local PlotService = require(ServerScriptService.services.PlotService)
 local AssetService = require(ServerScriptService.services.AssetService)
 
+-- Rate limiting for pet collection - allow burst of 10 pets per 0.5 seconds
+local playerCollectionData = {} -- {[playerId] = {lastReset = time, count = number}}
+
 -- Create remotes directly here instead of requiring from ReplicatedStorage
 local function createRemotes()
     local remoteFolder = Instance.new("Folder")
@@ -36,6 +39,20 @@ local function createRemotes()
     local unequipCompanion = Instance.new("RemoteEvent")
     unequipCompanion.Name = "UnequipCompanion"
     unequipCompanion.Parent = remoteFolder
+    
+    -- Response remotes for rollback mechanism
+    local assignPetResponse = Instance.new("RemoteEvent")
+    assignPetResponse.Name = "AssignPetResponse"
+    assignPetResponse.Parent = remoteFolder
+    
+    local unassignPetResponse = Instance.new("RemoteEvent")
+    unassignPetResponse.Name = "UnassignPetResponse"
+    unassignPetResponse.Parent = remoteFolder
+    
+    -- State reconciliation remote
+    local requestStateReconciliation = Instance.new("RemoteEvent")
+    requestStateReconciliation.Name = "RequestStateReconciliation"
+    requestStateReconciliation.Parent = remoteFolder
     
     local buyBoost = Instance.new("RemoteEvent")
     buyBoost.Name = "BuyBoost"
@@ -73,6 +90,15 @@ local function createRemotes()
     loadAssetRemote.Name = "LoadAsset"
     loadAssetRemote.Parent = remoteFolder
     
+    -- Pet assignment remotes
+    local assignPet = Instance.new("RemoteEvent")
+    assignPet.Name = "AssignPet"
+    assignPet.Parent = remoteFolder
+    
+    local unassignPet = Instance.new("RemoteEvent")
+    unassignPet.Name = "UnassignPet"
+    unassignPet.Parent = remoteFolder
+    
 end
 
 createRemotes()
@@ -86,13 +112,6 @@ AreaService:Initialize()
 -- Initialize PlotService (handle plot purchases)
 PlotService:Initialize()
 
--- Preload common assets
-local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
-local assetsToPreload = {}
-for petId, petData in pairs(PetConfig.PETS) do
-    table.insert(assetsToPreload, petData.assetId)
-end
-AssetService:PreloadAssets(assetsToPreload)
 
 Players.PlayerAdded:Connect(function(player)
     PlayerService:OnPlayerAdded(player)
@@ -128,39 +147,144 @@ end)
 local function setupRemoteHandlers()
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     
-    -- Pet collection handler
-    remotes.CollectPet.OnServerEvent:Connect(function(player, petData)
+    -- Pet collection handler - Server validates and generates all critical data
+    remotes.CollectPet.OnServerEvent:Connect(function(player, clientPetData)
         
-        -- Validate pet data
-        if not petData or not petData.name or not petData.rarity then
-            warn("Invalid pet data received from", player.Name)
+        -- Rate limiting check - allow burst of 10 pets per 0.5 seconds
+        local now = tick()
+        local playerId = tostring(player.UserId)
+        
+        if not playerCollectionData[playerId] then
+            playerCollectionData[playerId] = {lastReset = now, count = 0}
+        end
+        
+        local collectionData = playerCollectionData[playerId]
+        
+        -- Reset counter if 0.5 seconds have passed
+        if now - collectionData.lastReset >= 0.5 then
+            collectionData.lastReset = now
+            collectionData.count = 0
+        end
+        
+        -- Check if player has exceeded 10 collections in current window
+        if collectionData.count >= 10 then
+            warn("Rate limit: Too many collections from", player.Name, "- limit is 10 per 0.5 seconds")
             return
         end
         
-        -- Add timestamp and unique ID to pet (only store serializable data)
-        local collectedPet = {
-            id = petData.petId,
-            name = petData.name,
-            rarity = petData.rarity,
-            value = petData.value or 1,
-            collectedAt = tick(),
-            plotId = petData.plotId,
-            aura = petData.aura or "none"
-            -- Note: Don't store auraData as it contains Color3 objects that can't be serialized
+        -- Increment collection count
+        collectionData.count = collectionData.count + 1
+        
+        -- Validate basic client data structure
+        if not clientPetData or not clientPetData.petId or not clientPetData.plotId then
+            warn("Invalid pet data structure from", player.Name)
+            return
+        end
+        
+        -- SERVER-SIDE VALIDATION: Get authoritative pet data from config
+        local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
+        local petConfig = PetConfig:GetPetData(clientPetData.petId)
+        
+        if not petConfig then
+            warn("Invalid pet ID", clientPetData.petId, "from", player.Name)
+            return
+        end
+        
+        -- SERVER GENERATES ALL CRITICAL VALUES (never trust client)
+        local serverPetData = {
+            id = clientPetData.petId,
+            uniqueId = game:GetService("HttpService"):GenerateGUID(false), -- Server-generated unique ID
+            name = petConfig.name, -- From server config, not client
+            rarity = petConfig.rarity, -- From server config, not client
+            value = petConfig.value, -- From server config, not client
+            collectedAt = tick(), -- Server timestamp
+            plotId = clientPetData.plotId, -- This is acceptable from client as it's just for tracking
+            aura = clientPetData.aura or "none", -- Validated below
+            size = clientPetData.size or 1 -- Validated below
         }
         
-        -- Add pet to player's collection
-        local success = PlayerService:AddPetToCollection(player, collectedPet)
+        -- Validate aura and size if provided
+        if serverPetData.aura ~= "none" then
+            local auraData = PetConfig.AURAS[serverPetData.aura]
+            if not auraData then
+                warn("Invalid aura", serverPetData.aura, "from", player.Name, "- using 'none'")
+                serverPetData.aura = "none"
+            end
+        end
+        
+        if serverPetData.size > 1 then
+            local sizeData = PetConfig:GetSizeData(serverPetData.size)
+            if not sizeData then
+                warn("Invalid size", serverPetData.size, "from", player.Name, "- using size 1")
+                serverPetData.size = 1
+            end
+        end
+        
+        -- Calculate final value with aura/size multipliers (server-authoritative)
+        local finalValue = PetConfig:CalculatePetValue(serverPetData.id, serverPetData.aura, serverPetData.size)
+        serverPetData.value = finalValue
+        
+        -- Add pet to player's collection (immediate)
+        local success = PlayerService:AddPetToCollection(player, serverPetData)
         if success then
+            -- Give 1 diamond reward for pet collection
+            PlayerService:GiveDiamonds(player, 1)
             
-            -- Check for new discovery and announce if needed
-            PlayerService:CheckAndAnnounceDiscovery(player, collectedPet)
-            
-            -- Optionally give money reward
-            PlayerService:GiveMoney(player, collectedPet.value)
+            -- Do discovery check and announcement asynchronously to reduce delay
+            task.spawn(function()
+                PlayerService:CheckAndAnnounceDiscovery(player, serverPetData)
+            end)
         else
             warn("Failed to add pet to", player.Name, "'s collection")
         end
+    end)
+    
+    -- Pet assignment handlers with rollback response
+    remotes.AssignPet.OnServerEvent:Connect(function(player, petUniqueId)
+        if not petUniqueId or petUniqueId == "" then
+            warn("Invalid pet unique ID received from", player.Name, "- ID:", petUniqueId)
+            -- Send rollback signal to client
+            remotes.AssignPetResponse:FireClient(player, false, petUniqueId, "Invalid pet ID")
+            return
+        end
+        
+        local success, reason = PlayerService:AssignPet(player, petUniqueId)
+        if success then
+            PlayerService:SyncPlayerDataToClient(player)
+            -- Confirm success to client (prevents rollback)
+            remotes.AssignPetResponse:FireClient(player, true, petUniqueId, "Pet assigned successfully")
+        else
+            warn("Failed to assign pet for", player.Name, "- ID:", petUniqueId, "- Reason:", reason)
+            -- Send rollback signal to client
+            remotes.AssignPetResponse:FireClient(player, false, petUniqueId, reason or "Assignment failed")
+        end
+    end)
+    
+    remotes.UnassignPet.OnServerEvent:Connect(function(player, petUniqueId)
+        if not petUniqueId or petUniqueId == "" then
+            warn("Invalid pet unique ID received from", player.Name, "- ID:", petUniqueId)
+            -- Send rollback signal to client
+            remotes.UnassignPetResponse:FireClient(player, false, petUniqueId, "Invalid pet ID")
+            return
+        end
+        
+        local success, reason = PlayerService:UnassignPet(player, petUniqueId)
+        if success then
+            PlayerService:SyncPlayerDataToClient(player)
+            -- Confirm success to client (prevents rollback)
+            remotes.UnassignPetResponse:FireClient(player, true, petUniqueId, "Pet unassigned successfully")
+        else
+            warn("Failed to unassign pet for", player.Name, "- ID:", petUniqueId, "- Reason:", reason)
+            -- Send rollback signal to client
+            remotes.UnassignPetResponse:FireClient(player, false, petUniqueId, reason or "Unassignment failed")
+        end
+    end)
+    
+    -- State reconciliation handler
+    remotes.RequestStateReconciliation.OnServerEvent:Connect(function(player)
+        -- Send complete authoritative state to client for reconciliation
+        PlayerService:SyncPlayerDataToClient(player)
+        print("StateReconciliation: Sent authoritative state to", player.Name)
     end)
     
     -- Debug remote handlers
@@ -180,18 +304,6 @@ local function setupRemoteHandlers()
         PlayerService:ResetPlayerData(player)
     end)
     
-    -- Asset loading handler
-    remotes.LoadAsset.OnServerInvoke = function(player, assetId)
-        
-        -- Load or get cached asset
-        local asset = AssetService:LoadAsset(assetId)
-        if asset then
-            return asset
-        else
-            warn("Server: Failed to load asset", assetId, "for", player.Name)
-            return nil
-        end
-    end
 end
 
 setupRemoteHandlers()

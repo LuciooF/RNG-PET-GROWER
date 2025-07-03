@@ -5,19 +5,12 @@ local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages.react)
 local e = React.createElement
 
--- Simple scaling function
-local function getProportionalScale(currentSize, referenceSize, minScale, maxScale)
-    local scaleX = currentSize.X / referenceSize.X
-    local scaleY = currentSize.Y / referenceSize.Y
-    local scale = math.min(scaleX, scaleY)
-    
-    return math.clamp(scale, minScale or 0.5, maxScale or 2.0)
-end
+-- Import shared utilities
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 
-local function getProportionalTextSize(currentSize, baseTextSize)
-    local scale = getProportionalScale(currentSize, Vector2.new(1920, 1080), 0.7, 1.5)
-    return math.floor(baseTextSize * scale)
-end
+-- Use shared utility functions
+local getProportionalScale = ScreenUtils.getProportionalScale
+local getProportionalTextSize = ScreenUtils.getProportionalTextSize
 
 local function AreaNameplate(props)
     local playerName = props.playerName or "Unassigned"

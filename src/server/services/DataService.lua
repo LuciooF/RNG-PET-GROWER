@@ -50,6 +50,9 @@ function DataService:LoadProfile(player)
         -- Initialize stats
         profile.Data.stats.joins = profile.Data.stats.joins + 1
         
+        -- Migrate existing pets to have unique IDs if they don't have them
+        self:MigratePetUniqueIds(player)
+        
         self:CleanupExpiredBoosts(player)
         
         print("Loaded ProfileStore data for player:", player.Name, "Money:", profile.Data.resources.money)
@@ -212,6 +215,13 @@ function DataService:AddDiscoveredCombination(player, combination)
         end
         -- New discovery!
         table.insert(discovered, combination)
+        
+        -- Update cache for faster future lookups
+        local profile = self:GetProfile(player)
+        if profile and profile.Data._discoveryCache then
+            profile.Data._discoveryCache[combination] = true
+        end
+        
         return discovered
     end)
 end
@@ -221,12 +231,16 @@ function DataService:HasDiscoveredCombination(player, combination)
     if not profile then return false end
     
     local discovered = profile.Data.discoveredCombinations or {}
-    for _, combo in ipairs(discovered) do
-        if combo == combination then
-            return true
+    
+    -- Convert to hash table lookup for O(1) performance instead of O(n)
+    if not profile.Data._discoveryCache then
+        profile.Data._discoveryCache = {}
+        for _, combo in ipairs(discovered) do
+            profile.Data._discoveryCache[combo] = true
         end
     end
-    return false
+    
+    return profile.Data._discoveryCache[combination] == true
 end
 
 function DataService:RemovePet(player, petId)
@@ -273,6 +287,84 @@ function DataService:UpdatePlaytime(player, deltaTime)
         stats.playtime = stats.playtime + deltaTime
         return stats
     end)
+end
+
+function DataService:AssignPet(player, petUniqueId)
+    local profile = self:GetProfile(player)
+    if not profile then return false end
+    
+    -- Check if player already has 3 assigned pets
+    local companionPets = profile.Data.companionPets or {}
+    if #companionPets >= 3 then
+        return false -- Already at maximum
+    end
+    
+    -- Find the pet in owned pets
+    local ownedPets = profile.Data.ownedPets or {}
+    local targetPet = nil
+    
+    for _, pet in ipairs(ownedPets) do
+        if pet.uniqueId == petUniqueId then
+            targetPet = pet
+            break
+        end
+    end
+    
+    if not targetPet then
+        return false -- Pet not found
+    end
+    
+    -- Check if pet is already assigned
+    for _, assignedPet in ipairs(companionPets) do
+        if assignedPet.uniqueId == petUniqueId then
+            return false -- Pet already assigned
+        end
+    end
+    
+    -- Add to companionPets
+    table.insert(companionPets, targetPet)
+    profile.Data.companionPets = companionPets
+    
+    return true
+end
+
+function DataService:UnassignPet(player, petUniqueId)
+    local profile = self:GetProfile(player)
+    if not profile then return false end
+    
+    local companionPets = profile.Data.companionPets or {}
+    
+    -- Find and remove the pet from companionPets
+    for i, assignedPet in ipairs(companionPets) do
+        if assignedPet.uniqueId == petUniqueId then
+            table.remove(companionPets, i)
+            profile.Data.companionPets = companionPets
+            return true
+        end
+    end
+    
+    return false -- Pet not found in assigned pets
+end
+
+function DataService:MigratePetUniqueIds(player)
+    local profile = self:GetProfile(player)
+    if not profile then return end
+    
+    local ownedPets = profile.Data.ownedPets or {}
+    local HttpService = game:GetService("HttpService")
+    local needsUpdate = false
+    
+    -- Add unique IDs to pets that don't have them
+    for _, pet in ipairs(ownedPets) do
+        if not pet.uniqueId then
+            pet.uniqueId = HttpService:GenerateGUID(false)
+            needsUpdate = true
+        end
+    end
+    
+    if needsUpdate then
+        print("DataService: Migrated", #ownedPets, "pets to have unique IDs for", player.Name)
+    end
 end
 
 return DataService

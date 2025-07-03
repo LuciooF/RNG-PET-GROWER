@@ -243,9 +243,9 @@ function PlotConfig:GetPlotGUIText(plotId, state, playerRebirths)
     if state == self.STATES.UNLOCKS_NEXT_REBIRTH then
         return string.format("%d rebirths required", plotData.rebirthsRequired)
     elseif state == self.STATES.UNLOCKED_CANT_AFFORD then
-        return string.format("💰 %d", plotData.price)
+        return string.format("%d", plotData.price) -- No emoji, just number
     elseif state == self.STATES.UNLOCKED_CAN_AFFORD then
-        return string.format("💰 %d", plotData.price)
+        return string.format("%d", plotData.price) -- No emoji, just number  
     else
         -- PURCHASED or UNLOCKS_LATER show nothing
         return ""

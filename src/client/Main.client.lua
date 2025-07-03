@@ -4,15 +4,18 @@ local Players = game:GetService("Players")
 local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages.react)
 local ReactRoblox = require(Packages["react-roblox"])
+local Store = require(ReplicatedStorage.store)
 
 
 local TopStats = require(script.Parent.components.TopStats)
 local DebugUI = require(script.Parent.components.DebugUI)
 local SideButtons = require(script.Parent.components.SideButtons)
 local PetInventoryPanel = require(script.Parent.components.PetInventoryPanel)
+local PetBoostPanel = require(script.Parent.components.PetBoostPanel)
 local AreaNameplateService = require(script.Parent.services.AreaNameplateService)
 local PlotVisualsService = require(script.Parent.services.PlotVisualsService)
 local PetGrowthService = require(script.Parent.services.PetGrowthService)
+local PetFollowService = require(script.Parent.services.PetFollowService)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -59,29 +62,53 @@ end)
 
 -- Create the App component
 local function App()
-    local playerData, setPlayerData = React.useState({
-        money = 0,
-        rebirths = 0,
-        diamonds = 0,
-        ownedPets = {}
+    -- Get initial state from Redux store
+    local playerData, setPlayerData = React.useState(Store:getState().player or {
+        resources = { money = 0, rebirths = 0, diamonds = 0 },
+        ownedPets = {},
+        companionPets = {}
     })
     
     local petInventoryVisible, setPetInventoryVisible = React.useState(false)
     
+    -- Subscribe to Redux store changes
     React.useEffect(function()
-        local connection = playerDataSync.OnClientEvent:Connect(function(data)
+        local connection = Store.changed:connect(function(newState)
+            local newPlayerData = newState.player or {}
+            setPlayerData(newPlayerData)
+            
+            -- Debug: Check assigned pets
+            print("Main.client: Redux state updated, companionPets:", newPlayerData.companionPets and #newPlayerData.companionPets or "none")
+            if newPlayerData.companionPets then
+                for i, pet in ipairs(newPlayerData.companionPets) do
+                    print("  Companion pet", i, ":", pet.name, "ID:", pet.id)
+                end
+            end
+            
+            -- Update pet follow service with new assigned pets
+            PetFollowService:UpdateAssignedPets(newPlayerData)
+        end)
+        
+        -- Also still listen to server data sync for initial load/server updates
+        local serverConnection = playerDataSync.OnClientEvent:Connect(function(data)
             if data and data.resources then
-                setPlayerData({
-                    money = data.resources.money,
-                    rebirths = data.resources.rebirths,
-                    diamonds = data.resources.diamonds,
-                    ownedPets = data.ownedPets or {}
-                })
+                -- This will come from server on initial load or manual syncs
+                local PlayerActions = require(ReplicatedStorage.store.actions.PlayerActions)
+                Store:dispatch(PlayerActions.setResources(data.resources.money, data.resources.rebirths, data.resources.diamonds))
+                
+                -- Set entire collections at once for better performance
+                if data.ownedPets then
+                    Store:dispatch(PlayerActions.setPets(data.ownedPets))
+                end
+                if data.companionPets then
+                    Store:dispatch(PlayerActions.setCompanions(data.companionPets))
+                end
             end
         end)
         
         return function()
-            connection:Disconnect()
+            connection:disconnect()
+            serverConnection:Disconnect()
         end
     end, {})
     
@@ -92,7 +119,11 @@ local function App()
         IgnoreGuiInset = true
     }, {
         TopStats = React.createElement(TopStats, {
-            playerData = playerData,
+            playerData = {
+                money = playerData.resources and playerData.resources.money or 0,
+                rebirths = playerData.resources and playerData.resources.rebirths or 0,
+                diamonds = playerData.resources and playerData.resources.diamonds or 0
+            },
             screenSize = Vector2.new(1920, 1080)
         }),
         SideButtons = React.createElement(SideButtons, {
@@ -113,13 +144,22 @@ local function App()
         }),
         DebugUI = React.createElement(DebugUI),
         PetInventory = React.createElement(PetInventoryPanel, {
-            playerData = playerData,
+            playerData = {
+                ownedPets = playerData.ownedPets or {},
+                companionPets = playerData.companionPets or {}
+            },
             visible = petInventoryVisible,
             screenSize = Vector2.new(1920, 1080),
             onClose = function()
                 setPetInventoryVisible(false)
             end,
             remotes = {} -- Add remotes if needed for pet actions
+        }),
+        PetBoosts = React.createElement(PetBoostPanel, {
+            playerData = {
+                companionPets = playerData.companionPets or {}
+            },
+            screenSize = Vector2.new(1920, 1080)
         })
     })
 end
@@ -135,3 +175,14 @@ PlotVisualsService:Initialize()
 
 -- Initialize pet growth service
 PetGrowthService:Initialize()
+
+-- Initialize pet follow service
+PetFollowService:Initialize()
+
+-- Initialize server response handler for rollback mechanism
+local ServerResponseHandler = require(script.Parent.services.ServerResponseHandler)
+ServerResponseHandler:Initialize()
+
+-- Initialize state reconciliation service
+local StateReconciliationService = require(script.Parent.services.StateReconciliationService)
+StateReconciliationService:Initialize()
