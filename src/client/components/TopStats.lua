@@ -12,25 +12,7 @@ local assets = require(ReplicatedStorage.assets)
 
 -- Import shared utilities
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
-
--- Simple NumberFormatter
-local function formatNumber(number)
-    if not number or type(number) ~= "number" then
-        return "0"
-    end
-    
-    if number < 1000 then
-        return tostring(math.floor(number))
-    elseif number < 1000000 then
-        return string.format("%.1fK", number / 1000)
-    elseif number < 1000000000 then
-        return string.format("%.1fM", number / 1000000)
-    elseif number < 1000000000000 then
-        return string.format("%.1fB", number / 1000000000)
-    else
-        return string.format("%.1fT", number / 1000000000000)
-    end
-end
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 -- Use shared utility functions
 local getProportionalScale = ScreenUtils.getProportionalScale
@@ -49,9 +31,9 @@ local function TopStats(props)
     local titleTextSize = getProportionalTextSize(screenSize, 24)
     local popupTextSize = getProportionalTextSize(screenSize, 18)
     
-    local moneyText = formatNumber(money)
+    local moneyText = NumberFormatter.format(money)
     local rebirthText = tostring(rebirths)
-    local diamondText = formatNumber(diamonds)
+    local diamondText = NumberFormatter.format(diamonds)
     
     local baseWidth = 120
     local moneyWidth = math.max(baseWidth, 80 + (string.len(moneyText) * 10)) * scale
@@ -116,14 +98,16 @@ local function TopStats(props)
             moneyAnimationId.current = moneyAnimationId.current + 1
             local currentAnimationId = moneyAnimationId.current
             
-            setMoneyPopupText("+$" .. formatNumber(difference))
+            setMoneyPopupText("+$" .. NumberFormatter.format(difference))
             setShowMoneyPopup(true)
             
             task.spawn(function()
                 task.wait(0.1)
                 
                 if moneyPopupRef.current and moneyAnimationId.current == currentAnimationId then
+                    -- Money container is positioned after diamond container
                     local moneyContainerX = diamondWidth + containerSpacing
+                    -- Center the popup under the money container (subtract half popup width for centering)
                     moneyPopupRef.current.Position = UDim2.new(0, moneyContainerX + moneyWidth/2 - 100, 1, 10)
                     moneyPopupRef.current.TextTransparency = 0
                     
@@ -232,7 +216,7 @@ local function TopStats(props)
             diamondAnimationId.current = diamondAnimationId.current + 1
             local currentAnimationId = diamondAnimationId.current
             
-            setDiamondPopupText("+" .. formatNumber(difference) .. " 💎")
+            setDiamondPopupText("+" .. NumberFormatter.format(difference) .. " 💎")
             setShowDiamondPopup(true)
             
             task.spawn(function()
@@ -338,6 +322,7 @@ local function TopStats(props)
                 ZIndex = 15,
                 TextStrokeTransparency = 0.5,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                TextXAlignment = Enum.TextXAlignment.Center,
                 ref = moneyPopupRef
             }) or nil
         }),

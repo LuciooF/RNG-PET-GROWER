@@ -232,15 +232,11 @@ end
 -- Apply aura visual effects to model
 function PetModelFactory.applyAuraEffects(model, auraData)
     if not model or not auraData then 
-        print("PetModelFactory: applyAuraEffects - missing model or auraData")
         return 
     end
     
-    print("PetModelFactory: Applying aura effects for:", auraData.name, "Color:", auraData.color, "Multiplier:", auraData.multiplier)
-    
     -- Skip aura effects for "Basic" aura
     if auraData.name == "Basic" or auraData.name == "None" then
-        print("PetModelFactory: Skipping particles for Basic/None aura")
         return
     end
     
@@ -263,25 +259,18 @@ function PetModelFactory.applyAuraEffects(model, auraData)
     end
     
     if not primaryPart then
-        print("PetModelFactory: No primary part found for particles")
         return
     end
-    
-    print("PetModelFactory: Creating particles on part:", primaryPart.Name)
     
     -- Create particle emitter for aura effect
     local particleEmitter = Instance.new("ParticleEmitter")
     particleEmitter.Name = "AuraParticles"
     particleEmitter.Parent = primaryPart
     
-    print("PetModelFactory: Particle emitter created and parented")
-    
     -- Configure particles based on aura rarity and type
     local auraName = auraData.name
     local auraColor = auraData.color
     local auraMultiplier = auraData.multiplier or 1
-    
-    print("PetModelFactory: Configuring particles - Name:", auraName, "Multiplier:", auraMultiplier)
     
     -- Base particle configuration for all auras
     particleEmitter.Color = ColorSequence.new(auraColor)
@@ -293,12 +282,74 @@ function PetModelFactory.applyAuraEffects(model, auraData)
     -- Configure particle intensity and effects based on aura rarity
     if auraName == "Basic" then
         -- No particles for basic aura
-        print("PetModelFactory: Destroying particles for Basic aura")
         particleEmitter:Destroy()
         return
+    elseif auraName == "Rainbow" then
+        -- Special rainbow aura with cycling colors
+        particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        particleEmitter.Rate = 50
+        particleEmitter.Speed = NumberRange.new(2, 4)
+        particleEmitter.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(0.5, 0.5),
+            NumberSequenceKeypoint.new(1, 0)
+        }
+        particleEmitter.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.6),
+            NumberSequenceKeypoint.new(0.5, 0.3),
+            NumberSequenceKeypoint.new(1, 1)
+        }
+        particleEmitter.LightEmission = 1
+        
+        -- Create rainbow color sequence
+        particleEmitter.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),    -- Red
+            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 127, 0)), -- Orange  
+            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),    -- Green
+            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),   -- Blue
+            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),  -- Indigo
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))     -- Violet
+        }
+        
+        -- Rainbow glow
+        local pointLight = Instance.new("PointLight")
+        pointLight.Name = "AuraGlow"
+        pointLight.Color = Color3.fromRGB(255, 255, 255) -- White light for rainbow
+        pointLight.Brightness = 0.8
+        pointLight.Range = 15
+        pointLight.Parent = primaryPart
+        
+        -- Add second rainbow particle emitter
+        local secondaryEmitter = Instance.new("ParticleEmitter")
+        secondaryEmitter.Name = "RainbowParticles"
+        secondaryEmitter.Parent = primaryPart
+        secondaryEmitter.Texture = "rbxasset://textures/particles/fire_main.dds"
+        secondaryEmitter.Rate = 25
+        secondaryEmitter.Speed = NumberRange.new(0.5, 2)
+        secondaryEmitter.Lifetime = NumberRange.new(2, 4)
+        secondaryEmitter.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(0.5, 0.6),
+            NumberSequenceKeypoint.new(1, 0)
+        }
+        secondaryEmitter.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.8),
+            NumberSequenceKeypoint.new(0.5, 0.5),
+            NumberSequenceKeypoint.new(1, 1)
+        }
+        secondaryEmitter.LightEmission = 0.9
+        secondaryEmitter.SpreadAngle = Vector2.new(45, 45)
+        -- Offset rainbow colors for the secondary emitter
+        secondaryEmitter.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 127)),    -- Hot Pink
+            ColorSequenceKeypoint.new(0.25, Color3.fromRGB(0, 255, 127)), -- Spring Green
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(127, 0, 255)),  -- Purple
+            ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 127, 0)), -- Orange
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 127, 255))     -- Sky Blue
+        }
     elseif auraMultiplier <= 1.5 then
         -- Low-tier auras (Wood, Silver) - made more visible
-        print("PetModelFactory: Configuring LOW-TIER particles")
         particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
         particleEmitter.Rate = 15  -- Increased from 8
         particleEmitter.Speed = NumberRange.new(1, 2)  -- Increased speed
@@ -314,7 +365,6 @@ function PetModelFactory.applyAuraEffects(model, auraData)
         }
     elseif auraMultiplier <= 5 then
         -- Mid-tier auras (Gold, Diamond, Platinum)
-        print("PetModelFactory: Configuring MID-TIER particles")
         particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
         particleEmitter.Rate = 20
         particleEmitter.Speed = NumberRange.new(1, 2.5)
@@ -338,7 +388,6 @@ function PetModelFactory.applyAuraEffects(model, auraData)
         pointLight.Parent = primaryPart
     elseif auraMultiplier <= 15 then
         -- High-tier auras (Emerald, Ruby, Sapphire, Rainbow)
-        print("PetModelFactory: Configuring HIGH-TIER particles")
         particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
         particleEmitter.Rate = 40
         particleEmitter.Speed = NumberRange.new(1.5, 3.5)
@@ -362,7 +411,6 @@ function PetModelFactory.applyAuraEffects(model, auraData)
         pointLight.Parent = primaryPart
     else
         -- God-tier auras (Cosmic, Void, Celestial)
-        print("PetModelFactory: Configuring GOD-TIER particles")
         particleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
         particleEmitter.Rate = 60
         particleEmitter.Speed = NumberRange.new(2, 4)

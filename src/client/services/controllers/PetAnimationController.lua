@@ -8,16 +8,16 @@ local TweenService = game:GetService("TweenService")
 local PetAnimationController = {}
 
 -- Animation configuration
-local PET_FLOAT_SPEED = 2 -- floating animation speed
-local PET_FLOAT_AMPLITUDE = 0.1 -- how much the pet moves up/down (reduced from 0.2)
-local PET_ROTATION_SPEED = 0.5 -- rotation speed for full 360 (radians per second)
+local PET_FLOAT_SPEED = 1.5 -- floating animation speed (slower for smoother feel)
+local PET_FLOAT_AMPLITUDE = 0.0375 -- how much the pet moves up/down (75% reduction from 0.15)
+local PET_ROTATION_SPEED = 0.3 -- rotation speed for full 360 (slower for smoother feel)
 local PET_PHASE_TIME = 5 -- seconds to grow actual pet
 local EGG_PHASE_TIME = 5 -- seconds to show egg
 
 -- Internal state
 local connection = nil
 local lastUpdateTime = 0
-local UPDATE_FREQUENCY = 0.05 -- Update every 0.05 seconds for smoother movement
+local UPDATE_FREQUENCY = 0.016 -- Update every ~60 FPS for much smoother movement
 local cachedModelData = {} -- Cache model parts for better performance
 
 -- Initialize the animation controller
@@ -44,11 +44,11 @@ function PetAnimationController:updateAnimations()
     if currentTime - lastUpdateTime < UPDATE_FREQUENCY then
         return -- Skip this frame
     end
-    lastUpdateTime = currentTime
     
     if not self.activePets then return end
     
-    local deltaTime = UPDATE_FREQUENCY -- Use fixed delta for consistency
+    local deltaTime = currentTime - lastUpdateTime -- Calculate delta before updating lastUpdateTime
+    lastUpdateTime = currentTime
     
     for plotId, petInfo in pairs(self.activePets) do
         if petInfo.model and petInfo.model.Parent then
@@ -91,11 +91,34 @@ function PetAnimationController:updateAnimations()
     end
 end
 
--- Start egg phase animation (just waiting)
+-- Start egg phase animation (egg grows from small to full size)
 function PetAnimationController:startEggPhaseAnimation(plotId, onComplete)
-    task.spawn(function()
-        -- Phase 1: Just wait for 5 seconds (egg stays at full size)
-        task.wait(EGG_PHASE_TIME)
+    if not self.activePets or not self.activePets[plotId] then return end
+    
+    local petInfo = self.activePets[plotId]
+    
+    -- Phase 1: Grow egg from small to full size over 5 seconds
+    local scaleValue = Instance.new("NumberValue")
+    scaleValue.Value = 0.05 -- Start scale (very small)
+    
+    local eggEndScale = 0.3 -- Final egg size
+    
+    local eggGrowthTween = TweenService:Create(scaleValue,
+        TweenInfo.new(EGG_PHASE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Value = eggEndScale}
+    )
+    
+    scaleValue.Changed:Connect(function(newScale)
+        if self.activePets and self.activePets[plotId] and self.activePets[plotId].model then
+            local scale = Vector3.new(newScale, newScale, newScale)
+            self.modelFactory.scaleModel(self.activePets[plotId].model, scale)
+            self.activePets[plotId].currentScale = scale
+        end
+    end)
+    
+    eggGrowthTween:Play()
+    eggGrowthTween.Completed:Connect(function()
+        scaleValue:Destroy()
         
         if self.activePets and self.activePets[plotId] then
             -- Egg phase complete, call completion callback

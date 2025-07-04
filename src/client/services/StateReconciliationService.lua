@@ -15,7 +15,6 @@ local reconciliationConnection
 -- Initialize periodic state reconciliation
 function StateReconciliationService:Initialize()
     local success, error = pcall(function()
-        print("StateReconciliationService: Initializing periodic state reconciliation")
         
         -- Start periodic reconciliation
         reconciliationConnection = task.spawn(function()
@@ -25,7 +24,6 @@ function StateReconciliationService:Initialize()
             end
         end)
         
-        print("StateReconciliationService: Initialized successfully")
     end)
     
     if not success then
@@ -46,7 +44,6 @@ function StateReconciliationService:PerformReconciliation()
         if reconcileRemote then
             -- Request full state from server
             reconcileRemote:FireServer()
-            print("StateReconciliationService: Requested state reconciliation from server")
         else
             warn("StateReconciliationService: RequestStateReconciliation remote not found")
         end
@@ -75,7 +72,6 @@ function StateReconciliationService:HandleReconciliationResponse(serverState)
         -- Compare and reconcile resources (with tolerance for ongoing operations)
         self:ReconcileResources(clientState, serverState)
         
-        print("StateReconciliationService: State reconciliation completed")
     end)
     
     if not success then
@@ -94,10 +90,8 @@ function StateReconciliationService:ReconcilePets(clientState, serverState)
         
         -- Use server state as authoritative
         Store:dispatch(PlayerActions.setPets(serverPets))
-        print("StateReconciliationService: Pet collection reconciled with server state")
     else
         -- TODO: Could add more detailed comparison of individual pets if needed
-        print("StateReconciliationService: Pet counts match")
     end
 end
 
@@ -112,7 +106,6 @@ function StateReconciliationService:ReconcileCompanions(clientState, serverState
         
         -- Use server state as authoritative
         Store:dispatch(PlayerActions.setCompanions(serverCompanions))
-        print("StateReconciliationService: Companions reconciled with server state")
     else
         -- Check if the same pets are assigned
         local mismatch = false
@@ -127,9 +120,7 @@ function StateReconciliationService:ReconcileCompanions(clientState, serverState
         if mismatch then
             warn("StateReconciliationService: Companion assignment mismatch detected")
             Store:dispatch(PlayerActions.setCompanions(serverCompanions))
-            print("StateReconciliationService: Companions reconciled with server state")
-        else
-            print("StateReconciliationService: Companions match")
+            else
         end
     end
 end
@@ -156,9 +147,7 @@ function StateReconciliationService:ReconcileResources(clientState, serverState)
             serverResources.rebirths or 0,
             serverResources.diamonds or 0
         ))
-        print("StateReconciliationService: Resources reconciled with server state")
     else
-        print("StateReconciliationService: Resources match (within tolerance)")
     end
 end
 
@@ -167,13 +156,11 @@ function StateReconciliationService:Cleanup()
     if reconciliationConnection then
         task.cancel(reconciliationConnection)
         reconciliationConnection = nil
-        print("StateReconciliationService: Cleanup completed")
     end
 end
 
 -- Force immediate reconciliation (for debugging or manual sync)
 function StateReconciliationService:ForceReconciliation()
-    print("StateReconciliationService: Forcing immediate reconciliation")
     self:PerformReconciliation()
 end
 

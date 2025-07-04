@@ -39,7 +39,6 @@ function ServerResponseHandler:Initialize()
             warn("ServerResponseHandler: UnassignPetResponse remote not found")
         end
         
-        print("ServerResponseHandler: Initialized successfully")
     end)
     
     if not success then
@@ -58,7 +57,6 @@ function ServerResponseHandler:HandleAssignmentResponse(success, petUniqueId, re
     if success then
         -- Operation was successful, confirm it (prevents rollback)
         PetAssignmentService.confirmServerOperation(requestId)
-        print("ServerResponseHandler: Assignment confirmed for pet:", petUniqueId)
     else
         -- Operation failed, trigger rollback
         PetAssignmentService.forceRollback(requestId, reason)
@@ -80,7 +78,6 @@ function ServerResponseHandler:HandleUnassignmentResponse(success, petUniqueId, 
     if success then
         -- Operation was successful, confirm it (prevents rollback)
         PetAssignmentService.confirmServerOperation(requestId)
-        print("ServerResponseHandler: Unassignment confirmed for pet:", petUniqueId)
     else
         -- Operation failed, trigger rollback
         PetAssignmentService.forceRollback(requestId, reason)

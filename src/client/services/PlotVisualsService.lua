@@ -5,22 +5,20 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local PlotConfig = require(ReplicatedStorage.Shared.config.PlotConfig)
-local assets = require(ReplicatedStorage.assets)
+
+-- Import GUI controller
+local PlotGUIController = require(script.Parent.controllers.PlotGUIController)
 
 local PlotVisualsService = {}
 PlotVisualsService.__index = PlotVisualsService
 
 local player = Players.LocalPlayer
 local connection = nil
-local plotGUIs = {} -- Store references to plot GUIs
 local lastPlayerData = {} -- Cache player data to avoid unnecessary updates
 local touchCooldowns = {} -- Store touch cooldowns per plot
 local plotStates = {} -- Track previous plot states to detect purchases
 local playerAreaNumber = nil -- Store the player's assigned area number
 local areaAssignments = {} -- Store area assignments from server
-
--- Distance threshold for showing GUIs (in studs)
-local GUI_VISIBILITY_DISTANCE = 200
 
 -- Touch cooldown time (in seconds)
 local TOUCH_COOLDOWN_TIME = 2
@@ -69,7 +67,7 @@ function PlotVisualsService:Initialize()
         local currentTime = tick()
         if currentTime - lastVisibilityUpdate >= VISIBILITY_UPDATE_RATE then
             lastVisibilityUpdate = currentTime
-            self:UpdatePlotGUIVisibility()
+            PlotGUIController.updateGUIVisibility()
         end
     end)
     
@@ -95,7 +93,6 @@ end
 function PlotVisualsService:UpdateAllPlots()
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then 
-        print("PlotVisualsService: No PlayerAreas found in UpdateAllPlots")
         return 
     end
     
@@ -140,6 +137,29 @@ function PlotVisualsService:UpdatePlotVisual(plot)
         return
     end
     
+    -- Check if plot should be visible based on player's rebirths
+    local shouldBeVisible = PlotConfig:ShouldPlotBeVisible(plotId, lastPlayerData.rebirths or 0)
+    
+    -- Hide/show the entire plot model based on visibility
+    if plot:IsA("Model") then
+        for _, child in pairs(plot:GetDescendants()) do
+            if child:IsA("BasePart") then
+                child.Transparency = shouldBeVisible and 0 or 1
+                child.CanCollide = shouldBeVisible
+            end
+        end
+    end
+    
+    -- If plot shouldn't be visible, don't create GUI or handle interactions
+    if not shouldBeVisible then
+        -- Remove any existing GUI
+        local existingGUI = plot:FindFirstChild("PlotGUIAnchor")
+        if existingGUI then
+            existingGUI:Destroy()
+        end
+        return
+    end
+    
     -- Determine if this plot is purchased
     local isPurchased = false
     for _, purchasedId in pairs(lastPlayerData.boughtPlots or {}) do
@@ -174,11 +194,11 @@ function PlotVisualsService:UpdatePlotVisual(plot)
     -- Store current state for next update
     plotStates[plotId] = state
     
-    -- Update plot appearance
+    -- Update plot colors based on state
     self:UpdatePlotColor(plot, state)
     
-    -- Create or update plot GUI
-    self:UpdatePlotGUI(plot, plotId, state)
+    -- Create or update plot GUI using controller
+    PlotGUIController.updatePlotGUI(plot, plotId, state, lastPlayerData)
 end
 
 
@@ -229,195 +249,83 @@ function PlotVisualsService:SetPlotToPressedPosition(plot)
 end
 
 function PlotVisualsService:UpdatePlotColor(plot, state)
-    local color = PlotConfig:GetPlotColor(state)
-    local transparency = PlotConfig:GetPlotTransparency(state)
-    
-    -- Only update the "Plot" part for color/transparency
     local plotPart = plot:FindFirstChild("Plot")
-    if plotPart and plotPart:IsA("BasePart") then
-        plotPart.Color = color
-        plotPart.Transparency = transparency
-    else
-        -- Fallback: update all parts if no "Plot" part found
-        for _, child in pairs(plot:GetChildren()) do
-            if child:IsA("BasePart") then
-                child.Color = color
-                child.Transparency = transparency
-            end
-        end
-    end
-end
-
-
-function PlotVisualsService:UpdatePlotGUI(plot, plotId, state)
-    -- Remove existing GUI if it exists
-    local existingGUI = plot:FindFirstChild("PlotGUIAnchor")
-    if existingGUI then
-        existingGUI:Destroy()
-    end
-    
-    -- Get GUI text
-    local guiText = PlotConfig:GetPlotGUIText(plotId, state, lastPlayerData.rebirths or 0)
-    
-    
-    -- Don't create GUI if no text to show
-    if guiText == "" then
+    if not plotPart or not plotPart:IsA("BasePart") then
         return
     end
     
-    -- Create GUI anchor (invisible part above the plot)
-    local guiAnchor = Instance.new("Part")
-    guiAnchor.Name = "PlotGUIAnchor"
-    guiAnchor.Size = Vector3.new(1, 1, 1)
-    guiAnchor.Transparency = 1
-    guiAnchor.CanCollide = false
-    guiAnchor.Anchored = true
-    
-    -- Position above the plot (lower)
-    local plotCenter = self:GetPlotCenter(plot)
-    guiAnchor.Position = plotCenter + Vector3.new(0, 3, 0)
-    guiAnchor.Parent = plot
-    
-    
-    -- Create BillboardGui
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "PlotGUI"
-    billboardGui.Size = UDim2.new(0, 200, 0, 50)
-    billboardGui.StudsOffset = Vector3.new(0, 0, 0)
-    billboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    billboardGui.Enabled = false -- Start disabled, proximity will enable it
-    billboardGui.Parent = guiAnchor
-    
-    -- Check if this is a price display (should show cash icon)
-    local shouldShowCashIcon = (state == PlotConfig.STATES.UNLOCKED_CANT_AFFORD or state == PlotConfig.STATES.UNLOCKED_CAN_AFFORD) and guiText ~= ""
-    
-    if shouldShowCashIcon then
-        -- Create frame to hold icon and text
-        local contentFrame = Instance.new("Frame")
-        contentFrame.Name = "ContentFrame"
-        contentFrame.Size = UDim2.new(1, 0, 1, 0)
-        contentFrame.Position = UDim2.new(0, 0, 0, 0)
-        contentFrame.BackgroundTransparency = 1
-        contentFrame.Parent = billboardGui
-        
-        -- Create layout for horizontal arrangement
-        local layout = Instance.new("UIListLayout")
-        layout.FillDirection = Enum.FillDirection.Horizontal
-        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        layout.VerticalAlignment = Enum.VerticalAlignment.Center
-        layout.Padding = UDim.new(0, 5)
-        layout.Parent = contentFrame
-        
-        -- Create cash icon
-        local cashIcon = Instance.new("ImageLabel")
-        cashIcon.Name = "CashIcon"
-        cashIcon.Size = UDim2.new(0, 24, 0, 24)
-        cashIcon.BackgroundTransparency = 1
-        cashIcon.Image = assets["vector-icon-pack-2/Currency/Cash/Cash Outline 256.png"] or ""
-        cashIcon.ScaleType = Enum.ScaleType.Fit
-        cashIcon.ZIndex = 2
-        cashIcon.Parent = contentFrame
-        
-        -- Create text label for price
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "PlotText"
-        textLabel.Size = UDim2.new(0, 0, 1, 0)
-        textLabel.AutomaticSize = Enum.AutomaticSize.X
-        textLabel.BackgroundTransparency = 1
-        textLabel.Text = guiText
-        textLabel.TextColor3 = PlotConfig:GetPlotGUIColor(state)
-        textLabel.TextSize = 28
-        textLabel.TextWrapped = false
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.ZIndex = 2
-        textLabel.Parent = contentFrame
-        
-        -- Add black text stroke
-        local textStroke = Instance.new("UIStroke")
-        textStroke.Color = Color3.fromRGB(0, 0, 0)
-        textStroke.Thickness = 2
-        textStroke.Transparency = 0
-        textStroke.Parent = textLabel
-    else
-        -- Create regular text label for non-price displays
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "PlotText"
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.Position = UDim2.new(0, 0, 0, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Text = guiText
-        textLabel.TextColor3 = PlotConfig:GetPlotGUIColor(state)
-        textLabel.TextSize = 28
-        textLabel.TextWrapped = true
-        textLabel.TextXAlignment = Enum.TextXAlignment.Center
-        textLabel.TextYAlignment = Enum.TextYAlignment.Center
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.ZIndex = 2
-        textLabel.Parent = billboardGui
-        
-        -- Add black text stroke
-        local textStroke = Instance.new("UIStroke")
-        textStroke.Color = Color3.fromRGB(0, 0, 0)
-        textStroke.Thickness = 2
-        textStroke.Transparency = 0
-        textStroke.Parent = textLabel
+    local plotIdValue = plot:FindFirstChild("PlotId")
+    if not plotIdValue or not plotIdValue:IsA("IntValue") then
+        return
     end
     
-    -- Store reference
-    plotGUIs[plotId] = {
-        gui = billboardGui,
-        anchor = guiAnchor,
-        plot = plot
+    local plotId = plotIdValue.Value
+    
+    -- Use same color logic as cylinders for consistency
+    local CYLINDER_COLORS = {
+        [1] = Color3.fromRGB(139, 69, 19), -- Brown (Basic)
+        [2] = Color3.fromRGB(169, 169, 169), -- Silver (Advanced)
+        [3] = Color3.fromRGB(255, 215, 0), -- Gold (Premium)
+        [4] = Color3.fromRGB(138, 43, 226), -- Purple (Elite)
+        [5] = Color3.fromRGB(255, 20, 147) -- Pink (Master/Legendary)
     }
+    
+    -- Calculate dynamic rarity exactly like cylinders do
+    local dynamicRarity = PlotConfig:GetDynamicRarity(plotId, lastPlayerData.rebirths or 0)
+    local colorIndex = ((dynamicRarity - 1) % #CYLINDER_COLORS) + 1
+    local rarityColor = CYLINDER_COLORS[colorIndex] or CYLINDER_COLORS[1]
+    
+    -- Helper function to darken a color
+    local function darkenColor(color, factor)
+        factor = factor or 0.7 -- Default darkening factor
+        return Color3.fromRGB(
+            math.floor(color.R * 255 * factor),
+            math.floor(color.G * 255 * factor),
+            math.floor(color.B * 255 * factor)
+        )
+    end
+    
+    -- Color based on state using same colors as cylinders
+    if state == PlotConfig.STATES.UNLOCKED_CANT_AFFORD then
+        -- Red when player can't afford it
+        plotPart.Color = Color3.fromRGB(255, 0, 0)
+        plotPart.Material = Enum.Material.Plastic
+        plotPart.Transparency = 0
+    elseif state == PlotConfig.STATES.UNLOCKED_CAN_AFFORD then
+        -- Cylinder rarity color but slightly darker when player can afford it
+        plotPart.Color = darkenColor(rarityColor, 0.7)
+        plotPart.Material = Enum.Material.Plastic
+        plotPart.Transparency = 0
+    elseif state == PlotConfig.STATES.UNLOCKS_NEXT_REBIRTH then
+        -- Black when unlocks next rebirth (same as before)
+        plotPart.Color = Color3.fromRGB(0, 0, 0)
+        plotPart.Material = Enum.Material.Plastic
+        plotPart.Transparency = 0
+    elseif state == PlotConfig.STATES.UNLOCKS_LATER then
+        -- Black when locked for later rebirths (same as before)
+        plotPart.Color = Color3.fromRGB(0, 0, 0)
+        plotPart.Material = Enum.Material.Plastic
+        plotPart.Transparency = 0.5
+    elseif state == PlotConfig.STATES.PURCHASED then
+        -- Actual cylinder rarity color with neon material when player owns it
+        plotPart.Color = rarityColor
+        plotPart.Material = Enum.Material.Neon
+        plotPart.Transparency = 0
+    else
+        -- Default color
+        plotPart.Color = Color3.fromRGB(255, 255, 255)
+        plotPart.Material = Enum.Material.Plastic
+        plotPart.Transparency = 0
+    end
 end
 
 
-function PlotVisualsService:UpdatePlotGUIVisibility()
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        return
-    end
-    
-    local playerPosition = player.Character.HumanoidRootPart.Position
-    local visibleCount = 0
-    
-    for plotId, guiData in pairs(plotGUIs) do
-        if guiData.gui and guiData.anchor and guiData.plot.Parent then
-            local distance = (playerPosition - guiData.anchor.Position).Magnitude
-            local shouldBeVisible = distance <= GUI_VISIBILITY_DISTANCE
-            
-            guiData.gui.Enabled = shouldBeVisible
-            
-            if shouldBeVisible then
-                visibleCount = visibleCount + 1
-            end
-        else
-            -- Clean up invalid references
-            plotGUIs[plotId] = nil
-        end
-    end
-    
-    -- Debug visibility removed for performance (was causing unnecessary calculations)
-end
+-- GUI management has been moved to PlotGUIController for better separation of concerns
+-- PlotVisualsService now focuses on plot state management and visual updates only
 
 function PlotVisualsService:GetPlotCenter(plot)
-    local parts = {}
-    
-    for _, child in pairs(plot:GetChildren()) do
-        if child:IsA("BasePart") then
-            table.insert(parts, child)
-        end
-    end
-    
-    if #parts == 0 then
-        return Vector3.new(0, 0, 0)
-    end
-    
-    local sumPosition = Vector3.new(0, 0, 0)
-    for _, part in pairs(parts) do
-        sumPosition = sumPosition + part.Position
-    end
-    
-    return sumPosition / #parts
+    -- Delegate to PlotGUIController to avoid code duplication
+    return PlotGUIController.getPlotCenter(plot)
 end
 
 function PlotVisualsService:SetupPlotTouchHandlers()
@@ -534,17 +442,8 @@ function PlotVisualsService:Cleanup()
         connection = nil
     end
     
-    -- Clean up all GUIs
-    for plotId, guiData in pairs(plotGUIs) do
-        if guiData.gui then
-            guiData.gui:Destroy()
-        end
-        if guiData.anchor then
-            guiData.anchor:Destroy()
-        end
-    end
-    
-    plotGUIs = {}
+    -- Clean up all GUIs through controller
+    PlotGUIController.cleanup()
 end
 
 return PlotVisualsService

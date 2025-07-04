@@ -1,6 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- Plot generators removed - using pre-built plots from AreaTemplate
 
 local AreaService = {}
 AreaService.__index = AreaService
@@ -9,7 +12,7 @@ AreaService.__index = AreaService
 local AREAS_CONFIG = {
     totalAreas = 6,
     gridSize = {rows = 2, columns = 3},
-    areaSpacing = Vector3.new(100, 0, 100), -- Distance between area centers
+    areaSpacing = Vector3.new(200, 0, 200), -- Distance between area centers (doubled from 100 to 200)
     startPosition = Vector3.new(0, 0, 0) -- Center position for the first area
 }
 
@@ -18,7 +21,7 @@ local playerAreas = {}
 local areaTemplate = nil
 
 function AreaService:Initialize()
-    print("AreaService: Initializing...")
+    -- Initializing AreaService
     
     -- Wait for the AreaTemplate model to exist in Workspace
     areaTemplate = Workspace:WaitForChild("AreaTemplate", 10)
@@ -27,7 +30,7 @@ function AreaService:Initialize()
         return false
     end
     
-    print("AreaService: Found AreaTemplate, creating player areas...")
+    -- Creating player areas from template
     self:CreatePlayerAreas()
     
     return true
@@ -50,6 +53,10 @@ function AreaService:CreatePlayerAreas()
                 
                 if newArea then
                     newArea.Parent = areasContainer
+                    
+                    -- Ensure all plots have PlotId values
+                    self:EnsurePlotIds(newArea)
+                    
                     playerAreas[areaIndex] = {
                         model = newArea,
                         position = areaPosition,
@@ -58,8 +65,7 @@ function AreaService:CreatePlayerAreas()
                         spawnPoint = self:GetSpawnPointFromArea(newArea)
                     }
                     
-                    print(string.format("AreaService: Created Area %d at position %s", 
-                        areaIndex, tostring(areaPosition)))
+                    -- Area created successfully
                 end
                 
                 areaIndex = areaIndex + 1
@@ -69,10 +75,10 @@ function AreaService:CreatePlayerAreas()
     
     print(string.format("AreaService: Successfully created %d player areas", #playerAreas))
     
+    -- Plot generation removed - plots are now pre-built in AreaTemplate
     -- Remove the original template from workspace now that we've cloned it
     if areaTemplate and areaTemplate.Parent then
         areaTemplate:Destroy()
-        print("AreaService: Removed original AreaTemplate from workspace")
     end
 end
 
@@ -200,7 +206,7 @@ function AreaService:SetupAreaProperties(area, areaNumber)
                     plotIdValue.Parent = plot
                 end
                 
-                print(string.format("AreaService: Set up plot %s in area %d", plot.Name, areaNumber))
+                -- Plot configured successfully
             end
         end
     else
@@ -252,7 +258,7 @@ function AreaService:AssignAreaToPlayer(player)
     for areaId, areaData in pairs(playerAreas) do
         if not areaData.assignedPlayer then
             areaData.assignedPlayer = player
-            print(string.format("AreaService: Assigned area %d to player %s", areaId, player.Name))
+            -- Area assigned successfully
             
             -- Sync to all clients
             self:SyncAreaAssignments()
@@ -269,7 +275,7 @@ function AreaService:ReleaseAreaFromPlayer(player)
     for areaId, areaData in pairs(playerAreas) do
         if areaData.assignedPlayer == player then
             areaData.assignedPlayer = nil
-            print(string.format("AreaService: Released area %d from player %s", areaId, player.Name))
+            -- Area released successfully
             
             -- Sync to all clients
             self:SyncAreaAssignments()
@@ -311,8 +317,7 @@ function AreaService:TeleportPlayerToArea(player, areaId)
     
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         player.Character.HumanoidRootPart.CFrame = CFrame.new(spawnPosition)
-        print(string.format("AreaService: Teleported %s to area %d at spawn point %s", 
-            player.Name, areaId, tostring(spawnPosition)))
+        -- Player teleported successfully
         return true
     end
     
@@ -334,7 +339,7 @@ function AreaService:SyncAreaAssignments()
     local areaAssignmentSync = ReplicatedStorage:FindFirstChild("AreaAssignmentSync")
     if areaAssignmentSync then
         areaAssignmentSync:FireAllClients(assignmentData)
-        print("AreaService: Synced area assignments to all clients")
+        -- Area assignments synced
     end
 end
 
@@ -353,7 +358,58 @@ function AreaService:SyncAreaAssignmentsToPlayer(player)
     local areaAssignmentSync = ReplicatedStorage:FindFirstChild("AreaAssignmentSync")
     if areaAssignmentSync then
         areaAssignmentSync:FireClient(player, assignmentData)
-        print(string.format("AreaService: Synced area assignments to player %s", player.Name))
+        -- Area assignments synced to player
+    end
+end
+
+function AreaService:EnsurePlotIds(area)
+    -- Ensure regular plots have PlotId values
+    local plotsFolder = area:FindFirstChild("Plots")
+    if plotsFolder then
+        for _, plot in pairs(plotsFolder:GetChildren()) do
+            if plot:IsA("Model") then
+                local plotIdValue = plot:FindFirstChild("PlotId")
+                if not plotIdValue then
+                    -- Extract plot ID from name (Plot1, Plot2, etc.)
+                    local plotId = plot.Name:match("Plot(%d+)")
+                    if plotId then
+                        plotIdValue = Instance.new("IntValue")
+                        plotIdValue.Name = "PlotId"
+                        plotIdValue.Value = tonumber(plotId)
+                        plotIdValue.Parent = plot
+                        -- PlotId assigned
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Ensure production plots have PlotId values
+    local productionPlotsFolder = area:FindFirstChild("ProductionPlots")
+    if productionPlotsFolder then
+        for _, plot in pairs(productionPlotsFolder:GetChildren()) do
+            if plot:IsA("Model") then
+                local plotIdValue = plot:FindFirstChild("PlotId")
+                if not plotIdValue then
+                    -- Extract plot ID from name (ProductionPlot1, ProductionPlot2, etc.)
+                    local plotId = plot.Name:match("ProductionPlot(%d+)")
+                    if plotId then
+                        plotIdValue = Instance.new("IntValue")
+                        plotIdValue.Name = "PlotId"
+                        plotIdValue.Value = tonumber(plotId)
+                        plotIdValue.Parent = plot
+                        
+                        -- Add PlotType identifier for production plots
+                        local plotTypeValue = Instance.new("StringValue")
+                        plotTypeValue.Name = "PlotType"
+                        plotTypeValue.Value = "Production"
+                        plotTypeValue.Parent = plot
+                        
+                        -- PlotId assigned
+                    end
+                end
+            end
+        end
     end
 end
 

@@ -6,6 +6,9 @@ local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages.react)
 local e = React.createElement
 
+-- Assets (use new modular system)
+local assets = require(ReplicatedStorage.assets)
+
 -- Import shared utilities
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local AnimationHelpers = require(ReplicatedStorage.utils.AnimationHelpers)
@@ -19,11 +22,9 @@ local createIconSpin = AnimationHelpers.createFlipAnimation
 
 local function SideButtons(props)
     local onShopClick = props.onShopClick or function() end
-    local onInventoryClick = props.onInventoryClick or function() end
     local onPetsClick = props.onPetsClick or function() end
     local onRebirthClick = props.onRebirthClick or function() end
-    local onEggsClick = props.onEggsClick or function() end
-    local onComingSoonClick = props.onComingSoonClick or function() end
+    local onDebugClick = props.onDebugClick or function() end
     
     -- Screen size detection for responsive design
     local screenSize = props.screenSize or Vector2.new(1024, 768)
@@ -36,24 +37,24 @@ local function SideButtons(props)
     
     -- Icon refs for spin animations
     local shopIconRef = React.useRef(nil)
-    local inventoryIconRef = React.useRef(nil)
     local petsIconRef = React.useRef(nil)
     local rebirthIconRef = React.useRef(nil)
-    local eggsIconRef = React.useRef(nil)
-    local comingSoonIconRef = React.useRef(nil)
     
     -- Animation trackers to prevent stacking
     local shopAnimTracker = React.useRef(nil)
-    local inventoryAnimTracker = React.useRef(nil)
     local petsAnimTracker = React.useRef(nil)
     local rebirthAnimTracker = React.useRef(nil)
-    local eggsAnimTracker = React.useRef(nil)
-    local comingSoonAnimTracker = React.useRef(nil)
+    
+    -- Icon refs for spin animations  
+    local debugIconRef = React.useRef(nil)
+    
+    -- Animation trackers to prevent stacking
+    local debugAnimTracker = React.useRef(nil)
     
     return e("Frame", {
         Name = "SideButtonsFrame",
-        Size = UDim2.new(0, buttonSize, 0, (6 * buttonSize) + (5 * spacing)),
-        Position = UDim2.new(0, getProportionalSize(screenSize, 20), 0.5, -((6 * buttonSize) + (5 * spacing))/2),
+        Size = UDim2.new(0, buttonSize, 0, (4 * buttonSize) + (3 * spacing)),
+        Position = UDim2.new(0, getProportionalSize(screenSize, 20), 0.5, -((4 * buttonSize) + (3 * spacing))/2),
         BackgroundTransparency = 1,
         ZIndex = 10
     }, {
@@ -65,91 +66,15 @@ local function SideButtons(props)
             SortOrder = Enum.SortOrder.LayoutOrder
         }),
         
-        -- Shop Button
-        ShopButton = e("TextButton", {
-            Name = "ShopButton",
+        -- Pet Inventory Button (moved to top)
+        PetInventoryButton = e("TextButton", {
+            Name = "PetInventoryButton",
             Size = UDim2.new(0, buttonSize, 0, buttonSize),
             Text = "",
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            BackgroundTransparency = 1, -- Remove white background
             BorderSizePixel = 0,
             ZIndex = 11,
             LayoutOrder = 1,
-            [React.Event.Activated] = function()
-                createIconSpin(shopIconRef, shopAnimTracker)
-                onShopClick()
-            end,
-            [React.Event.MouseEnter] = function()
-                createIconSpin(shopIconRef, shopAnimTracker)
-            end
-        }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0.5, 0)
-            }),
-            Stroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            Icon = e("TextLabel", {
-                Name = "ShopIcon",
-                Size = UDim2.new(0, iconSize, 0, iconSize),
-                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
-                Text = "🛒",
-                TextScaled = true,
-                BackgroundTransparency = 1,
-                ZIndex = 12,
-                ref = shopIconRef
-            })
-        }),
-        
-        -- Inventory Button
-        InventoryButton = e("TextButton", {
-            Name = "InventoryButton",
-            Size = UDim2.new(0, buttonSize, 0, buttonSize),
-            Text = "",
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-            BorderSizePixel = 0,
-            ZIndex = 11,
-            LayoutOrder = 2,
-            [React.Event.Activated] = function()
-                createIconSpin(inventoryIconRef, inventoryAnimTracker)
-                onInventoryClick()
-            end,
-            [React.Event.MouseEnter] = function()
-                createIconSpin(inventoryIconRef, inventoryAnimTracker)
-            end
-        }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0.5, 0)
-            }),
-            Stroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            Icon = e("TextLabel", {
-                Name = "InventoryIcon",
-                Size = UDim2.new(0, iconSize, 0, iconSize),
-                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
-                Text = "🎒",
-                TextScaled = true,
-                BackgroundTransparency = 1,
-                ZIndex = 12,
-                ref = inventoryIconRef
-            })
-        }),
-        
-        -- Pets Button
-        PetsButton = e("TextButton", {
-            Name = "PetsButton",
-            Size = UDim2.new(0, buttonSize, 0, buttonSize),
-            Text = "",
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-            BorderSizePixel = 0,
-            ZIndex = 11,
-            LayoutOrder = 3,
             [React.Event.Activated] = function()
                 createIconSpin(petsIconRef, petsAnimTracker)
                 onPetsClick()
@@ -158,24 +83,44 @@ local function SideButtons(props)
                 createIconSpin(petsIconRef, petsAnimTracker)
             end
         }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0.5, 0)
-            }),
-            Stroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            Icon = e("TextLabel", {
-                Name = "PetsIcon",
+            Icon = e("ImageLabel", {
+                Name = "PetInventoryIcon",
                 Size = UDim2.new(0, iconSize, 0, iconSize),
                 Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
-                Text = "🐾",
-                TextScaled = true,
+                Image = assets["vector-icon-pack-2/General/Pet 2/Pet 2 Outline 256.png"] or "",
                 BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 12,
                 ref = petsIconRef
+            })
+        }),
+        
+        -- Shop Button (moved to middle)
+        ShopButton = e("TextButton", {
+            Name = "ShopButton",
+            Size = UDim2.new(0, buttonSize, 0, buttonSize),
+            Text = "",
+            BackgroundTransparency = 1, -- Remove white background
+            BorderSizePixel = 0,
+            ZIndex = 11,
+            LayoutOrder = 2,
+            [React.Event.Activated] = function()
+                createIconSpin(shopIconRef, shopAnimTracker)
+                onShopClick()
+            end,
+            [React.Event.MouseEnter] = function()
+                createIconSpin(shopIconRef, shopAnimTracker)
+            end
+        }, {
+            Icon = e("ImageLabel", {
+                Name = "ShopIcon",
+                Size = UDim2.new(0, iconSize, 0, iconSize),
+                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
+                Image = assets["vector-icon-pack-2/General/Shop/Shop Outline 256.png"] or "",
+                BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 12,
+                ref = shopIconRef
             })
         }),
         
@@ -184,10 +129,10 @@ local function SideButtons(props)
             Name = "RebirthButton",
             Size = UDim2.new(0, buttonSize, 0, buttonSize),
             Text = "",
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            BackgroundTransparency = 1, -- Remove white background
             BorderSizePixel = 0,
             ZIndex = 11,
-            LayoutOrder = 4,
+            LayoutOrder = 3,
             [React.Event.Activated] = function()
                 createIconSpin(rebirthIconRef, rebirthAnimTracker)
                 onRebirthClick()
@@ -196,100 +141,59 @@ local function SideButtons(props)
                 createIconSpin(rebirthIconRef, rebirthAnimTracker)
             end
         }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0.5, 0)
-            }),
-            Stroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            Icon = e("TextLabel", {
+            Icon = e("ImageLabel", {
                 Name = "RebirthIcon",
                 Size = UDim2.new(0, iconSize, 0, iconSize),
                 Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
-                Text = "🔄",
-                TextScaled = true,
+                Image = assets["vector-icon-pack-2/General/Rebirth/Rebirth Outline 256.png"] or "",
                 BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 12,
                 ref = rebirthIconRef
             })
         }),
         
-        -- Eggs Button
-        EggsButton = e("TextButton", {
-            Name = "EggsButton",
+        -- Debug Button (bottom)
+        DebugButton = e("TextButton", {
+            Name = "DebugButton",
             Size = UDim2.new(0, buttonSize, 0, buttonSize),
             Text = "",
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ZIndex = 11,
-            LayoutOrder = 5,
+            LayoutOrder = 4,
             [React.Event.Activated] = function()
-                createIconSpin(eggsIconRef, eggsAnimTracker)
-                onEggsClick()
+                createIconSpin(debugIconRef, debugAnimTracker)
+                onDebugClick()
             end,
             [React.Event.MouseEnter] = function()
-                createIconSpin(eggsIconRef, eggsAnimTracker)
+                createIconSpin(debugIconRef, debugAnimTracker)
             end
         }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0.5, 0)
-            }),
-            Stroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            Icon = e("TextLabel", {
-                Name = "EggsIcon",
+            Icon = e("ImageLabel", {
+                Name = "DebugIcon",
                 Size = UDim2.new(0, iconSize, 0, iconSize),
                 Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
-                Text = "🥚",
-                TextScaled = true,
+                Image = assets["vector-icon-pack-2/General/Bug/Bug Outline 256.png"] or "",
                 BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 12,
-                ref = eggsIconRef
-            })
-        }),
-        
-        -- Coming Soon Button
-        ComingSoonButton = e("TextButton", {
-            Name = "ComingSoonButton",
-            Size = UDim2.new(0, buttonSize, 0, buttonSize),
-            Text = "",
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-            BorderSizePixel = 0,
-            ZIndex = 11,
-            LayoutOrder = 6,
-            [React.Event.Activated] = function()
-                createIconSpin(comingSoonIconRef, comingSoonAnimTracker)
-                onComingSoonClick()
-            end,
-            [React.Event.MouseEnter] = function()
-                createIconSpin(comingSoonIconRef, comingSoonAnimTracker)
-            end
-        }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0.5, 0)
+                ref = debugIconRef
             }),
-            Stroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            Icon = e("TextLabel", {
-                Name = "ComingSoonIcon",
-                Size = UDim2.new(0, iconSize, 0, iconSize),
-                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
-                Text = "❓",
-                TextScaled = true,
+            
+            -- Fallback text if image doesn't load
+            FallbackText = e("TextLabel", {
+                Name = "DebugText",
+                Size = UDim2.new(1, 0, 1, 0),
+                Position = UDim2.new(0, 0, 0, 0),
+                Text = "🐛",
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = iconSize * 0.6,
                 BackgroundTransparency = 1,
-                ZIndex = 12,
-                ref = comingSoonIconRef
+                Font = Enum.Font.SourceSansBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 13
             })
         })
     })

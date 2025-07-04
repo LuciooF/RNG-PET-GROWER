@@ -16,7 +16,7 @@ PetConstants.PET_EMOJIS = {
     ["Baby Doggy"] = "🐶",
     ["Beach Doggy"] = "🏖️", 
     ["Blossom Doggy"] = "🌸",
-    ["St' Patrics Doggy"] = "🍀",
+    ["St' Patricks Doggy"] = "🍀",
     
     -- Ducks
     ["Mighty Duck"] = "🦆",
@@ -29,38 +29,41 @@ PetConstants.PET_EMOJIS = {
     ["Unknown"] = "🐾"
 }
 
--- Rarity colors (single colors for borders, gradients for backgrounds)
-PetConstants.RARITY_COLORS = {
-    [1] = {
-        single = Color3.fromRGB(150, 150, 150), -- Gray
-        gradient = {Color3.fromRGB(150, 150, 150), Color3.fromRGB(180, 180, 180)}
-    },
-    [2] = {
-        single = Color3.fromRGB(100, 255, 100), -- Green
-        gradient = {Color3.fromRGB(100, 255, 100), Color3.fromRGB(150, 255, 150)}
-    },
-    [3] = {
-        single = Color3.fromRGB(100, 100, 255), -- Blue
-        gradient = {Color3.fromRGB(100, 100, 255), Color3.fromRGB(150, 150, 255)}
-    },
-    [4] = {
-        single = Color3.fromRGB(255, 100, 255), -- Purple
-        gradient = {Color3.fromRGB(255, 100, 255), Color3.fromRGB(255, 150, 255)}
-    },
-    [5] = {
-        single = Color3.fromRGB(255, 215, 0), -- Gold
-        gradient = {Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 235, 50)}
-    }
-}
+-- Import PetConfig for authoritative rarity data
+local PetConfig = require(script.Parent.Parent.Shared.config.PetConfig)
 
--- Rarity names
-PetConstants.RARITY_NAMES = {
-    [1] = "BASIC",
-    [2] = "ADVANCED", 
-    [3] = "PREMIUM",
-    [4] = "ELITE",
-    [5] = "MASTER"
-}
+-- Generate rarity colors from PetConfig (with gradients for UI)
+local function generateRarityColors()
+    local colors = {}
+    for rarityId, rarityData in pairs(PetConfig.RARITY_CONFIG) do
+        local baseColor = rarityData.color
+        colors[rarityId] = {
+            single = baseColor,
+            gradient = {
+                baseColor,
+                Color3.fromRGB(
+                    math.min(255, baseColor.R * 255 + 30),
+                    math.min(255, baseColor.G * 255 + 30),
+                    math.min(255, baseColor.B * 255 + 30)
+                )
+            }
+        }
+    end
+    return colors
+end
+
+PetConstants.RARITY_COLORS = generateRarityColors()
+
+-- Generate rarity names from PetConfig
+local function generateRarityNames()
+    local names = {}
+    for rarityId, rarityData in pairs(PetConfig.RARITY_CONFIG) do
+        names[rarityId] = rarityData.name:upper()
+    end
+    return names
+end
+
+PetConstants.RARITY_NAMES = generateRarityNames()
 
 -- Helper functions
 function PetConstants.getPetEmoji(petName)

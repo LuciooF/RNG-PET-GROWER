@@ -12,10 +12,17 @@ local DebugUI = require(script.Parent.components.DebugUI)
 local SideButtons = require(script.Parent.components.SideButtons)
 local PetInventoryPanel = require(script.Parent.components.PetInventoryPanel)
 local PetBoostPanel = require(script.Parent.components.PetBoostPanel)
+local RebirthPanel = require(script.Parent.components.RebirthPanel)
+local ShopPanel = require(script.Parent.components.ShopPanel)
+local RebirthAnimationEffect = require(script.Parent.components.RebirthAnimationEffect)
 local AreaNameplateService = require(script.Parent.services.AreaNameplateService)
 local PlotVisualsService = require(script.Parent.services.PlotVisualsService)
-local PetGrowthService = require(script.Parent.services.PetGrowthService)
+local ProductionPlotVisualsService = require(script.Parent.services.ProductionPlotVisualsService)
+local CylinderSpawnerService = require(script.Parent.services.CylinderSpawnerService)
 local PetFollowService = require(script.Parent.services.PetFollowService)
+local SendHeavenService = require(script.Parent.services.SendHeavenService)
+local HeavenAnimationService = require(script.Parent.services.HeavenAnimationService)
+local TubeManagerService = require(script.Parent.services.TubeManagerService)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -70,6 +77,25 @@ local function App()
     })
     
     local petInventoryVisible, setPetInventoryVisible = React.useState(false)
+    local shopPanelVisible, setShopPanelVisible = React.useState(false)
+    local debugUIVisible, setDebugUIVisible = React.useState(false)
+    local rebirthPanelVisible, setRebirthPanelVisible = React.useState(false)
+    local rebirthAnimationVisible, setRebirthAnimationVisible = React.useState(false)
+    
+    -- Get actual screen size from camera viewport
+    local camera = workspace.CurrentCamera
+    local screenSize, setScreenSize = React.useState(camera.ViewportSize)
+    
+    -- Listen for viewport size changes
+    React.useEffect(function()
+        local connection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            setScreenSize(camera.ViewportSize)
+        end)
+        
+        return function()
+            connection:Disconnect()
+        end
+    end, {})
     
     -- Subscribe to Redux store changes
     React.useEffect(function()
@@ -77,13 +103,6 @@ local function App()
             local newPlayerData = newState.player or {}
             setPlayerData(newPlayerData)
             
-            -- Debug: Check assigned pets
-            print("Main.client: Redux state updated, companionPets:", newPlayerData.companionPets and #newPlayerData.companionPets or "none")
-            if newPlayerData.companionPets then
-                for i, pet in ipairs(newPlayerData.companionPets) do
-                    print("  Companion pet", i, ":", pet.name, "ID:", pet.id)
-                end
-            end
             
             -- Update pet follow service with new assigned pets
             PetFollowService:UpdateAssignedPets(newPlayerData)
@@ -124,32 +143,43 @@ local function App()
                 rebirths = playerData.resources and playerData.resources.rebirths or 0,
                 diamonds = playerData.resources and playerData.resources.diamonds or 0
             },
-            screenSize = Vector2.new(1920, 1080)
+            screenSize = screenSize
         }),
         SideButtons = React.createElement(SideButtons, {
-            screenSize = Vector2.new(1920, 1080),
+            screenSize = screenSize,
             onShopClick = function() 
-                -- Open debug UI when shop is clicked
-                if _G.DebugUI then
-                    _G.DebugUI.toggle()
-                end
+                setShopPanelVisible(function(current) return not current end)
             end,
-            onInventoryClick = function() end,
             onPetsClick = function() 
                 setPetInventoryVisible(function(current) return not current end)
             end,
-            onRebirthClick = function() end,
-            onEggsClick = function() end,
-            onComingSoonClick = function() end
+            onRebirthClick = function() 
+                setRebirthPanelVisible(true)
+            end,
+            onDebugClick = function()
+                setDebugUIVisible(function(current) return not current end)
+            end
         }),
-        DebugUI = React.createElement(DebugUI),
+        DebugUI = React.createElement(DebugUI, {
+            visible = debugUIVisible,
+            onClose = function()
+                setDebugUIVisible(false)
+            end
+        }),
+        ShopPanel = ShopPanel.create({
+            visible = shopPanelVisible,
+            screenSize = screenSize,
+            onClose = function()
+                setShopPanelVisible(false)
+            end
+        }),
         PetInventory = React.createElement(PetInventoryPanel, {
             playerData = {
                 ownedPets = playerData.ownedPets or {},
                 companionPets = playerData.companionPets or {}
             },
             visible = petInventoryVisible,
-            screenSize = Vector2.new(1920, 1080),
+            screenSize = screenSize,
             onClose = function()
                 setPetInventoryVisible(false)
             end,
@@ -159,7 +189,42 @@ local function App()
             playerData = {
                 companionPets = playerData.companionPets or {}
             },
-            screenSize = Vector2.new(1920, 1080)
+            screenSize = screenSize
+        }),
+        RebirthAnimationEffect = React.createElement(RebirthAnimationEffect, {
+            visible = rebirthAnimationVisible,
+            screenSize = screenSize,
+            onComplete = function()
+                setRebirthAnimationVisible(false)
+            end
+        }),
+        RebirthPanel = React.createElement(RebirthPanel, {
+            playerData = {
+                money = playerData.resources and playerData.resources.money or 0,
+                rebirths = playerData.resources and playerData.resources.rebirths or 0,
+                diamonds = playerData.resources and playerData.resources.diamonds or 0
+            },
+            visible = rebirthPanelVisible,
+            screenSize = screenSize,
+            onClose = function()
+                setRebirthPanelVisible(false)
+            end,
+            onRebirth = function()
+                -- Fire rebirth remote event
+                local remoteFolder = ReplicatedStorage:WaitForChild("Remotes", 10)
+                if remoteFolder then
+                    local playerRebirth = remoteFolder:WaitForChild("PlayerRebirth", 10)
+                    if playerRebirth then
+                        playerRebirth:FireServer()
+                        setRebirthPanelVisible(false)
+                        setRebirthAnimationVisible(true)
+                    else
+                        warn("PlayerRebirth remote not found in Remotes folder!")
+                    end
+                else
+                    warn("Remotes folder not found!")
+                end
+            end
         })
     })
 end
@@ -173,11 +238,23 @@ AreaNameplateService:Initialize()
 -- Initialize plot visuals service
 PlotVisualsService:Initialize()
 
--- Initialize pet growth service
-PetGrowthService:Initialize()
+-- Initialize production plot visuals service
+ProductionPlotVisualsService:Initialize()
+
+-- Initialize cylinder spawner service
+CylinderSpawnerService:Initialize()
 
 -- Initialize pet follow service
 PetFollowService:Initialize()
+
+-- Initialize send heaven service
+SendHeavenService:Initialize()
+
+-- Initialize heaven animation service
+HeavenAnimationService:Initialize()
+
+-- Initialize tube manager service
+TubeManagerService:Initialize()
 
 -- Initialize server response handler for rollback mechanism
 local ServerResponseHandler = require(script.Parent.services.ServerResponseHandler)
@@ -186,3 +263,5 @@ ServerResponseHandler:Initialize()
 -- Initialize state reconciliation service
 local StateReconciliationService = require(script.Parent.services.StateReconciliationService)
 StateReconciliationService:Initialize()
+
+-- Pet scanning removed - no longer needed for maintenance

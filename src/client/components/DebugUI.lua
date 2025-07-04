@@ -5,25 +5,11 @@ local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages.react)
 local e = React.createElement
 
-local function DebugUI()
-    local isVisible, setIsVisible = React.useState(false)
+local function DebugUI(props)
+    local visible = props.visible or false
+    local onClose = props.onClose or function() end
     
     -- print("DebugUI component loaded")
-    
-    -- Expose global toggle function
-    React.useEffect(function()
-        _G.DebugUI = {
-            toggle = function()
-                setIsVisible(function(current) 
-                    return not current 
-                end)
-            end
-        }
-        
-        return function()
-            _G.DebugUI = nil
-        end
-    end, {})
     
     local function fireRemoteEvent(remoteName)
         local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -34,7 +20,7 @@ local function DebugUI()
     end
     
     -- Debug Panel (only render when visible, no toggle button)
-    return isVisible and e("Frame", {
+    return visible and e("Frame", {
         Name = "DebugUI",
         Size = UDim2.new(0, 250, 0, 300),
         Position = UDim2.new(0.5, -125, 0.5, -150),
@@ -54,7 +40,7 @@ local function DebugUI()
         
         Title = e("TextLabel", {
             Name = "Title",
-            Size = UDim2.new(1, 0, 0, 40),
+            Size = UDim2.new(1, -40, 0, 40),
             Position = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 1,
             Text = "DEBUG PANEL",
@@ -64,6 +50,24 @@ local function DebugUI()
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
             ZIndex = 101
+        }),
+        
+        CloseButton = e("TextButton", {
+            Name = "CloseButton",
+            Size = UDim2.new(0, 30, 0, 30),
+            Position = UDim2.new(1, -35, 0, 5),
+            BackgroundColor3 = Color3.fromRGB(200, 50, 50),
+            BorderSizePixel = 0,
+            Text = "✕",
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextSize = 16,
+            Font = Enum.Font.SourceSansBold,
+            ZIndex = 102,
+            [React.Event.Activated] = onClose
+        }, {
+            Corner = e("UICorner", {
+                CornerRadius = UDim.new(0, 6)
+            })
         }),
         
         ButtonContainer = e("Frame", {
@@ -152,6 +156,26 @@ local function DebugUI()
                 LayoutOrder = 4,
                 [React.Event.MouseButton1Click] = function()
                     fireRemoteEvent("DebugResetData")
+                end
+            }, {
+                Corner = e("UICorner", {
+                    CornerRadius = UDim.new(0, 6)
+                })
+            }),
+            
+            BuyProductionPlotButton = e("TextButton", {
+                Name = "BuyProductionPlotButton",
+                Size = UDim2.new(1, 0, 0, 40),
+                BackgroundColor3 = Color3.fromRGB(100, 200, 255),
+                BorderSizePixel = 0,
+                Text = "Buy Production Plot 1",
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = 14,
+                Font = Enum.Font.SourceSansBold,
+                ZIndex = 102,
+                LayoutOrder = 5,
+                [React.Event.MouseButton1Click] = function()
+                    fireRemoteEvent("DebugBuyProductionPlot")
                 end
             }, {
                 Corner = e("UICorner", {

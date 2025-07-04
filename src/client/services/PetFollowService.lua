@@ -27,143 +27,36 @@ local FOLLOW_DISTANCE = 6 -- Distance behind player
 local MOVEMENT_THRESHOLD = 0.1 -- Minimum movement to trigger animations
 local ANIMATION_SPEED = 2 -- Speed of bounce/float animations
 
--- Utility function to load actual pet model (using same method as PetGrowthService)
+-- Import PetModelFactory for consolidated pet model creation
+local PetModelFactory = require(script.Parent.controllers.PetModelFactory)
+
+-- Utility function to load actual pet model using PetModelFactory
 local function createPetModel(petData)
     local petConfig = PetConfig:GetPetData(petData.id or 1)
     if not petConfig then return nil end
     
-    -- Load from ReplicatedStorage assets FOLDER (not the ModuleScript)
-    local assets = nil
-    for _, child in pairs(ReplicatedStorage:GetChildren()) do
-        if child.Name == "assets" and child.ClassName == "Folder" then
-            assets = child
-            break
-        end
-    end
+    -- Use PetModelFactory for consolidated model creation
+    local clonedModel = PetModelFactory.createPetModel(petConfig, Vector3.new(0, 0, 0))
     
-    
-    local petModel = nil
-    if assets and petConfig.assetPath then
-        local pathParts = string.split(petConfig.assetPath, "/")
-        local currentFolder = assets
-        
-        -- Navigate through the path
-        for _, pathPart in ipairs(pathParts) do
-            currentFolder = currentFolder:FindFirstChild(pathPart)
-            if not currentFolder then
-                break
-            end
-        end
-        
-        if currentFolder and currentFolder:IsA("Model") then
-            petModel = currentFolder
-        end
-    end
-    
-    if not petModel then
+    if not clonedModel then
         warn("PetFollowService: No pet model available for", petData.name)
         return nil
     end
     
-    -- Clone the model for our use
-    local clonedModel = petModel:Clone()
+    -- Update the model name to include unique ID
     clonedModel.Name = "Pet_" .. (petData.name or "Unknown"):gsub(" ", "_") .. "_" .. (petData.uniqueId or "")
     
-    -- Configure model for pet use - keep parts anchored
-    for _, part in pairs(clonedModel:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = true
-            part.CanCollide = false
-        end
-    end
-    
-    -- Ensure model has a PrimaryPart - find the largest part
-    if not clonedModel.PrimaryPart then
-        local largestPart = nil
-        local largestVolume = 0
-        
-        for _, part in pairs(clonedModel:GetDescendants()) do
-            if part:IsA("BasePart") then
-                local volume = part.Size.X * part.Size.Y * part.Size.Z
-                if volume > largestVolume then
-                    largestVolume = volume
-                    largestPart = part
-                end
-            end
-        end
-        
-        if largestPart then
-            clonedModel.PrimaryPart = largestPart
-        else
-            -- Fallback to first part
-            local firstPart = clonedModel:FindFirstChildOfClass("BasePart")
-            if firstPart then
-                clonedModel.PrimaryPart = firstPart
-            end
-        end
-    end
-    
-    -- No welding needed - we'll move all parts together manually
-    
-    -- Apply proper scaling (smaller to match plot pets)
+    -- Apply proper scaling for follow pets (smaller size)
     local baseScale = 0.3 -- Match the plot pet size
     local sizeData = PetConfig:GetSizeData(petData.size or 1)
     local sizeMultiplier = (sizeData and sizeData.multiplier) or 1
     local finalScale = baseScale * sizeMultiplier
     
-    -- Scale the model using the same method as PetGrowthService
-    local function scaleModel(model, scale)
-        -- Get or calculate the model's center point
-        local modelCenter = Vector3.new(0, 0, 0)
-        local partCount = 0
-        for _, part in pairs(model:GetDescendants()) do
-            if part:IsA("BasePart") then
-                modelCenter = modelCenter + part.Position
-                partCount = partCount + 1
-            end
-        end
-        if partCount > 0 then
-            modelCenter = modelCenter / partCount
-        end
-        
-        -- Scale all parts relative to model center
-        for _, part in pairs(model:GetDescendants()) do
-            if part:IsA("BasePart") then
-                -- Scale the part size
-                part.Size = part.Size * scale
-                
-                -- Scale position relative to model center
-                local offset = part.Position - modelCenter
-                part.Position = modelCenter + (offset * scale)
-            end
-        end
-    end
+    -- Use PetModelFactory scaling method
+    PetModelFactory.scaleModel(clonedModel, finalScale)
     
-    scaleModel(clonedModel, finalScale)
-    
-    -- Add aura effect if not "none"
-    local auraData = PetConfig.AURAS[petData.aura or "none"] or PetConfig.AURAS.none
-    if petData.aura and petData.aura ~= "none" then
-        -- Add aura glow effect to all parts
-        for _, child in pairs(clonedModel:GetDescendants()) do
-            if child:IsA("BasePart") then
-                -- Add subtle glow effect
-                local pointLight = Instance.new("PointLight")
-                pointLight.Color = auraData.color
-                pointLight.Brightness = 0.5
-                pointLight.Range = 5
-                pointLight.Parent = child
-                
-                -- Remove selection box as it blocks the model view
-                -- local selectionBox = Instance.new("SelectionBox")
-                -- selectionBox.Parent = child
-                -- selectionBox.Adornee = child
-                -- selectionBox.Color3 = auraData.color
-                -- selectionBox.Transparency = 0.7
-                -- selectionBox.LineThickness = 0.1
-            end
-        end
-    end
+    -- Add aura effect using PetModelFactory
+    -- Aura particle effects removed - cleaner visual experience
     
     -- Add name tag
     local billboard = Instance.new("BillboardGui")

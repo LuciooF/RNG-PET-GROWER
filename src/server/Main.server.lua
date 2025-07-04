@@ -6,6 +6,8 @@ local PlayerService = require(ServerScriptService.services.PlayerService)
 local AreaService = require(ServerScriptService.services.AreaService)
 local PlotService = require(ServerScriptService.services.PlotService)
 local AssetService = require(ServerScriptService.services.AssetService)
+local GamepassService = require(ServerScriptService.services.GamepassService)
+local DeveloperProductService = require(ServerScriptService.services.DeveloperProductService)
 
 -- Rate limiting for pet collection - allow burst of 10 pets per 0.5 seconds
 local playerCollectionData = {} -- {[playerId] = {lastReset = time, count = number}}
@@ -23,6 +25,10 @@ local function createRemotes()
     local buyPlot = Instance.new("RemoteEvent")
     buyPlot.Name = "BuyPlot"
     buyPlot.Parent = remoteFolder
+    
+    local buyProductionPlot = Instance.new("RemoteEvent")
+    buyProductionPlot.Name = "BuyProductionPlot"
+    buyProductionPlot.Parent = remoteFolder
     
     local collectPet = Instance.new("RemoteEvent")
     collectPet.Name = "CollectPet"
@@ -75,6 +81,23 @@ local function createRemotes()
     debugResetData.Name = "DebugResetData"
     debugResetData.Parent = remoteFolder
     
+    local debugBuyProductionPlot = Instance.new("RemoteEvent")
+    debugBuyProductionPlot.Name = "DebugBuyProductionPlot"
+    debugBuyProductionPlot.Parent = remoteFolder
+    
+    -- Rebirth system
+    local playerRebirth = Instance.new("RemoteEvent")
+    playerRebirth.Name = "PlayerRebirth"
+    playerRebirth.Parent = remoteFolder
+    
+    local sendPetsToHeaven = Instance.new("RemoteEvent")
+    sendPetsToHeaven.Name = "SendPetsToHeaven"
+    sendPetsToHeaven.Parent = remoteFolder
+    
+    local heavenAnimation = Instance.new("RemoteEvent")
+    heavenAnimation.Name = "HeavenAnimation"
+    heavenAnimation.Parent = remoteFolder
+    
     -- Area assignment sync
     local areaAssignmentSync = Instance.new("RemoteEvent")
     areaAssignmentSync.Name = "AreaAssignmentSync"
@@ -99,6 +122,27 @@ local function createRemotes()
     unassignPet.Name = "UnassignPet"
     unassignPet.Parent = remoteFolder
     
+    -- Gamepass and Developer Product remotes
+    local gamepassSync = Instance.new("RemoteEvent")
+    gamepassSync.Name = "GamepassSync"
+    gamepassSync.Parent = ReplicatedStorage
+    
+    local gamepassPurchased = Instance.new("RemoteEvent")
+    gamepassPurchased.Name = "GamepassPurchased"
+    gamepassPurchased.Parent = ReplicatedStorage
+    
+    local developerProductPurchased = Instance.new("RemoteEvent")
+    developerProductPurchased.Name = "DeveloperProductPurchased"
+    developerProductPurchased.Parent = ReplicatedStorage
+    
+    local promptGamepassPurchase = Instance.new("RemoteEvent")
+    promptGamepassPurchase.Name = "PromptGamepassPurchase"
+    promptGamepassPurchase.Parent = remoteFolder
+    
+    local promptDeveloperProductPurchase = Instance.new("RemoteEvent")
+    promptDeveloperProductPurchase.Name = "PromptDeveloperProductPurchase"
+    promptDeveloperProductPurchase.Parent = remoteFolder
+    
 end
 
 createRemotes()
@@ -111,6 +155,12 @@ AreaService:Initialize()
 
 -- Initialize PlotService (handle plot purchases)
 PlotService:Initialize()
+
+-- Initialize GamepassService (handle gamepass ownership and benefits)
+GamepassService:Initialize()
+
+-- Initialize DeveloperProductService (handle developer product purchases)
+DeveloperProductService:Initialize()
 
 
 Players.PlayerAdded:Connect(function(player)
@@ -284,7 +334,6 @@ local function setupRemoteHandlers()
     remotes.RequestStateReconciliation.OnServerEvent:Connect(function(player)
         -- Send complete authoritative state to client for reconciliation
         PlayerService:SyncPlayerDataToClient(player)
-        print("StateReconciliation: Sent authoritative state to", player.Name)
     end)
     
     -- Debug remote handlers
@@ -300,8 +349,54 @@ local function setupRemoteHandlers()
         PlayerService:GivePlayerRebirths(player, 1)
     end)
     
+    -- Rebirth system handler
+    remotes.PlayerRebirth.OnServerEvent:Connect(function(player)
+        PlayerService:PerformPlayerRebirth(player)
+    end)
+    
     remotes.DebugResetData.OnServerEvent:Connect(function(player)
         PlayerService:ResetPlayerData(player)
+    end)
+    
+    remotes.DebugBuyProductionPlot.OnServerEvent:Connect(function(player)
+        PlayerService:BuyProductionPlot(player, 1) -- Buy production plot 1
+    end)
+    
+    -- Send pets to heaven handler
+    remotes.SendPetsToHeaven.OnServerEvent:Connect(function(player, requestData)
+        PlayerService:SendPetsToHeaven(player, requestData)
+    end)
+    
+    -- Gamepass purchase prompt handler
+    remotes.PromptGamepassPurchase.OnServerEvent:Connect(function(player, gamepassName)
+        -- Get gamepass data
+        local GamepassConfig = require(ReplicatedStorage.Shared.config.GamepassConfig)
+        local gamepassData = GamepassConfig:GetGamepassByName(gamepassName)
+        
+        if not gamepassData then
+            warn(string.format("Unknown gamepass: %s requested by %s", gamepassName, player.Name))
+            return
+        end
+        
+        -- Prompt purchase
+        local MarketplaceService = game:GetService("MarketplaceService")
+        local success, errorMessage = pcall(function()
+            MarketplaceService:PromptGamePassPurchase(player, gamepassData.id)
+        end)
+        
+        if not success then
+            warn(string.format("Failed to prompt gamepass purchase for %s: %s", player.Name, errorMessage))
+        else
+            print(string.format("Prompted %s to purchase gamepass %s", player.Name, gamepassName))
+        end
+    end)
+    
+    -- Developer product purchase prompt handler
+    remotes.PromptDeveloperProductPurchase.OnServerEvent:Connect(function(player, productName)
+        local success = DeveloperProductService:PromptPurchase(player, productName)
+        if not success then
+            warn(string.format("Failed to prompt developer product purchase %s for %s", productName, player.Name))
+        end
     end)
     
 end

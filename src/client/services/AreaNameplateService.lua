@@ -12,9 +12,14 @@ local AreaNameplate = require(script.Parent.Parent.components.AreaNameplate)
 local AreaNameplateService = {}
 AreaNameplateService.__index = AreaNameplateService
 
+local player = Players.LocalPlayer
 local nameplateRoots = {}
 local connection = nil
 local areaAssignments = {} -- Store area assignments from server
+local areaNameplates = {} -- Store references to area nameplates for visibility management
+
+-- Distance threshold for showing area GUIs (larger than plot GUIs)
+local AREA_GUI_VISIBILITY_DISTANCE = 150
 
 function AreaNameplateService:Initialize()
     print("AreaNameplateService: Initializing...")
@@ -38,6 +43,9 @@ function AreaNameplateService:Initialize()
     
     -- Set up initial nameplates (will show "Unassigned" until server data arrives)
     self:UpdateAllNameplates()
+    
+    -- Start visibility update loop
+    self:StartVisibilityUpdates()
     
     print("AreaNameplateService: Initialized successfully")
 end
@@ -73,6 +81,11 @@ function AreaNameplateService:UpdateNameplateForArea(area, areaNumber)
         else
             -- Update existing nameplate if player changed
             self:UpdateNameplateText(existingNameplate, assignedPlayerName)
+            -- Ensure reference is stored for visibility management
+            areaNameplates[areaNumber] = {
+                gui = existingNameplate,
+                anchor = nameplateAnchor
+            }
         end
     else
         -- No player assigned, show "Unassigned"
@@ -80,6 +93,11 @@ function AreaNameplateService:UpdateNameplateForArea(area, areaNumber)
             self:CreateNameplate(nameplateAnchor, "Unassigned", areaNumber)
         else
             self:UpdateNameplateText(existingNameplate, "Unassigned")
+            -- Ensure reference is stored for visibility management
+            areaNameplates[areaNumber] = {
+                gui = existingNameplate,
+                anchor = nameplateAnchor
+            }
         end
     end
 end
@@ -91,6 +109,7 @@ function AreaNameplateService:CreateNameplate(anchor, playerName, areaNumber)
     billboardGui.Size = UDim2.new(0, 300, 0, 50)
     billboardGui.StudsOffset = Vector3.new(0, 0, 0)
     billboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboardGui.Enabled = false -- Start disabled, proximity will enable it
     billboardGui.Parent = anchor
     
     -- Single text label for everything
@@ -116,6 +135,12 @@ function AreaNameplateService:CreateNameplate(anchor, playerName, areaNumber)
     textStroke.Transparency = 0
     textStroke.Parent = nameText
     
+    -- Store reference for visibility management
+    areaNameplates[areaNumber] = {
+        gui = billboardGui,
+        anchor = anchor
+    }
+    
     print(string.format("AreaNameplateService: Created nameplate for area %d with player %s", areaNumber, playerName))
 end
 
@@ -140,6 +165,48 @@ function AreaNameplateService:GetAssignedPlayerName(areaNumber)
     return nil -- No player assigned to this area
 end
 
+-- Start visibility update loop
+function AreaNameplateService:StartVisibilityUpdates()
+    if connection then
+        connection:Disconnect()
+    end
+    
+    connection = RunService.Heartbeat:Connect(function()
+        self:UpdateNameplateVisibility()
+    end)
+end
+
+-- Update nameplate visibility based on player distance
+function AreaNameplateService:UpdateNameplateVisibility()
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+    
+    local playerPosition = player.Character.HumanoidRootPart.Position
+    
+    for areaNumber, nameplateData in pairs(areaNameplates) do
+        if nameplateData.gui and nameplateData.anchor and nameplateData.anchor.Parent then
+            local distance = (playerPosition - nameplateData.anchor.Position).Magnitude
+            local shouldBeVisible = distance <= AREA_GUI_VISIBILITY_DISTANCE
+            
+            nameplateData.gui.Enabled = shouldBeVisible
+        else
+            -- Clean up invalid references
+            areaNameplates[areaNumber] = nil
+        end
+    end
+end
+
+-- Get visibility distance (for configuration)
+function AreaNameplateService:getVisibilityDistance()
+    return AREA_GUI_VISIBILITY_DISTANCE
+end
+
+-- Set visibility distance (for configuration)
+function AreaNameplateService:setVisibilityDistance(distance)
+    AREA_GUI_VISIBILITY_DISTANCE = distance
+end
+
 function AreaNameplateService:Cleanup()
     if connection then
         connection:Disconnect()
@@ -153,6 +220,7 @@ function AreaNameplateService:Cleanup()
     end
     
     nameplateRoots = {}
+    areaNameplates = {}
     print("AreaNameplateService: Cleaned up")
 end
 

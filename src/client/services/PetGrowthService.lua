@@ -27,7 +27,7 @@ local areaAssignments = {} -- Store area assignments from server
 local activePets = {} -- Store active pets per plot {[plotId] = {model, growthTween, etc}}
 
 -- Growth configuration
-local PET_HOVER_HEIGHT = 3 -- studs above plot
+local PET_HOVER_HEIGHT = 2 -- studs above plot part surface
 
 -- Initialize controllers
 local animationController = PetAnimationController
@@ -179,7 +179,7 @@ function PetGrowthService:StartPetGrowth(plot, plotId)
     local plotCenter = self:GetPlotCenter(plot)
     local spawnPosition = plotCenter + Vector3.new(0, PET_HOVER_HEIGHT, 0)
     
-    -- Start with egg model for first 5 seconds
+    -- Start with small egg model
     local eggModel = PetModelFactory.createEggModel(spawnPosition)
     if not eggModel then
         return
@@ -187,9 +187,9 @@ function PetGrowthService:StartPetGrowth(plot, plotId)
     
     eggModel.Parent = plot
     
-    -- Set egg at smaller size to match pet size
-    local eggFullScale = Vector3.new(0.3, 0.3, 0.3) -- Match pet final size
-    PetModelFactory.scaleModel(eggModel, eggFullScale)
+    -- Start egg at very small size and it will grow
+    local eggStartScale = Vector3.new(0.05, 0.05, 0.05) -- Start very small
+    PetModelFactory.scaleModel(eggModel, eggStartScale)
     
     -- Generate random aura for this pet
     local auraId, auraData = PetConfig:GetRandomAura()
@@ -215,7 +215,7 @@ function PetGrowthService:StartPetGrowth(plot, plotId)
         petData = fullPetData,
         plot = plot,
         originalScale = Vector3.new(1, 1, 1),
-        currentScale = eggFullScale,
+        currentScale = eggStartScale,
         spawnPosition = spawnPosition,
         growthStartTime = tick(),
         isFullyGrown = false,
@@ -228,8 +228,7 @@ function PetGrowthService:StartPetGrowth(plot, plotId)
     -- Create pet status GUI
     guiController:createPetStatusGUI(plotId)
     
-    -- Apply aura visual effects to the egg model
-    PetModelFactory.applyAuraEffects(eggModel, auraData)
+    -- Aura particle effects removed - cleaner visual experience
     
     -- Start egg phase animation
     animationController:startEggPhaseAnimation(plotId, function(completedPlotId)
@@ -256,28 +255,25 @@ function PetGrowthService:SwitchToPetPhase(plotId)
     
     petModel.Parent = petInfo.plot
     
-    -- Start pet small and grow to full size
-    local startScale = Vector3.new(0.03, 0.03, 0.03)
-    PetModelFactory.scaleModel(petModel, startScale)
+    -- Start pet at full size immediately (no growing phase for pet)
+    local fullScale = Vector3.new(0.3, 0.3, 0.3) -- Same as final egg size
+    PetModelFactory.scaleModel(petModel, fullScale)
     
     -- Update pet info
     petInfo.model = petModel
     petInfo.isEggPhase = false
-    petInfo.currentScale = startScale
-    petInfo.isAnimating = true -- Enable animation updates
+    petInfo.currentScale = fullScale
+    petInfo.isAnimating = false -- No growing animation needed
+    petInfo.isFullyGrown = true -- Mark as fully grown immediately
     
     -- Create new status GUI for the pet model
     guiController:createPetStatusGUI(plotId)
     
-    -- Apply aura visual effects to the pet model
-    PetModelFactory.applyAuraEffects(petModel, petInfo.petData.auraData)
+    -- Aura particle effects removed - cleaner visual experience
     
-    -- Start pet growth animation
-    animationController:startPetGrowthAnimation(plotId, function(completedPlotId, isReady)
-        -- Update GUI to show "Ready!" and set up touch detection
-        guiController:updatePetStatusGUI(completedPlotId, isReady)
-        self:SetupPetPickup(completedPlotId)
-    end)
+    -- Pet is immediately ready for pickup (no growth animation)
+    guiController:updatePetStatusGUI(plotId, true) -- Mark as ready
+    self:SetupPetPickup(plotId)
 end
 
 function PetGrowthService:SetupPetPickup(plotId)
@@ -302,6 +298,17 @@ function PetGrowthService:SetupPetPickup(plotId)
                     
                     -- Store the plot reference before removing pet
                     local plot = petInfo.plot
+                    
+                    -- Check inventory cap before collecting
+                    local currentState = Store:getState()
+                    local currentPets = currentState.player.ownedPets or {}
+                    local PET_INVENTORY_CAP = 1000 -- Match server constant
+                    
+                    if #currentPets >= PET_INVENTORY_CAP then
+                        print(string.format("PetGrowthService: Inventory full! (%d/%d) - Send pets to heaven first!", 
+                            #currentPets, PET_INVENTORY_CAP))
+                        return -- Don't collect pet, inventory is full
+                    end
                     
                     -- Create pet data for collection
                     local collectedPet = {
@@ -397,8 +404,19 @@ function PetGrowthService:RemovePet(plotId)
 end
 
 function PetGrowthService:GetPlotCenter(plot)
-    local parts = {}
+    -- Look specifically for the main plot part
+    local plotPart = plot:FindFirstChild("Plot")
+    if plotPart and plotPart:IsA("BasePart") then
+        -- Get the actual current position and size of this specific plot part
+        local actualPosition = plotPart.Position
+        local actualSize = plotPart.Size
+        -- Calculate center position at the top surface of the plot part
+        local plotTopY = actualPosition.Y + (actualSize.Y / 2)
+        return Vector3.new(actualPosition.X, plotTopY, actualPosition.Z)
+    end
     
+    -- Fallback to calculating center from all parts
+    local parts = {}
     for _, child in pairs(plot:GetChildren()) do
         if child:IsA("BasePart") then
             table.insert(parts, child)
