@@ -10,14 +10,15 @@ local PetConstants = require(ReplicatedStorage.constants.PetConstants)
 
 local PetBoostController = {}
 
--- Process assigned pets and generate boost data for display
-function PetBoostController.generateBoostData(assignedPets)
+-- Process assigned pets and generate boost data for display (with optional friends boost)
+function PetBoostController.generateBoostData(assignedPets, friendsBoost)
     local petBoosts = {}
     local totalMoneyMultiplier = 1.0
+    friendsBoost = friendsBoost or 0
     
-    -- Use PetBoostCalculator for consistent calculations
+    -- Use PetBoostCalculator for consistent calculations including friends
     local calculatedBoosts = PetBoostCalculator.generatePetBoostData(assignedPets, PetConfig)
-    totalMoneyMultiplier = PetBoostCalculator.calculateTotalMoneyMultiplier(assignedPets, PetConfig)
+    totalMoneyMultiplier = PetBoostCalculator.calculateTotalMoneyMultiplierWithFriends(assignedPets, PetConfig, friendsBoost)
     
     -- Convert calculated data to display format
     for i, boostData in ipairs(calculatedBoosts) do
@@ -39,6 +40,14 @@ function PetBoostController.generateBoostData(assignedPets)
         }
         
         table.insert(petBoosts, displayBoost)
+    end
+    
+    -- Add friends boost if it exists
+    if friendsBoost > 0 then
+        local friendsBoostData = PetBoostCalculator.createFriendsBoostData(friendsBoost)
+        if friendsBoostData then
+            table.insert(petBoosts, friendsBoostData)
+        end
     end
     
     return petBoosts, totalMoneyMultiplier
@@ -65,9 +74,10 @@ function PetBoostController.calculateBoostGridDimensions(petBoosts, screenSize, 
 end
 
 -- Get summary text for assigned pets
-function PetBoostController.getSummaryText(totalMoneyMultiplier, totalBoosts)
-    return string.format("🚀 Total Pet Boost: +%.0f%% | 🐾 Assigned Pets: %d/3", 
-        (totalMoneyMultiplier - 1) * 100, totalBoosts)
+function PetBoostController.getSummaryText(totalMoneyMultiplier, totalBoosts, maxSlots)
+    maxSlots = maxSlots or 3
+    return string.format("🚀 Total Pet Boost: +%.0f%% | 🐾 Assigned Pets: %d/%d", 
+        (totalMoneyMultiplier - 1) * 100, totalBoosts, maxSlots)
 end
 
 -- Check if boost panel should be visible (has assigned pets)

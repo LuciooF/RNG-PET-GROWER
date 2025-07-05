@@ -35,14 +35,19 @@ local function TopStats(props)
     local rebirthText = tostring(rebirths)
     local diamondText = NumberFormatter.format(diamonds)
     
-    local baseWidth = 120
-    local moneyWidth = math.max(baseWidth, 80 + (string.len(moneyText) * 10)) * scale
-    local rebirthWidth = math.max(baseWidth, 80 + (string.len(rebirthText) * 10)) * scale
-    local diamondWidth = math.max(baseWidth, 80 + (string.len(diamondText) * 10)) * scale
+    -- Use ScreenUtils for all sizing
+    local baseWidth = ScreenUtils.getProportionalSize(screenSize, 120)
+    local charWidth = ScreenUtils.getProportionalSize(screenSize, 10)
+    local baseTextOffset = ScreenUtils.getProportionalSize(screenSize, 80)
     
-    local containerHeight = 45 * scale
-    local containerSpacing = 25 * scale
-    local iconSize = 55 * scale
+    local moneyWidth = math.max(baseWidth, baseTextOffset + (string.len(moneyText) * charWidth))
+    local rebirthWidth = math.max(baseWidth, baseTextOffset + (string.len(rebirthText) * charWidth))
+    local diamondWidth = math.max(baseWidth, baseTextOffset + (string.len(diamondText) * charWidth))
+    
+    -- Ensure minimum touch targets for mobile (44pt minimum)
+    local containerHeight = math.max(44, ScreenUtils.getProportionalSize(screenSize, 45))
+    local containerSpacing = ScreenUtils.getProportionalSize(screenSize, 25)
+    local iconSize = math.max(32, ScreenUtils.getProportionalSize(screenSize, 55))
     
     local totalWidth = moneyWidth + rebirthWidth + diamondWidth + (containerSpacing * 2)
     
@@ -307,24 +312,7 @@ local function TopStats(props)
                     Thickness = 2,
                     Transparency = 0.3
                 })
-            }),
-            
-            MoneyPopup = showMoneyPopup and e("TextLabel", {
-                Name = "MoneyPopup",
-                Size = UDim2.new(0, 200, 0, 30),
-                Position = UDim2.new(0, moneyWidth/2 - 100, 1, 10),
-                Text = moneyPopupText,
-                TextColor3 = Color3.fromRGB(0, 200, 0),
-                TextSize = popupTextSize,
-                TextWrapped = true,
-                BackgroundTransparency = 1,
-                Font = Enum.Font.SourceSansBold,
-                ZIndex = 15,
-                TextStrokeTransparency = 0.5,
-                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                TextXAlignment = Enum.TextXAlignment.Center,
-                ref = moneyPopupRef
-            }) or nil
+            })
         }),
         
         RebirthContainer = e("Frame", {
@@ -431,6 +419,23 @@ local function TopStats(props)
                 })
             })
         }),
+        
+        MoneyPopup = showMoneyPopup and e("TextLabel", {
+            Name = "MoneyPopup",
+            Size = UDim2.new(0, 200, 0, 30),
+            Position = UDim2.new(0, diamondWidth + containerSpacing + moneyWidth/2 - 100, 1, 10),
+            Text = moneyPopupText,
+            TextColor3 = Color3.fromRGB(0, 200, 0),
+            TextSize = popupTextSize,
+            TextWrapped = true,
+            BackgroundTransparency = 1,
+            Font = Enum.Font.SourceSansBold,
+            ZIndex = 15,
+            TextStrokeTransparency = 0.5,
+            TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+            TextXAlignment = Enum.TextXAlignment.Center,
+            ref = moneyPopupRef
+        }) or nil,
         
         RebirthPopup = showRebirthPopup and e("TextLabel", {
             Name = "RebirthPopup",

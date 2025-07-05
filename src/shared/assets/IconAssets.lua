@@ -17,15 +17,32 @@ local IconAssets = {
     ["vector-icon-pack-2/Currency/Cash/Cash Outline 256.png"] = "rbxassetid://123739018607883",
     ["vector-icon-pack-2/Currency/Cash/Cash Outline 64.png"] = "rbxassetid://89998671279248",
     
-    -- General Icons (extracted from current codebase usage)
-    ["vector-icon-pack-2/General/Pet 2/Pet 2 Outline 256.png"] = "rbxassetid://placeholder1",
-    ["vector-icon-pack-2/General/Shop/Shop Outline 256.png"] = "rbxassetid://placeholder2",
-    ["vector-icon-pack-2/General/Rebirth/Rebirth Outline 256.png"] = "rbxassetid://placeholder3",
-    ["vector-icon-pack-2/General/Bug/Bug Outline 256.png"] = "rbxassetid://placeholder4",
+    -- Player/Friends Icons
+    ["vector-icon-pack-2/Player/Friends/Friends Outline 256.png"] = "rbxassetid://109603896823206",
     
-    -- NOTE: This is a partial extraction for demonstration
-    -- In a full implementation, all icon assets would be moved here
-    -- The pattern continues for all vector-icon-pack-2 assets
+    -- General Icons (extracted from actual assets.luau usage)
+    ["vector-icon-pack-2/General/Pet 2/Pet 2 Outline 256.png"] = "rbxassetid://87508636031909",
+    ["vector-icon-pack-2/General/Shop/Shop Outline 256.png"] = "rbxassetid://129534417365670", 
+    ["vector-icon-pack-2/General/Rebirth/Rebirth Outline 256.png"] = "rbxassetid://77419838076550",
+    
+    -- Currency Gems (for diamond display)
+    ["vector-icon-pack-2/Currency/Gem/Gem Blue Outline 256.png"] = "rbxassetid://119428121311770",
+    
+    -- UI Elements
+    ["vector-icon-pack-2/UI/X Button/X Button Outline 256.png"] = "rbxassetid://137122155343638",
+    
+    -- Music Controls
+    ["vector-icon-pack-2/UI/Music/Music Outline 256.png"] = "rbxassetid://81492064422345",
+    ["vector-icon-pack-2/UI/Music Off/Music Off Outline 256.png"] = "rbxassetid://90643255904101",
+    
+    -- Codes
+    ["vector-icon-pack-2/General/Codes/Codes Outline 256.png"] = "rbxassetid://127882863069718",
+    
+    -- Missing assets (components have fallbacks):
+    -- ["vector-icon-pack-2/General/Bug/Bug Outline 256.png"] = "N/A - Uses emoji fallback 🐛"
+    
+    -- NOTE: Added all critical UI assets that components actually use
+    -- This fixes the invisible UI asset issue
 }
 
 return IconAssets

@@ -4,6 +4,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local PhysicsService = game:GetService("PhysicsService")
 
 local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
 local PetModelFactory = require(script.Parent.PetModelFactory)
@@ -14,17 +15,24 @@ local PetSpawningController = {}
 
 local player = Players.LocalPlayer
 
+-- Collision group setup for preventing player-pet collision
+-- Note: Collision group creation must be done on server, we'll just set the CollisionGroup property
+
 -- Generate pet data for spawning
-function PetSpawningController.generatePetData(plotData)
+function PetSpawningController.generatePetData(plotData, playerRebirths, plotId)
     if not plotData or not plotData.rarity then
         warn("PetSpawningController: Invalid plot data")
         return nil
     end
     
-    -- Get a random pet for this plot's rarity
-    local petSelection = PetConfig:GetRandomPetForRarity(plotData.rarity)
+    -- Calculate dynamic rarity based on player rebirths
+    local PlotConfig = require(ReplicatedStorage.Shared.config.PlotConfig)
+    local dynamicRarity = PlotConfig:GetDynamicRarity(plotId or 1, playerRebirths or 0)
+    
+    -- Get a random pet for the dynamic rarity (not base rarity)
+    local petSelection = PetConfig:GetRandomPetForRarity(dynamicRarity)
     if not petSelection then
-        warn("PetSpawningController: No pet found for rarity", plotData.rarity)
+        warn("PetSpawningController: No pet found for dynamic rarity", dynamicRarity, "(base:", plotData.rarity, "player rebirths:", playerRebirths or 0, ")")
         return nil
     end
 
@@ -40,7 +48,6 @@ function PetSpawningController.generatePetData(plotData)
         name = petData.name,
         rarity = petData.rarity,
         value = petData.value * (auraData.valueMultiplier or 1) * (sizeData.multiplier or 1),
-        description = petData.description,
         assetPath = petData.assetPath,
         aura = auraId,
         auraData = auraData,
@@ -64,6 +71,9 @@ function PetSpawningController.spawnPetModel(petData, spawnPosition, parentObjec
     end
     
     petModel.Parent = parentObject
+    
+    -- Apply rarity outline effects
+    PetModelFactory.applyRarityOutline(petModel, petData)
     
     -- Scale the pet model
     local finalScale = Vector3.new(0.3, 0.3, 0.3)
@@ -92,6 +102,9 @@ function PetSpawningController.setupPetPhysics(petModel)
     -- Set up physics for falling and rolling on collector part
     collectorPart.Anchored = false
     collectorPart.CanCollide = true
+    
+    -- Set collision group using the modern property-based approach
+    collectorPart.CollisionGroup = "Pets"
     
     -- Ensure all other parts are properly welded and non-collidable
     for _, part in pairs(petModel:GetDescendants()) do
@@ -164,7 +177,7 @@ function PetSpawningController.addCollectorPart(petModel)
     collectorPart.Shape = Enum.PartType.Ball -- Round shape for smooth rolling
     collectorPart.Material = Enum.Material.SmoothPlastic -- Smooth material for good rolling
     collectorPart.Transparency = 1 -- Completely invisible
-    collectorPart.CanCollide = true -- Can be touched and can roll
+    collectorPart.CanCollide = true -- Can roll and interact with ground
     collectorPart.Anchored = false
     collectorPart.BrickColor = BrickColor.new("Bright green") -- For debugging if needed
     collectorPart.Parent = petModel

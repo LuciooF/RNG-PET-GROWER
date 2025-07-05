@@ -16,14 +16,14 @@ function RebirthCalculator.calculateProgress(currentMoney, rebirthCost)
 end
 
 -- Check if player can afford rebirth
-function RebirthCalculator.canAffordRebirth(currentMoney)
-    local rebirthCost = RebirthConfig.MINIMUM_MONEY_TO_REBIRTH
+function RebirthCalculator.canAffordRebirth(currentMoney, currentRebirths)
+    local rebirthCost = RebirthConfig:GetRebirthCost(currentRebirths or 0)
     return currentMoney >= rebirthCost
 end
 
--- Get rebirth cost
-function RebirthCalculator.getRebirthCost()
-    return RebirthConfig.MINIMUM_MONEY_TO_REBIRTH
+-- Get rebirth cost for current rebirth level
+function RebirthCalculator.getRebirthCost(currentRebirths)
+    return RebirthConfig:GetRebirthCost(currentRebirths or 0)
 end
 
 -- Calculate multipliers
@@ -36,10 +36,10 @@ function RebirthCalculator.getNextMultiplier(rebirths)
 end
 
 -- Smart date prediction based on progress
-function RebirthCalculator.predictNextRebirthDate(currentMoney, rebirthCost)
+function RebirthCalculator.predictNextRebirthDate(currentMoney, rebirthCost, currentRebirths)
     local progress = RebirthCalculator.calculateProgress(currentMoney, rebirthCost)
     
-    if RebirthCalculator.canAffordRebirth(currentMoney) then
+    if RebirthCalculator.canAffordRebirth(currentMoney, currentRebirths) then
         return "Today!", "You can afford it now!"
     end
     

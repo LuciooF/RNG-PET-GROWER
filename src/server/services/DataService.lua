@@ -15,7 +15,7 @@ local PET_INVENTORY_CAP = 1000 -- Maximum pets a player can hold
 
 local PROFILE_TEMPLATE = {
     resources = {
-        money = 100, -- Start with some money for testing
+        money = 50, -- Starting money
         rebirths = 0,
         diamonds = 10, -- Start with some diamonds for testing
     },
@@ -27,6 +27,7 @@ local PROFILE_TEMPLATE = {
     activeBoosts = {},
     ownedGamepasses = {}, -- Store owned gamepasses with purchase info
     temporaryEffects = {}, -- Store temporary effects from developer products
+    friends = {}, -- Store friend user IDs for boost calculation
     settings = {
         musicEnabled = true,
         sfxEnabled = true,
@@ -42,7 +43,8 @@ local PROFILE_TEMPLATE = {
     heavenQueue = {
         pets = {}, -- Array of pets waiting to be processed
         lastProcessTime = 0 -- Timestamp of last processing
-    }
+    },
+    maxSlots = 3 -- Maximum pet companion slots (can be expanded through purchases)
 }
 
 -- Create ProfileStore instance
@@ -69,6 +71,9 @@ function DataService:LoadProfile(player)
         
         -- Migrate existing pets to have unique IDs if they don't have them
         self:MigratePetUniqueIds(player)
+        
+        -- Migrate existing players to have maxSlots field
+        self:MigrateMaxSlots(player)
         
         self:CleanupExpiredBoosts(player)
         
@@ -222,7 +227,13 @@ function DataService:PerformRebirth(player)
         -- Also reset production plots if they exist
         profile.Data.boughtProductionPlots = {}
         
-        print(string.format("DataService:PerformRebirth - %s rebirthed (rebirths: %d, money reset to %d, plots reset)", 
+        -- Clear heaven queue to remove all pets being processed
+        if profile.Data.heavenQueue then
+            profile.Data.heavenQueue.pets = {}
+            profile.Data.heavenQueue.lastProcessTime = 0
+        end
+        
+        print(string.format("DataService:PerformRebirth - %s rebirthed (rebirths: %d, money reset to %d, plots reset, heaven queue cleared)", 
             player.Name, resourceResult.rebirths, resourceResult.money))
     end
     
@@ -249,20 +260,100 @@ function DataService:ResetPlayerData(player)
 end
 
 function DataService:AddPet(player, petData)
-    return self:UpdateData(player, "ownedPets", function(ownedPets)
-        -- Calculate actual inventory capacity (including gamepass bonuses)
-        local actualCapacity = self:GetPlayerInventoryCapacity(player)
+    local profile = self:GetProfile(player)
+    if not profile then
+        return false, "no_profile"
+    end
+    
+    local ownedPets = profile.Data.ownedPets or {}
+    
+    -- Calculate actual inventory capacity (including gamepass bonuses)
+    local actualCapacity = self:GetPlayerInventoryCapacity(player)
+    
+    -- Check if inventory is at capacity
+    if #ownedPets >= actualCapacity then
+        warn(string.format("DataService: Player %s inventory at capacity (%d/%d)", 
+            player.Name, #ownedPets, actualCapacity))
+        return false, "inventory_full"
+    end
+    
+    -- Add the pet
+    table.insert(ownedPets, petData)
+    profile.Data.ownedPets = ownedPets
+    
+    return true, "success"
+end
+
+-- Get friends that are currently online in the same server
+function DataService:GetOnlineFriends(player)
+    local profile = self:GetProfile(player)
+    if not profile then return {} end
+    
+    local onlineFriends = {}
+    local friendsList = profile.Data.friends or {}
+    
+    -- Check which friends are in the current server
+    for _, friendUserId in ipairs(friendsList) do
+        for _, serverPlayer in pairs(game.Players:GetPlayers()) do
+            if serverPlayer.UserId == friendUserId and serverPlayer ~= player then
+                table.insert(onlineFriends, {
+                    userId = friendUserId,
+                    name = serverPlayer.Name
+                })
+            end
+        end
+    end
+    
+    return onlineFriends
+end
+
+-- Calculate friends boost percentage
+function DataService:GetFriendsBoost(player)
+    local onlineFriends = self:GetOnlineFriends(player)
+    local friendsCount = #onlineFriends
+    return friendsCount * 100 -- 100% boost per friend
+end
+
+-- Update friends list when players join/leave
+function DataService:UpdateFriendsList(player)
+    local profile = self:GetProfile(player)
+    if not profile then return end
+    
+    -- Get player's Roblox friends
+    local success, friendsPages = pcall(function()
+        return player:GetFriendsAsync(200) -- Max 200 friends per call
+    end)
+    
+    if success and friendsPages then
+        local friends = {}
         
-        -- Check if inventory is at capacity
-        if #ownedPets >= actualCapacity then
-            warn(string.format("DataService: Player %s inventory at capacity (%d/%d)", 
-                player.Name, #ownedPets, actualCapacity))
-            return ownedPets -- Don't add pet, inventory full
+        -- Process the friends pages
+        while true do
+            local currentPage = friendsPages:GetCurrentPage()
+            for _, friend in pairs(currentPage) do
+                table.insert(friends, friend.Id)
+            end
+            
+            if friendsPages.IsFinished then
+                break
+            end
+            
+            local success2, error = pcall(function()
+                friendsPages:AdvanceToNextPageAsync()
+            end)
+            
+            if not success2 then
+                warn("Error getting friends list for", player.Name, ":", error)
+                break
+            end
         end
         
-        table.insert(ownedPets, petData)
-        return ownedPets
-    end)
+        -- Update profile
+        profile.Data.friends = friends
+        print(string.format("Updated friends list for %s: %d friends", player.Name, #friends))
+    else
+        warn("Failed to get friends list for", player.Name)
+    end
 end
 
 -- Get player's actual inventory capacity (base + gamepass bonuses + temporary effects)
@@ -413,9 +504,10 @@ function DataService:AssignPet(player, petUniqueId)
     local profile = self:GetProfile(player)
     if not profile then return false end
     
-    -- Check if player already has 3 assigned pets
+    -- Check if player already has maximum assigned pets (dynamic based on purchases)
     local companionPets = profile.Data.companionPets or {}
-    if #companionPets >= 3 then
+    local maxSlots = profile.Data.maxSlots or 3 -- Default to 3 if not set
+    if #companionPets >= maxSlots then
         return false -- Already at maximum
     end
     
@@ -484,6 +576,17 @@ function DataService:MigratePetUniqueIds(player)
     
     if needsUpdate then
         print("DataService: Migrated", #ownedPets, "pets to have unique IDs for", player.Name)
+    end
+end
+
+function DataService:MigrateMaxSlots(player)
+    local profile = self:GetProfile(player)
+    if not profile then return end
+    
+    -- Initialize maxSlots for existing players who don't have it
+    if not profile.Data.maxSlots then
+        profile.Data.maxSlots = 3 -- Default value
+        print("DataService: Migrated maxSlots field for", player.Name, "with default value 3")
     end
 end
 

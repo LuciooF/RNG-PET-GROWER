@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local PlotConfig = require(ReplicatedStorage.Shared.config.PlotConfig)
+local ProductionPlotConfig = require(ReplicatedStorage.Shared.config.ProductionPlotConfig)
 local assets = require(ReplicatedStorage.assets)
 
 local PlotGUIController = {}
@@ -16,20 +17,43 @@ local plotGUIs = {} -- Store references to plot GUIs
 -- Distance threshold for showing GUIs (in studs) - reduced for closer proximity
 local GUI_VISIBILITY_DISTANCE = 50
 
--- Create or update plot GUI
-function PlotGUIController.updatePlotGUI(plot, plotId, state, playerData)
-    -- Remove existing GUI if it exists
-    local existingGUI = plot:FindFirstChild("PlotGUIAnchor")
-    if existingGUI then
-        existingGUI:Destroy()
+-- Create or update plot GUI (optimized to avoid recreation)
+function PlotGUIController.updatePlotGUI(plot, plotId, state, playerData, isProductionPlot)
+    -- Get GUI text from appropriate config
+    local guiText
+    if isProductionPlot then
+        guiText = ProductionPlotConfig:GetPlotGUIText(plotId, state, playerData.rebirths or 0)
+    else
+        guiText = PlotConfig:GetPlotGUIText(plotId, state, playerData.rebirths or 0)
     end
     
-    -- Get GUI text
-    local guiText = PlotConfig:GetPlotGUIText(plotId, state, playerData.rebirths or 0)
+    -- Check if GUI exists
+    local existingGUI = plot:FindFirstChild("PlotGUIAnchor")
     
-    -- Don't create GUI if no text to show
     if guiText == "" then
+        -- Remove GUI if no text to show
+        if existingGUI then
+            existingGUI:Destroy()
+        end
         return
+    end
+    
+    -- If GUI exists, try to update text instead of recreating
+    if existingGUI then
+        local billboardGui = existingGUI:FindFirstChild("PlotGUI")
+        local textLabel = billboardGui and billboardGui:FindFirstChild("PlotText")
+        
+        if textLabel and textLabel.Text ~= guiText then
+            -- Update text only if it changed
+            textLabel.Text = guiText
+            return
+        elseif textLabel and textLabel.Text == guiText then
+            -- Text is same, no update needed
+            return
+        end
+        
+        -- If we can't update, destroy and recreate
+        existingGUI:Destroy()
     end
     
     -- Create GUI anchor (invisible part above the plot)

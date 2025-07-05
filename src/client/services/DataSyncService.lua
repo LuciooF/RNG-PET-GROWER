@@ -24,6 +24,13 @@ function DataSyncService:SyncPlayerData(playerData)
         return
     end
     
+    -- Debug logging for slot expansion
+    if playerData.maxSlots then
+        print(string.format("DataSyncService: Received maxSlots: %d", playerData.maxSlots))
+    else
+        print("DataSyncService: No maxSlots field received")
+    end
+    
     Store:dispatch(PlayerActions.setResources(
         playerData.resources.money,
         playerData.resources.rebirths,
@@ -48,6 +55,12 @@ function DataSyncService:SyncPlayerData(playerData)
     
     Store:dispatch(PlayerActions.updateStats(playerData.stats))
     Store:dispatch(PlayerActions.updateSettings(playerData.settings))
+    
+    -- Sync maxSlots if present
+    if playerData.maxSlots then
+        Store:dispatch(PlayerActions.setMaxSlots(playerData.maxSlots))
+        print(string.format("DataSyncService: Set maxSlots to %d", playerData.maxSlots))
+    end
     
     print("Player data synced to client store")
 end

@@ -19,6 +19,8 @@ local touchCooldowns = {} -- Store touch cooldowns per plot
 local plotStates = {} -- Track previous plot states to detect purchases
 local playerAreaNumber = nil -- Store the player's assigned area number
 local areaAssignments = {} -- Store area assignments from server
+local lastUpdateTime = 0 -- Throttle updates
+local UPDATE_THROTTLE = 0.1 -- Maximum 10 updates per second
 
 -- Touch cooldown time (in seconds)
 local TOUCH_COOLDOWN_TIME = 2
@@ -39,12 +41,18 @@ function PlotVisualsService:Initialize()
     if playerDataSync then
         playerDataSync.OnClientEvent:Connect(function(data)
             if data and data.resources then
-                lastPlayerData = {
+                local newPlayerData = {
                     money = data.resources.money or 0,
                     rebirths = data.resources.rebirths or 0,
                     boughtPlots = data.boughtPlots or {}
                 }
-                self:UpdateAllPlots()
+                
+                -- Only update if relevant data actually changed
+                if self:ShouldUpdatePlots(lastPlayerData, newPlayerData) then
+                    lastPlayerData = newPlayerData
+                    -- Force immediate update for plot purchases
+                    self:UpdateAllPlots(true)
+                end
             end
         end)
     end
@@ -90,7 +98,38 @@ function PlotVisualsService:GetPlayerAreaNumber()
     return nil -- Player not assigned to any area yet
 end
 
-function PlotVisualsService:UpdateAllPlots()
+function PlotVisualsService:ShouldUpdatePlots(oldData, newData)
+    -- Only update if data that affects plot GUIs actually changed
+    if not oldData then return true end -- First time
+    
+    -- Check if money changed (affects purchase buttons)
+    if oldData.money ~= newData.money then return true end
+    
+    -- Check if rebirths changed (affects plot visibility and requirements)
+    if oldData.rebirths ~= newData.rebirths then return true end
+    
+    -- Check if bought plots changed (affects plot states)
+    local oldPlots = oldData.boughtPlots or {}
+    local newPlots = newData.boughtPlots or {}
+    
+    if #oldPlots ~= #newPlots then return true end
+    
+    -- Compare plot arrays (simple comparison since they're usually small)
+    for i, plotId in ipairs(oldPlots) do
+        if newPlots[i] ~= plotId then return true end
+    end
+    
+    return false -- No relevant changes
+end
+
+function PlotVisualsService:UpdateAllPlots(forceUpdate)
+    -- Throttle updates to prevent excessive calls (unless forced)
+    local currentTime = tick()
+    if not forceUpdate and currentTime - lastUpdateTime < UPDATE_THROTTLE then
+        return -- Skip this update, too soon
+    end
+    lastUpdateTime = currentTime
+    
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then 
         return 

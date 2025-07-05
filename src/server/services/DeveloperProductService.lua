@@ -118,7 +118,6 @@ function DeveloperProductService:ProcessPetPurchase(player, productData, receipt
         name = productData.petData.name,
         rarity = 21, -- Rainbow rarity
         value = productData.petData.value,
-        description = productData.petData.description,
         isFlyingPet = productData.petData.isFlyingPet,
         baseBoost = productData.petData.baseBoost,
         assetPath = productData.petData.assetPath,
@@ -244,6 +243,44 @@ function DeveloperProductService:ProcessSpecialPurchase(player, productData, rec
             }
             
             DataService:SetData(player, "temporaryEffects", playerData.temporaryEffects)
+        end
+        
+    elseif action == "pet_slot_expansion" then
+        -- Permanently expand pet companion slots
+        local playerData = DataService:GetPlayerData(player)
+        if playerData then
+            -- Initialize maxSlots if it doesn't exist (default 3)
+            if not playerData.maxSlots then
+                playerData.maxSlots = 3
+            end
+            
+            -- Check if already at maximum (5 slots total)
+            if playerData.maxSlots >= 5 then
+                warn(string.format("DeveloperProductService: %s already has maximum pet slots", player.Name))
+                return false
+            end
+            
+            -- Add the slot expansion
+            local slotsToAdd = productData.special.value or 1
+            playerData.maxSlots = math.min(playerData.maxSlots + slotsToAdd, 5) -- Cap at 5
+            
+            -- Save the updated data
+            local success = DataService:SetData(player, "maxSlots", playerData.maxSlots)
+            if not success then
+                warn("DeveloperProductService: Failed to save pet slot expansion")
+                return false
+            end
+            
+            print(string.format("DeveloperProductService: Added %d pet slot(s) to %s (total: %d)", 
+                slotsToAdd, player.Name, playerData.maxSlots))
+                
+            -- Force sync the updated data to client immediately
+            local PlayerService = require(script.Parent.PlayerService)
+            print(string.format("DeveloperProductService: Forcing sync for %s with maxSlots: %d", player.Name, playerData.maxSlots))
+            PlayerService:SyncPlayerDataToClient(player, true)
+        else
+            warn("DeveloperProductService: Could not get player data for pet slot expansion")
+            return false
         end
         
     else

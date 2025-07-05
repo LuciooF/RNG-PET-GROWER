@@ -13,7 +13,6 @@ function PetBoostCalculator.calculatePetBoost(pet, petConfig, auraData, sizeData
         auraData = auraData,
         size = pet.size or 1,
         sizeData = sizeData,
-        description = petConfig.description or "A mysterious pet with hidden powers.",
         category = "🐾 Pet Boost",
         effect = "+0%",
         effects = {},
@@ -58,6 +57,35 @@ function PetBoostCalculator.calculateTotalMoneyMultiplier(assignedPets, PetConfi
     end
     
     return totalMoneyMultiplier
+end
+
+-- Calculate total money multiplier including friends boost
+function PetBoostCalculator.calculateTotalMoneyMultiplierWithFriends(assignedPets, PetConfig, friendsBoost)
+    local petMultiplier = PetBoostCalculator.calculateTotalMoneyMultiplier(assignedPets, PetConfig)
+    local friendsMultiplier = 1 + (friendsBoost / 100) -- Convert percentage to multiplier
+    
+    -- Friends boost is additive with pet boosts
+    return petMultiplier + (friendsMultiplier - 1)
+end
+
+-- Create friends boost data for UI display
+function PetBoostCalculator.createFriendsBoostData(friendsBoost)
+    if friendsBoost <= 0 then
+        return nil
+    end
+    
+    return {
+        category = "👥 Friends Boost",
+        effect = "+" .. friendsBoost .. "%",
+        description = "Each friend in the server gives you 100% boost",
+        color = Color3.fromRGB(34, 139, 34), -- Green
+        duration = "While friends are online",
+        effects = {
+            "+" .. friendsBoost .. "% money from all sources",
+            "Boost increases with more friends online"
+        },
+        totalBoostMultiplier = 1 + (friendsBoost / 100)
+    }
 end
 
 -- Generate boost data for all assigned pets

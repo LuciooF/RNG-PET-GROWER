@@ -25,8 +25,9 @@ function PetInventoryController.groupPets(playerData)
     if playerData.ownedPets then
         for i, pet in ipairs(playerData.ownedPets) do
             local isAssigned = pet.uniqueId and assignedPetIds[pet.uniqueId] or false
-            -- Group pets by type, aura, and size (regardless of assignment status)
-            local petKey = (pet.name or "Unknown") .. "_" .. (pet.aura or "none") .. "_" .. (pet.size or 1)
+            -- Create separate groups for assigned and unassigned pets
+            local baseKey = (pet.name or "Unknown") .. "_" .. (pet.aura or "none") .. "_" .. (pet.size or 1)
+            local petKey = baseKey .. (isAssigned and "_assigned" or "_unassigned")
             
             if not petGroups[petKey] then
                 petGroups[petKey] = {
@@ -39,18 +40,23 @@ function PetInventoryController.groupPets(playerData)
                     auraData = PetConfig.AURAS[pet.aura or "none"] or PetConfig.AURAS.none,
                     size = pet.size or 1,
                     sizeData = PetConfig:GetSizeData(pet.size or 1),
-                    hasAssigned = false,
-                    samplePet = pet -- Store one pet for assign/unassign operations
+                    hasAssigned = isAssigned,
+                    isAssigned = isAssigned, -- Track if this specific group is assigned
+                    samplePet = pet, -- Store one pet for assign/unassign operations
+                    unassignedPets = {}, -- Store unassigned pets for this group
+                    assignedPetsList = {} -- Store assigned pets for this group
                 }
             end
             
             petGroups[petKey].quantity = petGroups[petKey].quantity + 1
             petGroups[petKey].latestCollectionTime = math.max(petGroups[petKey].latestCollectionTime, pet.collectedAt or 0)
             
-            -- Track assigned pets
+            -- Track assigned/unassigned pets separately
             if isAssigned then
                 petGroups[petKey].assignedCount = petGroups[petKey].assignedCount + 1
-                petGroups[petKey].hasAssigned = true
+                table.insert(petGroups[petKey].assignedPetsList, pet)
+            else
+                table.insert(petGroups[petKey].unassignedPets, pet)
             end
             
             -- Always update sample pet to ensure we have a valid one
@@ -129,11 +135,11 @@ end
 function PetInventoryController.calculateGridDimensions(petItems, screenSize, panelWidth)
     local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
     
-    -- Calculate grid for pet cards - responsive layout (3-5 cards per row)
-    local minCardWidth = ScreenUtils.getProportionalSize(screenSize, 200)  -- Smaller minimum for more cards
-    local cardsPerRow = math.max(3, math.min(5, math.floor((panelWidth - 120) / (minCardWidth + 20))))
+    -- Calculate grid for pet cards - responsive layout (5-6 cards per row, optimized for 5)
+    local minCardWidth = ScreenUtils.getProportionalSize(screenSize, 160)  -- Reduced minimum for 5 columns
+    local cardsPerRow = math.max(5, math.min(6, math.floor((panelWidth - 120) / (minCardWidth + 20))))
     local cardWidth = (panelWidth - 120) / cardsPerRow - 20
-    local cardHeight = ScreenUtils.getProportionalSize(screenSize, 260)  -- Slightly smaller height
+    local cardHeight = ScreenUtils.getProportionalSize(screenSize, 220)  -- Reduced height for 5 columns
     
     local totalRows = math.ceil(#petItems / cardsPerRow)
     local totalHeight = ((totalRows * cardHeight) + ((totalRows - 1) * 20) + 40) * 1.3
@@ -172,7 +178,6 @@ function PetInventoryController.getPetDisplayInfo(petItem)
     local comprehensiveInfo = PetConfig:GetComprehensivePetInfo(pet.id, pet.aura, pet.size)
     
     local displayInfo = {
-        description = petConfig and petConfig.description or "A mysterious pet with hidden powers.",
         boostText = "",
         combinedRarityText = "1/1",
         rarityTierName = "Common",

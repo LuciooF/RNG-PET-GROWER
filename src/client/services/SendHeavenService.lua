@@ -327,26 +327,80 @@ function SendHeavenService:ConfirmSendToHeaven(unassignedPets, totalValue)
 end
 
 function SendHeavenService:UpdateClientState(soldPets, totalValue)
-    -- Remove sold pets from owned pets (they're now in processing queue)
+    -- Batch process large pet arrays to prevent lag spikes
+    self:BatchProcessPetRemoval(soldPets, totalValue)
+end
+
+function SendHeavenService:BatchProcessPetRemoval(soldPets, totalValue)
     local state = Store:getState()
     local currentOwnedPets = state.player.ownedPets or {}
+    
+    -- Create lookup table for sold pets (batch in chunks to prevent lag)
     local soldPetIds = {}
+    local BATCH_SIZE = 100 -- Process 100 pets per frame
+    local currentIndex = 1
     
-    -- Create lookup table for sold pets
-    for _, soldPet in ipairs(soldPets) do
-        if soldPet.uniqueId then
-            soldPetIds[soldPet.uniqueId] = true
+    local function processBatch()
+        local endIndex = math.min(currentIndex + BATCH_SIZE - 1, #soldPets)
+        
+        -- Process current batch
+        for i = currentIndex, endIndex do
+            local soldPet = soldPets[i]
+            if soldPet.uniqueId then
+                soldPetIds[soldPet.uniqueId] = true
+            end
+        end
+        
+        currentIndex = endIndex + 1
+        
+        -- Continue processing if there are more pets
+        if currentIndex <= #soldPets then
+            task.wait() -- Yield to next frame
+            processBatch()
+        else
+            -- All pets processed, now filter the owned pets
+            self:FilterOwnedPets(currentOwnedPets, soldPetIds, totalValue, #soldPets)
         end
     end
     
-    -- Filter out sold pets
+    -- Start batch processing
+    processBatch()
+end
+
+function SendHeavenService:FilterOwnedPets(currentOwnedPets, soldPetIds, totalValue, soldCount)
+    -- Filter out sold pets (also batched for large inventories)
     local remainingPets = {}
-    for _, pet in ipairs(currentOwnedPets) do
-        if not (pet.uniqueId and soldPetIds[pet.uniqueId]) then
-            table.insert(remainingPets, pet)
+    local FILTER_BATCH_SIZE = 200 -- Process 200 pets per frame
+    local currentIndex = 1
+    
+    local function filterBatch()
+        local endIndex = math.min(currentIndex + FILTER_BATCH_SIZE - 1, #currentOwnedPets)
+        
+        -- Filter current batch
+        for i = currentIndex, endIndex do
+            local pet = currentOwnedPets[i]
+            if not (pet.uniqueId and soldPetIds[pet.uniqueId]) then
+                table.insert(remainingPets, pet)
+            end
+        end
+        
+        currentIndex = endIndex + 1
+        
+        -- Continue filtering if there are more pets
+        if currentIndex <= #currentOwnedPets then
+            task.wait() -- Yield to next frame
+            filterBatch()
+        else
+            -- All pets filtered, update store
+            self:FinalizeStateUpdate(remainingPets, totalValue, soldCount)
         end
     end
     
+    -- Start filter processing
+    filterBatch()
+end
+
+function SendHeavenService:FinalizeStateUpdate(remainingPets, totalValue, soldCount)
     -- Update Redux store (NO money added immediately - will come from server processing)
     Store:dispatch(PlayerActions.setPets(remainingPets))
     
@@ -356,7 +410,7 @@ function SendHeavenService:UpdateClientState(soldPets, totalValue)
     end
     
     print(string.format("SendHeavenService: Updated client state - removed %d pets, queued for processing (worth %d money)", 
-        #soldPets, totalValue))
+        soldCount, totalValue))
 end
 
 function SendHeavenService:SendToServer(soldPets, expectedValue)

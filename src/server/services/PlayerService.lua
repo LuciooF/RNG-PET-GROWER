@@ -11,6 +11,8 @@ PlayerService.__index = PlayerService
 
 local PlayerConnections = {}
 local HeavenProcessingConnection = nil
+local LastSyncTimes = {} -- Track last sync time per player
+local SYNC_THROTTLE = 0.1 -- Maximum 10 syncs per second
 
 -- Heaven processing configuration
 local HEAVEN_PROCESS_INTERVAL = 1 -- Process 1 pet per second
@@ -42,6 +44,9 @@ function PlayerService:OnPlayerAdded(player)
         self:SetupDataSync(player, profile)
         self:SetupPlaytimeTracking(player)
         
+        -- Update friends list for boost calculation
+        DataService:UpdateFriendsList(player)
+        
         -- Start heaven processing if this is the first player
         if not HeavenProcessingConnection then
             self:StartHeavenProcessing()
@@ -56,6 +61,9 @@ function PlayerService:OnPlayerRemoving(player)
         PlayerConnections[player]:Disconnect()
         PlayerConnections[player] = nil
     end
+    
+    -- Clean up sync tracking
+    LastSyncTimes[player] = nil
     
     DataService:ReleaseProfile(player)
 end
@@ -115,20 +123,44 @@ function PlayerService:SetupPlaytimeTracking(player)
     PlayerConnections[player] = connection
 end
 
-function PlayerService:SyncPlayerDataToClient(player)
+function PlayerService:SyncPlayerDataToClient(player, priority)
+    -- Throttle syncs to prevent spam, but allow priority syncs
+    local currentTime = tick()
+    local lastSync = LastSyncTimes[player] or 0
+    
+    if not priority and currentTime - lastSync < SYNC_THROTTLE then
+        return -- Skip this sync, too soon
+    end
+    
+    LastSyncTimes[player] = currentTime
+    
     local playerData = DataService:GetPlayerData(player)
     if playerData then
+        -- Add friends information to sync data
+        local onlineFriends = DataService:GetOnlineFriends(player)
+        playerData.friends = onlineFriends
+        playerData.friendsBoost = DataService:GetFriendsBoost(player)
+        
+        -- Debug logging for slot expansion
+        if playerData.maxSlots then
+            print(string.format("PlayerService: Syncing %s with maxSlots: %d", player.Name, playerData.maxSlots))
+        else
+            print(string.format("PlayerService: WARNING - %s has no maxSlots field in data!", player.Name))
+        end
+        
         local remoteEvent = ReplicatedStorage:WaitForChild("PlayerDataSync", 5)
         if remoteEvent then
             remoteEvent:FireClient(player, playerData)
         end
+    else
+        warn(string.format("PlayerService: No player data found for %s during sync", player.Name))
     end
 end
 
 function PlayerService:GiveMoney(player, amount)
     local success = DataService:AddMoney(player, amount)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player, true) -- Priority sync for money changes
     end
     return success
 end
@@ -136,7 +168,7 @@ end
 function PlayerService:TakeMoney(player, amount)
     local success = DataService:SpendMoney(player, amount)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player) -- Non-priority sync, will be throttled if needed
     end
     return success
 end
@@ -144,7 +176,7 @@ end
 function PlayerService:GiveDiamonds(player, amount)
     local success = DataService:AddDiamonds(player, amount)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player, true) -- Priority sync for diamond changes
     end
     return success
 end
@@ -152,17 +184,17 @@ end
 function PlayerService:TakeDiamonds(player, amount)
     local success = DataService:SpendDiamonds(player, amount)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player, true) -- Priority sync for diamond changes
     end
     return success
 end
 
 function PlayerService:AddPetToPlayer(player, petData)
-    local success = DataService:AddPet(player, petData)
+    local success, reason = DataService:AddPet(player, petData)
     if success then
         self:SyncPlayerDataToClient(player)
     end
-    return success
+    return success, reason
 end
 
 -- Alias for consistency with server remote handler
@@ -243,7 +275,7 @@ end
 function PlayerService:BuyPlotForPlayer(player, plotId)
     local success = DataService:AddPlot(player, plotId)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player, true) -- Priority sync for purchases
     end
     return success
 end
@@ -251,7 +283,7 @@ end
 function PlayerService:BuyProductionPlotForPlayer(player, plotId)
     local success = DataService:AddProductionPlot(player, plotId)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player, true) -- Priority sync for purchases
     end
     return success
 end
@@ -275,7 +307,7 @@ end
 function PlayerService:PerformPlayerRebirth(player)
     local success = DataService:PerformRebirth(player)
     if success then
-        self:SyncPlayerDataToClient(player)
+        self:SyncPlayerDataToClient(player, true) -- Priority sync for rebirth
     end
     return success
 end
@@ -434,6 +466,28 @@ function PlayerService:StopHeavenProcessing()
         HeavenProcessingConnection = nil
         print("PlayerService: Stopped heaven processing system")
     end
+end
+
+function PlayerService:UpdateMusicPreference(player, musicEnabled)
+    local profile = DataService:GetProfile(player)
+    if not profile then
+        warn("PlayerService:UpdateMusicPreference - No profile found for", player.Name)
+        return false
+    end
+    
+    -- Initialize settings if it doesn't exist
+    if not profile.Data.settings then
+        profile.Data.settings = {}
+    end
+    
+    -- Update music preference
+    profile.Data.settings.musicEnabled = musicEnabled
+    
+    -- Sync updated data to client
+    self:SyncPlayerDataToClient(player)
+    
+    print("PlayerService:UpdateMusicPreference - Updated music preference for", player.Name, "to", tostring(musicEnabled))
+    return true
 end
 
 return PlayerService

@@ -55,7 +55,13 @@ ColorPalette.GAME = {
     
     -- Boost Colors
     BOOST_ACTIVE = Color3.fromRGB(255, 215, 0),
-    BOOST_INACTIVE = Color3.fromRGB(100, 100, 100)
+    BOOST_INACTIVE = Color3.fromRGB(100, 100, 100),
+    
+    -- Success/Danger Colors for music button
+    SUCCESS = Color3.fromRGB(180, 255, 180),
+    SUCCESS_DARK = Color3.fromRGB(120, 220, 120),
+    DANGER = Color3.fromRGB(255, 180, 180),
+    DANGER_DARK = Color3.fromRGB(220, 120, 120)
 }
 
 -- Rarity Colors (matches cylinder/plot colors)

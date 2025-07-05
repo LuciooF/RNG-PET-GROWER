@@ -23,7 +23,8 @@ local initialState = {
         joins = 0,
         totalPetsCollected = 0,
         totalRebirths = 0,
-    }
+    },
+    maxSlots = 3
 }
 
 local function findPetIndex(pets, petId)
@@ -240,7 +241,8 @@ local playerReducer = Rodux.createReducer(initialState, {
     end,
     
     [PlayerActions.EQUIP_COMPANION] = function(state, action)
-        if #state.companionPets >= 2 then
+        local maxSlots = state.maxSlots or 3
+        if #state.companionPets >= maxSlots then
             return state
         end
         
@@ -400,6 +402,21 @@ local playerReducer = Rodux.createReducer(initialState, {
             newState[k] = v
         end
         newState.companionPets = action.companions or {}
+        return newState
+    end,
+    
+    [PlayerActions.SET_MAX_SLOTS] = function(state, action)
+        -- Defensive check for nil state
+        if not state then
+            state = initialState
+        end
+        
+        -- Create new state using table copy
+        local newState = {}
+        for k, v in pairs(state) do
+            newState[k] = v
+        end
+        newState.maxSlots = action.maxSlots or 3
         return newState
     end,
 })

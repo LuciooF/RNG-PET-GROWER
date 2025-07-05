@@ -49,9 +49,20 @@ function GamepassService:OnPlayerJoined(player)
     -- Initialize cache for player
     gamepassCache[player] = {}
     
-    -- Start loading gamepasses after a brief delay (let data load first)
+    -- Start loading gamepasses once DataService confirms player data is loaded
     task.spawn(function()
-        task.wait(2) -- Give DataService time to load player data
+        local DataService = require(script.Parent.DataService)
+        local maxWaitTime = 10 -- Maximum 10 seconds to wait for data
+        local startTime = tick()
+        
+        -- Wait for DataService to confirm player data is loaded
+        while tick() - startTime < maxWaitTime do
+            if DataService:GetPlayerData(player) then
+                break -- Data is loaded, proceed
+            end
+            task.wait(0.1) -- Check every 100ms
+        end
+        
         self:LoadPlayerGamepasses(player)
     end)
 end

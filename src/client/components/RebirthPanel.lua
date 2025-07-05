@@ -12,6 +12,7 @@ local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local RebirthCalculator = require(ReplicatedStorage.utils.RebirthCalculator)
 local RebirthProgressBar = require(script.Parent.ui.RebirthProgressBar)
 local RebirthStatsCard = require(script.Parent.ui.RebirthStatsCard)
+local ClickOutsideWrapper = require(script.Parent.ClickOutsideWrapper)
 
 local function RebirthPanel(props)
     local playerData = props.playerData
@@ -55,13 +56,16 @@ local function RebirthPanel(props)
         end
     end
     
-    return e("Frame", {
-        Name = "RebirthContainer",
-        Size = UDim2.new(0, panelWidth, 0, panelHeight + 50),
-        Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -(panelHeight + 50) / 2),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        Visible = visible,
+    return e(ClickOutsideWrapper, {
+        visible = visible,
+        onClose = onClose
+    }, {
+        Container = e("Frame", {
+            Name = "RebirthContainer",
+            Size = UDim2.new(0, panelWidth, 0, panelHeight + 50),
+            Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -(panelHeight + 50) / 2),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
         ZIndex = 30
     }, {
         
@@ -362,6 +366,7 @@ local function RebirthPanel(props)
                 })
             })
         })
+    })
     })
 end
 

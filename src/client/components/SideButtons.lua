@@ -23,38 +23,40 @@ local createIconSpin = AnimationHelpers.createFlipAnimation
 local function SideButtons(props)
     local onShopClick = props.onShopClick or function() end
     local onPetsClick = props.onPetsClick or function() end
+    local onLabClick = props.onLabClick or function() end
     local onRebirthClick = props.onRebirthClick or function() end
+    local onFriendsClick = props.onFriendsClick or function() end
     local onDebugClick = props.onDebugClick or function() end
     
     -- Screen size detection for responsive design
     local screenSize = props.screenSize or Vector2.new(1024, 768)
     local scale = getProportionalScale(screenSize)
     
-    -- Proportional sizing (made buttons bigger)
-    local buttonSize = getProportionalSize(screenSize, 65)
-    local iconSize = getProportionalSize(screenSize, 40)
+    -- Proportional sizing with mobile minimum touch targets
+    local buttonSize = math.max(44, getProportionalSize(screenSize, 65)) -- 44pt minimum for mobile
+    local iconSize = math.max(24, getProportionalSize(screenSize, 40)) -- 24pt minimum for mobile
     local spacing = getProportionalSize(screenSize, 15)
     
     -- Icon refs for spin animations
     local shopIconRef = React.useRef(nil)
     local petsIconRef = React.useRef(nil)
+    local labIconRef = React.useRef(nil)
     local rebirthIconRef = React.useRef(nil)
+    local friendsIconRef = React.useRef(nil)
+    local debugIconRef = React.useRef(nil)
     
     -- Animation trackers to prevent stacking
     local shopAnimTracker = React.useRef(nil)
     local petsAnimTracker = React.useRef(nil)
+    local labAnimTracker = React.useRef(nil)
     local rebirthAnimTracker = React.useRef(nil)
-    
-    -- Icon refs for spin animations  
-    local debugIconRef = React.useRef(nil)
-    
-    -- Animation trackers to prevent stacking
+    local friendsAnimTracker = React.useRef(nil)
     local debugAnimTracker = React.useRef(nil)
     
     return e("Frame", {
         Name = "SideButtonsFrame",
-        Size = UDim2.new(0, buttonSize, 0, (4 * buttonSize) + (3 * spacing)),
-        Position = UDim2.new(0, getProportionalSize(screenSize, 20), 0.5, -((4 * buttonSize) + (3 * spacing))/2),
+        Size = UDim2.new(0, buttonSize, 0, (6 * buttonSize) + (5 * spacing)),
+        Position = UDim2.new(0, getProportionalSize(screenSize, 20), 0.5, -((6 * buttonSize) + (5 * spacing))/2),
         BackgroundTransparency = 1,
         ZIndex = 10
     }, {
@@ -124,6 +126,51 @@ local function SideButtons(props)
             })
         }),
         
+        -- Lab Button 
+        LabButton = e("TextButton", {
+            Name = "LabButton",
+            Size = UDim2.new(0, buttonSize, 0, buttonSize),
+            Text = "",
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ZIndex = 11,
+            LayoutOrder = 3,
+            [React.Event.Activated] = function()
+                createIconSpin(labIconRef, labAnimTracker)
+                onLabClick()
+            end,
+            [React.Event.MouseEnter] = function()
+                createIconSpin(labIconRef, labAnimTracker)
+            end
+        }, {
+            Icon = e("ImageLabel", {
+                Name = "LabIcon",
+                Size = UDim2.new(0, iconSize, 0, iconSize),
+                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
+                Image = assets["vector-icon-pack-2/Tools/Potion 4/Potion 4 Green Outline 256.png"] or "",
+                BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 12,
+                ref = labIconRef
+            }),
+            
+            -- Fallback emoji if potion icon doesn't exist
+            FallbackIcon = e("TextLabel", {
+                Name = "LabFallbackIcon",
+                Size = UDim2.new(0, iconSize, 0, iconSize),
+                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
+                Text = "🧪",
+                TextColor3 = Color3.fromRGB(100, 255, 150),
+                TextSize = getProportionalSize(screenSize, 20),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.SourceSansBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 11, -- Behind the image
+                Visible = assets["vector-icon-pack-2/Tools/Potion 4/Potion 4 Green Outline 256.png"] == nil or assets["vector-icon-pack-2/Tools/Potion 4/Potion 4 Green Outline 256.png"] == ""
+            })
+        }),
+        
         -- Rebirth Button
         RebirthButton = e("TextButton", {
             Name = "RebirthButton",
@@ -132,7 +179,7 @@ local function SideButtons(props)
             BackgroundTransparency = 1, -- Remove white background
             BorderSizePixel = 0,
             ZIndex = 11,
-            LayoutOrder = 3,
+            LayoutOrder = 4,
             [React.Event.Activated] = function()
                 createIconSpin(rebirthIconRef, rebirthAnimTracker)
                 onRebirthClick()
@@ -153,6 +200,36 @@ local function SideButtons(props)
             })
         }),
         
+        
+        -- Friends Button
+        FriendsButton = e("TextButton", {
+            Name = "FriendsButton",
+            Size = UDim2.new(0, buttonSize, 0, buttonSize),
+            Text = "",
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ZIndex = 11,
+            LayoutOrder = 5,
+            [React.Event.Activated] = function()
+                createIconSpin(friendsIconRef, friendsAnimTracker)
+                onFriendsClick()
+            end,
+            [React.Event.MouseEnter] = function()
+                createIconSpin(friendsIconRef, friendsAnimTracker)
+            end
+        }, {
+            Icon = e("ImageLabel", {
+                Name = "FriendsIcon",
+                Size = UDim2.new(0, iconSize, 0, iconSize),
+                Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2),
+                Image = assets["vector-icon-pack-2/Player/Friends/Friends Outline 256.png"] or "",
+                BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 12,
+                ref = friendsIconRef
+            })
+        }),
+        
         -- Debug Button (bottom)
         DebugButton = e("TextButton", {
             Name = "DebugButton",
@@ -161,7 +238,7 @@ local function SideButtons(props)
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ZIndex = 11,
-            LayoutOrder = 4,
+            LayoutOrder = 6,
             [React.Event.Activated] = function()
                 createIconSpin(debugIconRef, debugAnimTracker)
                 onDebugClick()

@@ -8,8 +8,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Squirrel",
         rarity = 1,
         spawnChance = 0.25,
-        value = 1,
-        description = "A nimble woodland creature with a bushy tail.",
+        value = 2,
         isFlyingPet = false,
         baseBoost = 10
     },
@@ -18,8 +17,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Mouse",
         rarity = 1,
         spawnChance = 0.24,
-        value = 1,
-        description = "A tiny but brave rodent explorer.",
+        value = 3,
         isFlyingPet = false,
         baseBoost = 12
     },
@@ -28,8 +26,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Chicken",
         rarity = 1,
         spawnChance = 0.23,
-        value = 1,
-        description = "A farm bird with surprising determination.",
+        value = 4,
         isFlyingPet = false,
         baseBoost = 11
     },
@@ -38,8 +35,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Ant",
         rarity = 1,
         spawnChance = 0.15,
-        value = 1,
-        description = "A hardworking insect with incredible strength.",
+        value = 5,
         isFlyingPet = false,
         baseBoost = 8
     },
@@ -48,8 +44,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Cat",
         rarity = 1,
         spawnChance = 0.13,
-        value = 1,
-        description = "A friendly feline companion with soft paws.",
+        value = 4,
         isFlyingPet = false,
         baseBoost = 9
     },
@@ -60,8 +55,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Cow",
         rarity = 2,
         spawnChance = 0.22,
-        value = 3,
-        description = "A peaceful farm animal with gentle moos.",
+        value = 8,
         isFlyingPet = false,
         baseBoost = 15
     },
@@ -70,8 +64,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Piggy",
         rarity = 2,
         spawnChance = 0.21,
-        value = 3,
-        description = "A cute pig who loves rolling in mud.",
+        value = 10,
         isFlyingPet = false,
         baseBoost = 16
     },
@@ -80,8 +73,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Lamb",
         rarity = 2,
         spawnChance = 0.20,
-        value = 3,
-        description = "A fluffy sheep with a heart of gold.",
+        value = 12,
         isFlyingPet = false,
         baseBoost = 17
     },
@@ -90,8 +82,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Goat",
         rarity = 2,
         spawnChance = 0.19,
-        value = 3,
-        description = "A stubborn but loyal mountain climber.",
+        value = 14,
         isFlyingPet = false,
         baseBoost = 18
     },
@@ -100,8 +91,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Brown Bear",
         rarity = 2,
         spawnChance = 0.18,
-        value = 3,
-        description = "A strong forest guardian with a gentle soul.",
+        value = 15,
         isFlyingPet = false,
         baseBoost = 20
     },
@@ -112,8 +102,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Red Panda",
         rarity = 3,
         spawnChance = 0.19,
-        value = 8,
-        description = "An adorable bamboo-loving acrobat.",
+        value = 25,
         isFlyingPet = false,
         baseBoost = 25
     },
@@ -122,8 +111,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Panda",
         rarity = 3,
         spawnChance = 0.18,
-        value = 8,
-        description = "A peaceful giant with ancient wisdom.",
+        value = 30,
         isFlyingPet = false,
         baseBoost = 27
     },
@@ -132,8 +120,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Tiger",
         rarity = 3,
         spawnChance = 0.17,
-        value = 8,
-        description = "A magnificent striped predator.",
+        value = 35,
         isFlyingPet = false,
         baseBoost = 30
     },
@@ -142,8 +129,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Polar Bear",
         rarity = 3,
         spawnChance = 0.16,
-        value = 8,
-        description = "An arctic hunter with frosty powers.",
+        value = 38,
         isFlyingPet = false,
         baseBoost = 32
     },
@@ -152,8 +138,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Flamingo",
         rarity = 3,
         spawnChance = 0.15,
-        value = 8,
-        description = "An elegant pink bird with perfect balance.",
+        value = 40,
         isFlyingPet = true,
         baseBoost = 35
     },
@@ -164,8 +149,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Unicorn",
         rarity = 4,
         spawnChance = 0.18,
-        value = 15,
-        description = "A magical horse with a spiraling horn.",
+        value = 80,
         isFlyingPet = false,
         baseBoost = 40
     },
@@ -174,8 +158,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Phoenix",
         rarity = 4,
         spawnChance = 0.17,
-        value = 15,
-        description = "A legendary firebird reborn from ashes.",
+        value = 90,
         isFlyingPet = true,
         baseBoost = 45
     },
@@ -184,8 +167,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Kitsune",
         rarity = 4,
         spawnChance = 0.16,
-        value = 15,
-        description = "A mystical nine-tailed fox spirit.",
+        value = 100,
         isFlyingPet = false,
         baseBoost = 42
     },
@@ -194,8 +176,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Dragon",
         rarity = 4,
         spawnChance = 0.15,
-        value = 15,
-        description = "A mighty winged beast of legend.",
+        value = 110,
         isFlyingPet = true,
         baseBoost = 50
     },
@@ -204,8 +185,7 @@ PetConfig.PETS = {
         assetPath = "Pets/Toucan",
         rarity = 4,
         spawnChance = 0.14,
-        value = 15,
-        description = "A winged horse soaring through clouds.",
+        value = 120,
         isFlyingPet = true,
         baseBoost = 48
     },
@@ -217,7 +197,6 @@ PetConfig.PETS = {
         rarity = 5,
         spawnChance = 0.17,
         value = 25,
-        description = "A heavenly messenger with pure light.",
         isFlyingPet = true,
         baseBoost = 60
     },
@@ -227,7 +206,6 @@ PetConfig.PETS = {
         rarity = 5,
         spawnChance = 0.16,
         value = 25,
-        description = "A dark entity from the underworld.",
         isFlyingPet = true,
         baseBoost = 65
     },
@@ -237,7 +215,6 @@ PetConfig.PETS = {
         rarity = 5,
         spawnChance = 0.15,
         value = 25,
-        description = "A celestial bird with radiant plumage.",
         isFlyingPet = true,
         baseBoost = 62
     },
@@ -247,7 +224,6 @@ PetConfig.PETS = {
         rarity = 5,
         spawnChance = 0.14,
         value = 25,
-        description = "A being of pure crystalline energy.",
         isFlyingPet = false,
         baseBoost = 70
     },
@@ -257,7 +233,6 @@ PetConfig.PETS = {
         rarity = 5,
         spawnChance = 0.13,
         value = 25,
-        description = "A prophesied entity of immense power.",
         isFlyingPet = true,
         baseBoost = 75
     },
@@ -269,7 +244,6 @@ PetConfig.PETS = {
         rarity = 6,
         spawnChance = 0.16,
         value = 40,
-        description = "A fox wreathed in eternal flames.",
         isFlyingPet = false,
         baseBoost = 85
     },
@@ -279,7 +253,6 @@ PetConfig.PETS = {
         rarity = 6,
         spawnChance = 0.15,
         value = 40,
-        description = "A molten stone giant from volcanic depths.",
         isFlyingPet = false,
         baseBoost = 90
     },
@@ -289,7 +262,6 @@ PetConfig.PETS = {
         rarity = 6,
         spawnChance = 0.14,
         value = 40,
-        description = "A living iceberg with frozen heart.",
         isFlyingPet = false,
         baseBoost = 88
     },
@@ -299,7 +271,6 @@ PetConfig.PETS = {
         rarity = 6,
         spawnChance = 0.13,
         value = 40,
-        description = "A thunderous creature commanding lightning.",
         isFlyingPet = true,
         baseBoost = 95
     },
@@ -309,7 +280,6 @@ PetConfig.PETS = {
         rarity = 6,
         spawnChance = 0.12,
         value = 40,
-        description = "An ancient protector of nature's balance.",
         isFlyingPet = false,
         baseBoost = 92
     },
@@ -321,7 +291,6 @@ PetConfig.PETS = {
         rarity = 7,
         spawnChance = 0.15,
         value = 65,
-        description = "A living star pattern in the night sky.",
         isFlyingPet = true,
         baseBoost = 110
     },
@@ -331,7 +300,6 @@ PetConfig.PETS = {
         rarity = 7,
         spawnChance = 0.14,
         value = 65,
-        description = "A moonstone giant with lunar powers.",
         isFlyingPet = false,
         baseBoost = 115
     },
@@ -341,7 +309,6 @@ PetConfig.PETS = {
         rarity = 7,
         spawnChance = 0.13,
         value = 65,
-        description = "A phoenix blessed by the sun itself.",
         isFlyingPet = true,
         baseBoost = 120
     },
@@ -351,7 +318,6 @@ PetConfig.PETS = {
         rarity = 7,
         spawnChance = 0.12,
         value = 65,
-        description = "A guardian made of cosmic stardust.",
         isFlyingPet = false,
         baseBoost = 118
     },
@@ -361,7 +327,6 @@ PetConfig.PETS = {
         rarity = 7,
         spawnChance = 0.11,
         value = 65,
-        description = "A creature born in stellar nurseries.",
         isFlyingPet = true,
         baseBoost = 125
     },
@@ -373,7 +338,6 @@ PetConfig.PETS = {
         rarity = 8,
         spawnChance = 0.14,
         value = 100,
-        description = "A cosmic cat with ringed planet powers.",
         isFlyingPet = true,
         baseBoost = 140
     },
@@ -383,7 +347,6 @@ PetConfig.PETS = {
         rarity = 8,
         spawnChance = 0.13,
         value = 100,
-        description = "An oceanic titan from the distant planet.",
         isFlyingPet = false,
         baseBoost = 145
     },
@@ -393,7 +356,6 @@ PetConfig.PETS = {
         rarity = 8,
         spawnChance = 0.12,
         value = 100,
-        description = "A volcanic emperor from the morning star.",
         isFlyingPet = true,
         baseBoost = 150
     },
@@ -403,7 +365,6 @@ PetConfig.PETS = {
         rarity = 8,
         spawnChance = 0.11,
         value = 100,
-        description = "A gas giant's eternal tempest given form.",
         isFlyingPet = true,
         baseBoost = 155
     },
@@ -413,7 +374,6 @@ PetConfig.PETS = {
         rarity = 8,
         spawnChance = 0.10,
         value = 100,
-        description = "The fastest being in the solar system.",
         isFlyingPet = true,
         baseBoost = 160
     },
@@ -425,7 +385,6 @@ PetConfig.PETS = {
         rarity = 9,
         spawnChance = 0.13,
         value = 150,
-        description = "A canine containing entire star systems.",
         isFlyingPet = true,
         baseBoost = 180
     },
@@ -435,7 +394,6 @@ PetConfig.PETS = {
         rarity = 9,
         spawnChance = 0.12,
         value = 150,
-        description = "A gravitational anomaly of infinite density.",
         isFlyingPet = true,
         baseBoost = 190
     },
@@ -445,7 +403,6 @@ PetConfig.PETS = {
         rarity = 9,
         spawnChance = 0.11,
         value = 150,
-        description = "The explosive death of a massive star.",
         isFlyingPet = true,
         baseBoost = 185
     },
@@ -455,7 +412,6 @@ PetConfig.PETS = {
         rarity = 9,
         spawnChance = 0.10,
         value = 150,
-        description = "A luminous galactic nucleus of pure energy.",
         isFlyingPet = true,
         baseBoost = 195
     },
@@ -465,7 +421,6 @@ PetConfig.PETS = {
         rarity = 9,
         spawnChance = 0.09,
         value = 150,
-        description = "The invisible force binding the universe.",
         isFlyingPet = true,
         baseBoost = 200
     },
@@ -477,7 +432,6 @@ PetConfig.PETS = {
         rarity = 10,
         spawnChance = 0.12,
         value = 225,
-        description = "A being that exists between dimensions.",
         isFlyingPet = true,
         baseBoost = 220
     },
@@ -487,7 +441,6 @@ PetConfig.PETS = {
         rarity = 10,
         spawnChance = 0.11,
         value = 225,
-        description = "A glitch in reality's code.",
         isFlyingPet = true,
         baseBoost = 230
     },
@@ -497,7 +450,6 @@ PetConfig.PETS = {
         rarity = 10,
         spawnChance = 0.10,
         value = 225,
-        description = "The harbinger of universal decay.",
         isFlyingPet = true,
         baseBoost = 240
     },
@@ -507,7 +459,6 @@ PetConfig.PETS = {
         rarity = 10,
         spawnChance = 0.09,
         value = 225,
-        description = "A force that shatters the laws of physics.",
         isFlyingPet = true,
         baseBoost = 250
     },
@@ -517,7 +468,6 @@ PetConfig.PETS = {
         rarity = 10,
         spawnChance = 0.08,
         value = 225,
-        description = "The absence of all energy and hope.",
         isFlyingPet = true,
         baseBoost = 260
     },
@@ -529,7 +479,6 @@ PetConfig.PETS = {
         rarity = 11,
         spawnChance = 0.11,
         value = 350,
-        description = "A feline existing in superposition.",
         isFlyingPet = true,
         baseBoost = 280
     },
@@ -539,7 +488,6 @@ PetConfig.PETS = {
         rarity = 11,
         spawnChance = 0.10,
         value = 350,
-        description = "A being unstuck from temporal flow.",
         isFlyingPet = true,
         baseBoost = 290
     },
@@ -549,7 +497,6 @@ PetConfig.PETS = {
         rarity = 11,
         spawnChance = 0.09,
         value = 350,
-        description = "A machine that defies logical consistency.",
         isFlyingPet = false,
         baseBoost = 300
     },
@@ -559,7 +506,6 @@ PetConfig.PETS = {
         rarity = 11,
         spawnChance = 0.08,
         value = 350,
-        description = "Chaos incarnate, rewriting chance itself.",
         isFlyingPet = true,
         baseBoost = 310
     },
@@ -569,7 +515,6 @@ PetConfig.PETS = {
         rarity = 11,
         spawnChance = 0.07,
         value = 350,
-        description = "Simultaneously alive and dead until observed.",
         isFlyingPet = true,
         baseBoost = 320
     },
@@ -581,7 +526,6 @@ PetConfig.PETS = {
         rarity = 12,
         spawnChance = 0.10,
         value = 500,
-        description = "A spectral feline from beyond the veil.",
         isFlyingPet = true,
         baseBoost = 340
     },
@@ -591,7 +535,6 @@ PetConfig.PETS = {
         rarity = 12,
         spawnChance = 0.09,
         value = 500,
-        description = "An ancient soul in ethereal form.",
         isFlyingPet = true,
         baseBoost = 350
     },
@@ -601,7 +544,6 @@ PetConfig.PETS = {
         rarity = 12,
         spawnChance = 0.08,
         value = 500,
-        description = "The master of all wandering spirits.",
         isFlyingPet = true,
         baseBoost = 360
     },
@@ -611,7 +553,6 @@ PetConfig.PETS = {
         rarity = 12,
         spawnChance = 0.07,
         value = 500,
-        description = "A consciousness freed from physical form.",
         isFlyingPet = true,
         baseBoost = 370
     },
@@ -621,7 +562,6 @@ PetConfig.PETS = {
         rarity = 12,
         spawnChance = 0.06,
         value = 500,
-        description = "A collector of ethereal essences.",
         isFlyingPet = true,
         baseBoost = 380
     },
@@ -633,7 +573,6 @@ PetConfig.PETS = {
         rarity = 13,
         spawnChance = 0.09,
         value = 750,
-        description = "A firebird that has surpassed death itself.",
         isFlyingPet = true,
         baseBoost = 400
     },
@@ -643,7 +582,6 @@ PetConfig.PETS = {
         rarity = 13,
         spawnChance = 0.08,
         value = 750,
-        description = "A being of pure wisdom and understanding.",
         isFlyingPet = true,
         baseBoost = 420
     },
@@ -653,7 +591,6 @@ PetConfig.PETS = {
         rarity = 13,
         spawnChance = 0.07,
         value = 750,
-        description = "The creator of worlds and realities.",
         isFlyingPet = true,
         baseBoost = 440
     },
@@ -663,7 +600,6 @@ PetConfig.PETS = {
         rarity = 13,
         spawnChance = 0.06,
         value = 750,
-        description = "Universal awareness given form.",
         isFlyingPet = true,
         baseBoost = 460
     },
@@ -673,7 +609,6 @@ PetConfig.PETS = {
         rarity = 13,
         spawnChance = 0.05,
         value = 750,
-        description = "An entity that perceives all hidden knowledge.",
         isFlyingPet = true,
         baseBoost = 480
     },
@@ -685,7 +620,6 @@ PetConfig.PETS = {
         rarity = 14,
         spawnChance = 0.08,
         value = 1100,
-        description = "A serpent whose length spans eternity.",
         isFlyingPet = true,
         baseBoost = 500
     },
@@ -695,7 +629,6 @@ PetConfig.PETS = {
         rarity = 14,
         spawnChance = 0.07,
         value = 1100,
-        description = "The space between all possible spaces.",
         isFlyingPet = true,
         baseBoost = 525
     },
@@ -705,7 +638,6 @@ PetConfig.PETS = {
         rarity = 14,
         spawnChance = 0.06,
         value = 1100,
-        description = "A soul unrestrained by any limitation.",
         isFlyingPet = true,
         baseBoost = 550
     },
@@ -715,7 +647,6 @@ PetConfig.PETS = {
         rarity = 14,
         spawnChance = 0.05,
         value = 1100,
-        description = "A fire that burns without fuel or end.",
         isFlyingPet = true,
         baseBoost = 575
     },
@@ -725,7 +656,6 @@ PetConfig.PETS = {
         rarity = 14,
         spawnChance = 0.04,
         value = 1100,
-        description = "A being unconstrained by any boundary.",
         isFlyingPet = true,
         baseBoost = 600
     },
@@ -737,7 +667,6 @@ PetConfig.PETS = {
         rarity = 15,
         spawnChance = 0.07,
         value = 1650,
-        description = "The ultimate ruler of all existence.",
         isFlyingPet = true,
         baseBoost = 625
     },
@@ -747,7 +676,6 @@ PetConfig.PETS = {
         rarity = 15,
         spawnChance = 0.06,
         value = 1650,
-        description = "The first and greatest of all beings.",
         isFlyingPet = true,
         baseBoost = 650
     },
@@ -757,7 +685,6 @@ PetConfig.PETS = {
         rarity = 15,
         spawnChance = 0.05,
         value = 1650,
-        description = "The final evolution of power itself.",
         isFlyingPet = true,
         baseBoost = 675
     },
@@ -767,7 +694,6 @@ PetConfig.PETS = {
         rarity = 15,
         spawnChance = 0.04,
         value = 1650,
-        description = "The puppeteer of reality's strings.",
         isFlyingPet = true,
         baseBoost = 700
     },
@@ -777,7 +703,6 @@ PetConfig.PETS = {
         rarity = 15,
         spawnChance = 0.03,
         value = 1650,
-        description = "The hunter that no prey can escape.",
         isFlyingPet = true,
         baseBoost = 725
     },
@@ -789,7 +714,6 @@ PetConfig.PETS = {
         rarity = 16,
         spawnChance = 0.06,
         value = 2500,
-        description = "A being that reshapes existence at will.",
         isFlyingPet = true,
         baseBoost = 750
     },
@@ -799,7 +723,6 @@ PetConfig.PETS = {
         rarity = 16,
         spawnChance = 0.05,
         value = 2500,
-        description = "The master of all destinies.",
         isFlyingPet = true,
         baseBoost = 800
     },
@@ -809,7 +732,6 @@ PetConfig.PETS = {
         rarity = 16,
         spawnChance = 0.04,
         value = 2500,
-        description = "The entity that writes universal rules.",
         isFlyingPet = false,
         baseBoost = 850
     },
@@ -819,7 +741,6 @@ PetConfig.PETS = {
         rarity = 16,
         spawnChance = 0.03,
         value = 2500,
-        description = "A traveler between infinite realities.",
         isFlyingPet = true,
         baseBoost = 900
     },
@@ -829,7 +750,6 @@ PetConfig.PETS = {
         rarity = 16,
         spawnChance = 0.02,
         value = 2500,
-        description = "The embodiment of unlimited strength.",
         isFlyingPet = false,
         baseBoost = 950
     },
@@ -841,7 +761,6 @@ PetConfig.PETS = {
         rarity = 17,
         spawnChance = 0.05,
         value = 3750,
-        description = "The architect of the first universe.",
         isFlyingPet = true,
         baseBoost = 1000
     },
@@ -851,7 +770,6 @@ PetConfig.PETS = {
         rarity = 17,
         spawnChance = 0.04,
         value = 3750,
-        description = "The sculptor of galactic clusters.",
         isFlyingPet = true,
         baseBoost = 1100
     },
@@ -861,7 +779,6 @@ PetConfig.PETS = {
         rarity = 17,
         spawnChance = 0.03,
         value = 3750,
-        description = "The supreme ruler of all temporal flow.",
         isFlyingPet = true,
         baseBoost = 1200
     },
@@ -871,7 +788,6 @@ PetConfig.PETS = {
         rarity = 17,
         spawnChance = 0.025,
         value = 3750,
-        description = "The monarch of infinite dimensions.",
         isFlyingPet = true,
         baseBoost = 1300
     },
@@ -881,7 +797,6 @@ PetConfig.PETS = {
         rarity = 17,
         spawnChance = 0.02,
         value = 3750,
-        description = "The sovereign of all physical substance.",
         isFlyingPet = false,
         baseBoost = 1400
     },
@@ -893,7 +808,6 @@ PetConfig.PETS = {
         rarity = 18,
         spawnChance = 0.04,
         value = 5600,
-        description = "The collective consciousness of everything.",
         isFlyingPet = true,
         baseBoost = 1500
     },
@@ -903,7 +817,6 @@ PetConfig.PETS = {
         rarity = 18,
         spawnChance = 0.03,
         value = 5600,
-        description = "The fundamental force of being.",
         isFlyingPet = true,
         baseBoost = 1650
     },
@@ -913,7 +826,6 @@ PetConfig.PETS = {
         rarity = 18,
         spawnChance = 0.025,
         value = 5600,
-        description = "The observer of all events across time.",
         isFlyingPet = true,
         baseBoost = 1800
     },
@@ -923,7 +835,6 @@ PetConfig.PETS = {
         rarity = 18,
         spawnChance = 0.02,
         value = 5600,
-        description = "The ultimate reality behind all illusions.",
         isFlyingPet = true,
         baseBoost = 1950
     },
@@ -933,7 +844,6 @@ PetConfig.PETS = {
         rarity = 18,
         spawnChance = 0.015,
         value = 5600,
-        description = "The original cause of all motion and change.",
         isFlyingPet = true,
         baseBoost = 2100
     },
@@ -945,7 +855,6 @@ PetConfig.PETS = {
         rarity = 19,
         spawnChance = 0.03,
         value = 8500,
-        description = "The protector of infinite realities.",
         isFlyingPet = true,
         baseBoost = 2300
     },
@@ -955,7 +864,6 @@ PetConfig.PETS = {
         rarity = 19,
         spawnChance = 0.025,
         value = 8500,
-        description = "The connection point of all dimensions.",
         isFlyingPet = true,
         baseBoost = 2500
     },
@@ -965,7 +873,6 @@ PetConfig.PETS = {
         rarity = 19,
         spawnChance = 0.02,
         value = 8500,
-        description = "Every potential outcome made manifest.",
         isFlyingPet = true,
         baseBoost = 2700
     },
@@ -975,7 +882,6 @@ PetConfig.PETS = {
         rarity = 19,
         spawnChance = 0.015,
         value = 8500,
-        description = "The force that reconciles contradictions.",
         isFlyingPet = true,
         baseBoost = 2900
     },
@@ -985,7 +891,6 @@ PetConfig.PETS = {
         rarity = 19,
         spawnChance = 0.01,
         value = 8500,
-        description = "A being aware of its fictional nature.",
         isFlyingPet = true,
         baseBoost = 3100
     },
@@ -997,7 +902,6 @@ PetConfig.PETS = {
         rarity = 20,
         spawnChance = 0.025,
         value = 12500,
-        description = "The primordial spark that started everything.",
         isFlyingPet = true,
         baseBoost = 3500
     },
@@ -1007,7 +911,6 @@ PetConfig.PETS = {
         rarity = 20,
         spawnChance = 0.02,
         value = 12500,
-        description = "The final moment when all ceases to be.",
         isFlyingPet = true,
         baseBoost = 4000
     },
@@ -1017,7 +920,6 @@ PetConfig.PETS = {
         rarity = 20,
         spawnChance = 0.015,
         value = 12500,
-        description = "The harmony of all opposing forces.",
         isFlyingPet = true,
         baseBoost = 4500
     },
@@ -1027,7 +929,6 @@ PetConfig.PETS = {
         rarity = 20,
         spawnChance = 0.01,
         value = 12500,
-        description = "The fundamental programming of existence.",
         isFlyingPet = false,
         baseBoost = 5000
     },
@@ -1037,49 +938,44 @@ PetConfig.PETS = {
         rarity = 20,
         spawnChance = 0.005,
         value = 12500,
-        description = "The concept beyond all concepts, the pet beyond all pets.",
         isFlyingPet = true,
         baseBoost = 10000
     }
 }
 
--- Size system
-PetConfig.SIZES = {
-    [1] = {
-        name = "Tiny",
-        displayName = "Tiny",
-        multiplier = 1.0, -- No bonus for smallest size
-        color = Color3.fromRGB(150, 150, 150) -- Gray
-    },
-    [2] = {
-        name = "Small",
-        displayName = "Small", 
-        multiplier = 1.2, -- 20% bonus
-        color = Color3.fromRGB(100, 255, 100) -- Light green
-    },
-    [3] = {
-        name = "Medium",
-        displayName = "Medium",
-        multiplier = 1.5, -- 50% bonus  
-        color = Color3.fromRGB(100, 150, 255) -- Light blue
-    },
-    [4] = {
-        name = "Large",
-        displayName = "Large",
-        multiplier = 2.0, -- 100% bonus
-        color = Color3.fromRGB(255, 150, 100) -- Light orange
-    },
-    [5] = {
-        name = "Gigantic",
-        displayName = "Gigantic",
-        multiplier = 3.0, -- 200% bonus
-        color = Color3.fromRGB(255, 100, 255) -- Light purple
-    }
-}
+-- Import modular size system
+local PetSizeSystem = require(script.Parent.PetSizeSystem)
+PetConfig.SIZES = PetSizeSystem.SIZES
 
--- Comprehensive Aura system with varied rarities
-PetConfig.AURAS = {
-    none = {
+-- Import modular aura system
+local PetAuraSystem = require(script.Parent.PetAuraSystem)
+PetConfig.AURAS = PetAuraSystem.AURAS
+
+-- Function to randomly select an aura
+function PetConfig:GetRandomAura()
+    local rand = math.random()
+    local cumulativeChance = 0
+    
+    for auraId, auraData in pairs(self.AURAS) do
+        cumulativeChance = cumulativeChance + auraData.chance
+        if rand <= cumulativeChance then
+            return auraId, auraData
+        end
+    end
+    
+    -- Fallback to none
+    return "none", self.AURAS.none
+end
+
+-- Import business logic functions
+local PetConfigLogic = require(script.Parent.PetConfigLogic)
+for methodName, method in pairs(PetConfigLogic) do
+    PetConfig[methodName] = method
+end
+
+-- Pet rarity configurations (20 rarities, 5 pets each)
+PetConfig.RARITY_CONFIG = {
+    basic = {
         name = "Basic",
         color = Color3.fromRGB(200, 200, 200), -- Gray
         multiplier = 1.0, -- No bonus
@@ -1192,6 +1088,27 @@ PetConfig.AURAS = {
         rarity = "Developer Exclusive",
         special = true, -- Mark as special aura
         effects = {"rainbow_explosion", "premium_sparkles", "divine_blessing"}
+    },
+    -- Merged pet auras (only obtainable through Lab merging)
+    merged = {
+        name = "Merged",
+        color = Color3.fromRGB(120, 255, 120), -- Bright Green
+        multiplier = 1.0, -- Base multiplier, power comes from combined rarity
+        valueMultiplier = 1.0,
+        chance = 0.0, -- Only available through merging
+        rarity = "Lab Created",
+        special = true,
+        mergedAura = true -- Mark as merged aura
+    },
+    zombie = {
+        name = "Zombie",
+        color = Color3.fromRGB(100, 50, 100), -- Dark Purple-Green
+        multiplier = 1.0, -- Base multiplier, power comes from combined rarity
+        valueMultiplier = 1.0,
+        chance = 0.0, -- Only available through merging
+        rarity = "Lab Created",
+        special = true,
+        mergedAura = true -- Mark as merged aura
     }
 }
 
@@ -1413,24 +1330,59 @@ end
 
 -- Get rarity tier name based on combined probability
 function PetConfig:GetRarityTierName(combinedProbability)
+    -- Expanded rarity system with 20+ tiers for better progression excitement
     if combinedProbability >= 0.1 then
-        return "Common", Color3.fromRGB(200, 200, 200)
+        return "Common", Color3.fromRGB(150, 150, 150)          -- Gray
     elseif combinedProbability >= 0.05 then
-        return "Uncommon", Color3.fromRGB(100, 255, 100)
+        return "Uncommon", Color3.fromRGB(100, 255, 100)        -- Light Green
     elseif combinedProbability >= 0.02 then
-        return "Rare", Color3.fromRGB(100, 150, 255)
+        return "Rare", Color3.fromRGB(100, 150, 255)            -- Light Blue
     elseif combinedProbability >= 0.01 then
-        return "Epic", Color3.fromRGB(160, 100, 255)
+        return "Epic", Color3.fromRGB(160, 100, 255)            -- Purple
     elseif combinedProbability >= 0.005 then
-        return "Legendary", Color3.fromRGB(255, 200, 100)
+        return "Legendary", Color3.fromRGB(255, 200, 100)       -- Orange/Gold
+    elseif combinedProbability >= 0.002 then
+        return "Mythic", Color3.fromRGB(255, 100, 200)          -- Pink
     elseif combinedProbability >= 0.001 then
-        return "Mythic", Color3.fromRGB(255, 100, 200)
+        return "Exotic", Color3.fromRGB(100, 255, 255)          -- Cyan
+    elseif combinedProbability >= 0.0005 then
+        return "Divine", Color3.fromRGB(255, 255, 100)          -- Yellow
+    elseif combinedProbability >= 0.0002 then
+        return "Celestial", Color3.fromRGB(200, 150, 255)       -- Light Purple
     elseif combinedProbability >= 0.0001 then
-        return "Exotic", Color3.fromRGB(100, 255, 255)
+        return "Cosmic", Color3.fromRGB(75, 0, 130)             -- Dark Purple
+    elseif combinedProbability >= 0.00005 then
+        return "Void", Color3.fromRGB(50, 50, 50)               -- Dark Gray
+    elseif combinedProbability >= 0.00002 then
+        return "Quantum", Color3.fromRGB(0, 255, 255)           -- Bright Cyan
     elseif combinedProbability >= 0.00001 then
-        return "Divine", Color3.fromRGB(255, 255, 100)
+        return "Ethereal", Color3.fromRGB(200, 200, 255)        -- Light Blue-Purple
+    elseif combinedProbability >= 0.000005 then
+        return "Transcendent", Color3.fromRGB(255, 215, 255)    -- Light Pink
+    elseif combinedProbability >= 0.000002 then
+        return "Infinite", Color3.fromRGB(255, 255, 255)        -- White
+    elseif combinedProbability >= 0.000001 then
+        return "Supreme", Color3.fromRGB(255, 215, 0)           -- Gold
+    elseif combinedProbability >= 0.0000005 then
+        return "Omnipotent", Color3.fromRGB(255, 100, 100)      -- Red
+    elseif combinedProbability >= 0.0000002 then
+        return "Godlike", Color3.fromRGB(100, 255, 255)         -- Bright Cyan
+    elseif combinedProbability >= 0.0000001 then
+        return "Universal", Color3.fromRGB(255, 100, 255)       -- Magenta
+    elseif combinedProbability >= 0.00000005 then
+        return "Multiversal", Color3.fromRGB(100, 100, 255)     -- Blue
+    elseif combinedProbability >= 0.00000002 then
+        return "Omniversal", Color3.fromRGB(255, 255, 255)      -- Bright White
+    elseif combinedProbability >= 0.00000001 then
+        return "Unreal", Color3.fromRGB(255, 0, 127)            -- Hot Pink
+    elseif combinedProbability >= 0.000000005 then
+        return "Impossible", Color3.fromRGB(127, 255, 0)        -- Bright Green
+    elseif combinedProbability >= 0.000000002 then
+        return "Legendary+", Color3.fromRGB(255, 127, 0)        -- Bright Orange
+    elseif combinedProbability >= 0.000000001 then
+        return "Mythic+", Color3.fromRGB(255, 0, 255)           -- Bright Magenta
     else
-        return "Godly", Color3.fromRGB(255, 255, 255)
+        return "Rainbow", Color3.fromRGB(255, 0, 127)           -- Ultimate Rainbow
     end
 end
 

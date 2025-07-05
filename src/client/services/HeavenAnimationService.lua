@@ -223,6 +223,9 @@ function HeavenAnimationService:CreateAnimationPet(petData, startPosition)
     -- Set parent immediately to prevent orphaned models
     petModel.Parent = Workspace
     
+    -- Apply rarity outline effects (even for animation pets so players can see the rarity)
+    PetModelFactory.applyRarityOutline(petModel, fullPetData)
+    
     -- Scale the pet model (lightweight operation)
     PetModelFactory.scaleModel(petModel, PET_SCALE)
     

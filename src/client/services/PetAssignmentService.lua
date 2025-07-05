@@ -12,8 +12,20 @@ local ServerResponseHandler
 
 local PetAssignmentService = {}
 
--- Maximum number of pets that can be assigned as companions
-local MAX_ASSIGNED_PETS = 3
+-- Base number of pets that can be assigned as companions
+local BASE_ASSIGNED_PETS = 3
+
+-- Get the current maximum pet slots for a player
+local function getMaxAssignedPets()
+    local currentState = Store:getState()
+    if currentState and currentState.player then
+        local maxSlots = currentState.player.maxSlots or BASE_ASSIGNED_PETS
+        print(string.format("PetAssignmentService: getMaxAssignedPets returning %d", maxSlots))
+        return maxSlots
+    end
+    print(string.format("PetAssignmentService: No state available, returning base %d", BASE_ASSIGNED_PETS))
+    return BASE_ASSIGNED_PETS
+end
 
 -- Request queuing and rollback management
 local pendingRequests = {} -- Queue for pending server requests
@@ -156,9 +168,10 @@ end
 
 -- Check if a pet can be assigned
 function PetAssignmentService.canAssignPet(companionPets, petToAssign)
+    local maxPets = getMaxAssignedPets()
     -- Check if already at maximum capacity
-    if #companionPets >= MAX_ASSIGNED_PETS then
-        return false, "Maximum companions reached (" .. MAX_ASSIGNED_PETS .. ")"
+    if #companionPets >= maxPets then
+        return false, "Maximum companions reached (" .. maxPets .. ")"
     end
     
     -- Check if pet is already assigned
@@ -309,14 +322,20 @@ end
 function PetAssignmentService.getAvailableSlots()
     local currentState = Store:getState()
     local companionPets = currentState.player.companionPets or {}
+    local maxPets = getMaxAssignedPets()
     
-    return MAX_ASSIGNED_PETS - #companionPets
+    return maxPets - #companionPets
 end
 
 -- Get all assigned pets
 function PetAssignmentService.getAssignedPets()
     local currentState = Store:getState()
     return currentState.player.companionPets or {}
+end
+
+-- Get maximum assignable pet slots
+function PetAssignmentService.getMaxSlots()
+    return getMaxAssignedPets()
 end
 
 -- Confirm successful server operation (call this when server confirms)
@@ -344,6 +363,124 @@ function PetAssignmentService.getRollbackHistoryCount()
         count = count + 1
     end
     return count
+end
+
+-- Equip the best pets automatically (replaces current equipped pets)
+function PetAssignmentService.equipBestPets()
+    local success, result = pcall(function()
+        -- Get current state
+        local currentState = Store:getState()
+        if not currentState or not currentState.player then
+            return false, "Player state not available"
+        end
+        
+        local ownedPets = currentState.player.ownedPets or {}
+        local currentCompanions = currentState.player.companionPets or {}
+        
+        -- Import PetConfig for rarity calculations
+        local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
+        
+        -- Get all pets with their comprehensive info for sorting
+        local petsWithInfo = {}
+        for _, pet in ipairs(ownedPets) do
+            local comprehensiveInfo = PetConfig:GetComprehensivePetInfo(pet.id, pet.aura, pet.size)
+            if comprehensiveInfo then
+                table.insert(petsWithInfo, {
+                    pet = pet,
+                    combinedProbability = comprehensiveInfo.combinedProbability,
+                    moneyMultiplier = comprehensiveInfo.moneyMultiplier,
+                    enhancedValue = comprehensiveInfo.enhancedValue
+                })
+            end
+        end
+        
+        -- Sort pets by rarity (lowest probability = rarest = best)
+        table.sort(petsWithInfo, function(a, b)
+            -- Primary: combined probability (rarer first)
+            if a.combinedProbability ~= b.combinedProbability then
+                return a.combinedProbability < b.combinedProbability
+            end
+            
+            -- Secondary: money multiplier (higher boost first)
+            if a.moneyMultiplier ~= b.moneyMultiplier then
+                return a.moneyMultiplier > b.moneyMultiplier
+            end
+            
+            -- Tertiary: enhanced value (higher value first)
+            return a.enhancedValue > b.enhancedValue
+        end)
+        
+        -- Determine how many slots we have (3 base + any unlocked slots)
+        local maxSlots = getMaxAssignedPets()
+        
+        -- Get the best pets (up to maxSlots)
+        local bestPets = {}
+        for i = 1, math.min(maxSlots, #petsWithInfo) do
+            table.insert(bestPets, petsWithInfo[i].pet)
+        end
+        
+        -- Check if we already have the optimal setup
+        if #currentCompanions == #bestPets then
+            local alreadyOptimal = true
+            local bestPetIds = {}
+            for _, bestPet in ipairs(bestPets) do
+                bestPetIds[bestPet.uniqueId] = true
+            end
+            
+            for _, companion in ipairs(currentCompanions) do
+                if not bestPetIds[companion.uniqueId] then
+                    alreadyOptimal = false
+                    break
+                end
+            end
+            
+            if alreadyOptimal then
+                return true, "Already equipped with best pets"
+            end
+        end
+        
+        -- Clean up old rollback history
+        cleanupRollbackHistory()
+        
+        -- First, unassign all current pets using the proper queue system
+        for _, companion in ipairs(currentCompanions) do
+            PetAssignmentService.unassignPet(companion)
+        end
+        
+        -- Wait for all unassignments to actually complete by checking companion count
+        local maxWaitTime = 5 -- Maximum 5 seconds to wait
+        local startTime = tick()
+        
+        while tick() - startTime < maxWaitTime do
+            local currentState = Store:getState()
+            local currentCompanionCount = #(currentState.player.companionPets or {})
+            
+            if currentCompanionCount == 0 then
+                print("PetAssignmentService: All pets unassigned, proceeding with assignments")
+                break
+            end
+            
+            task.wait(0.1) -- Check every 100ms
+        end
+        
+        -- Small frame wait to ensure Redux state update is processed
+        task.wait()
+        
+        -- Then assign the best pets
+        for _, bestPet in ipairs(bestPets) do
+            PetAssignmentService.assignPet(bestPet)
+        end
+        
+        return true, string.format("Equipped %d best pets", #bestPets)
+    end)
+    
+    if not success then
+        warn("PetAssignmentService: Failed to equip best pets:", result)
+        return false, result
+    end
+    
+    print("PetAssignmentService:", result)
+    return true, result
 end
 
 return PetAssignmentService

@@ -42,9 +42,8 @@ local createFlipAnimation = AnimationHelpers.createFlipAnimation
 local function PetBoostPanel(props)
     local playerData = props.playerData or {}
     local screenSize = props.screenSize or Vector2.new(1024, 768)
-    
-    -- Panel visibility state
-    local panelVisible, setPanelVisible = React.useState(false)
+    local visible = props.visible or false
+    local onClose = props.onClose or function() end
     
     -- Animation refs
     local boostIconRef = React.useRef(nil)
@@ -70,8 +69,9 @@ local function PetBoostPanel(props)
     
     -- Get assigned pets and transform them for PetCardComponent
     local assignedPets = playerData.companionPets or {}
-    local _, totalMoneyMultiplier = PetBoostController.generateBoostData(assignedPets)
-    local totalBoosts = #assignedPets
+    local friendsBoost = playerData.friendsBoost or 0
+    local petBoosts, totalMoneyMultiplier = PetBoostController.generateBoostData(assignedPets, friendsBoost)
+    local totalBoosts = #petBoosts -- Use petBoosts count to include friends boost
     
     -- Safety check for nil values
     totalMoneyMultiplier = totalMoneyMultiplier or 1.0
@@ -103,22 +103,21 @@ local function PetBoostPanel(props)
     end
     
     -- Calculate grid dimensions using boost controller
-    local gridDimensions = PetBoostController.calculateBoostGridDimensions(petItems, screenSize, panelWidth)
+    local gridDimensions = PetBoostController.calculateBoostGridDimensions(petBoosts, screenSize, panelWidth)
     local cardWidth = gridDimensions.cardWidth
     local cardHeight = gridDimensions.cardHeight
-    
-    -- Handle panel toggle
-    local function togglePanel()
-        playSound("click")
-        createFlipAnimation(boostIconRef, boostAnimTracker)
-        setPanelVisible(not panelVisible)
-    end
+    local totalHeight = gridDimensions.totalHeight
     
     -- Handle panel close
     local function handleClose()
-        setPanelVisible(false)
+        onClose()
     end
     
+    -- Only show the panel if visible prop is true
+    if not visible then
+        return nil
+    end
+
     return e("Frame", {
         Name = "PetBoostSystem",
         Size = UDim2.new(1, 0, 1, 0),
@@ -126,20 +125,17 @@ local function PetBoostPanel(props)
         BackgroundTransparency = 1,
         ZIndex = 14
     }, {
-        -- Pet Boost Button (bottom right corner)
-        PetBoostButton = e("TextButton", {
-            Name = "PetBoostButton",
-            Size = UDim2.new(0, buttonSize, 0, buttonSize),
-            Position = UDim2.new(1, -(buttonSize + getProportionalPadding(screenSize, 20)), 1, -(buttonSize + getProportionalPadding(screenSize, 20))),
-            Text = "",
-            BackgroundTransparency = 1, -- Remove background
+        -- Pet Boost Panel Modal (now controlled by external visible prop)
+        PetBoostModal = e("TextButton", {
+            Name = "PetBoostModal",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+            BackgroundTransparency = 0.5,
             BorderSizePixel = 0,
-            ZIndex = 15,
-            [React.Event.Activated] = togglePanel,
-            [React.Event.MouseEnter] = function()
-                playSound("hover")
-                createFlipAnimation(boostIconRef, boostAnimTracker)
-            end
+            ZIndex = 30,
+            Text = "",
+            [React.Event.Activated] = handleClose
         }, {
             
             -- Pet Boost Icon (centered in circle)
@@ -147,12 +143,28 @@ local function PetBoostPanel(props)
                 Name = "PetBoostIcon",
                 Size = UDim2.new(0, getProportionalSize(screenSize, 32), 0, getProportionalSize(screenSize, 32)),
                 Position = UDim2.new(0.5, getProportionalSize(screenSize, -16), 0.5, getProportionalSize(screenSize, -16)),
-                Image = assets["vector-icon-pack-2/Player/Boost/Boost Yellow Outline 256.png"] or "",
+                Image = assets["vector-icon-pack-2/Player/Boost/Boost Blue Outline 256.png"] or "🚀",
                 BackgroundTransparency = 1,
                 ScaleType = Enum.ScaleType.Fit,
                 ImageColor3 = Color3.fromRGB(255, 150, 50), -- Orange theme for pets
                 ZIndex = 16,
                 ref = boostIconRef
+            }),
+            
+            -- Fallback emoji text if image doesn't load
+            FallbackBoostIcon = e("TextLabel", {
+                Name = "FallbackBoostIcon",
+                Size = UDim2.new(0, getProportionalSize(screenSize, 32), 0, getProportionalSize(screenSize, 32)),
+                Position = UDim2.new(0.5, getProportionalSize(screenSize, -16), 0.5, getProportionalSize(screenSize, -16)),
+                Text = "🚀",
+                TextColor3 = Color3.fromRGB(255, 150, 50),
+                TextSize = getProportionalSize(screenSize, 20),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.SourceSansBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 15, -- Behind the image
+                Visible = assets["vector-icon-pack-2/Player/Boost/Boost Blue Outline 256.png"] == nil or assets["vector-icon-pack-2/Player/Boost/Boost Blue Outline 256.png"] == ""
             }),
             
             -- Pet Count Badge (top left)
@@ -216,8 +228,8 @@ local function PetBoostPanel(props)
             })
         }),
         
-        -- Pet Boost Panel Modal
-        PetBoostModal = panelVisible and e("TextButton", {
+        -- Pet Boost Panel Modal (now always visible when this component is rendered)
+        PetBoostModal = e("TextButton", {
             Name = "PetBoostModal",
             Size = UDim2.new(1, 0, 1, 0),
             Position = UDim2.new(0, 0, 0, 0),
@@ -392,7 +404,11 @@ local function PetBoostPanel(props)
                         SummaryText = e("TextLabel", {
                             Size = UDim2.new(1, -20, 1, 0),
                             Position = UDim2.new(0, 10, 0, 0),
-                            Text = PetBoostController.getSummaryText(totalMoneyMultiplier, totalBoosts),
+                            Text = (function()
+                                local PetAssignmentService = require(script.Parent.Parent.services.PetAssignmentService)
+                                local maxSlots = PetAssignmentService.getMaxSlots()
+                                return PetBoostController.getSummaryText(totalMoneyMultiplier, totalBoosts, maxSlots)
+                            end)(),
                             TextColor3 = Color3.fromRGB(80, 60, 0),
                             TextSize = normalTextSize,
                             TextWrapped = true,
@@ -449,8 +465,8 @@ local function PetBoostPanel(props)
                         PetBoostCards = React.createElement(React.Fragment, {}, (function()
                             local cards = {}
                             
-                            -- Show enhanced empty state if no pets
-                            if #petItems == 0 then
+                            -- Show enhanced empty state if no boosts
+                            if #petBoosts == 0 then
                                 cards["emptyState"] = e("Frame", {
                                     Name = "EmptyState",
                                     Size = UDim2.new(1, 0, 1, 0),
@@ -511,21 +527,124 @@ local function PetBoostPanel(props)
                                     })
                                 })
                             else
-                                -- Generate pet cards using PetCardComponent (same as inventory)
-                                for i, petItem in ipairs(petItems) do
-                                    local collectedTime = PetInventoryController.formatCollectionTime(petItem.latestCollectionTime)
-                                    local displayInfo = PetInventoryController.getPetDisplayInfo(petItem)
-                                    
-                                    cards["pet_" .. i] = PetCardComponent({
-                                        petItem = petItem,
-                                        displayInfo = displayInfo,
-                                        assignedPets = assignedPets,
-                                        screenSize = screenSize,
-                                        cardWidth = cardWidth,
-                                        cardHeight = cardHeight,
-                                        layoutOrder = i,
-                                        collectedTime = collectedTime
-                                    })
+                                -- Generate cards for all boost data (pets + friends)
+                                for i, boostData in ipairs(petBoosts) do
+                                    if boostData.category == "👥 Friends Boost" then
+                                        -- Create friends boost card
+                                        cards["friends_boost"] = e("Frame", {
+                                            Name = "FriendsBoostCard",
+                                            Size = UDim2.new(0, cardWidth, 0, cardHeight),
+                                            BackgroundColor3 = boostData.color or Color3.fromRGB(34, 139, 34),
+                                            BackgroundTransparency = 0.1,
+                                            BorderSizePixel = 0,
+                                            ZIndex = 32,
+                                            LayoutOrder = i
+                                        }, {
+                                            Corner = e("UICorner", {
+                                                CornerRadius = UDim.new(0, 12)
+                                            }),
+                                            Stroke = e("UIStroke", {
+                                                Color = Color3.fromRGB(255, 255, 255),
+                                                Thickness = 2,
+                                                Transparency = 0.3
+                                            }),
+                                            Gradient = e("UIGradient", {
+                                                Color = ColorSequence.new{
+                                                    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 180, 60)),
+                                                    ColorSequenceKeypoint.new(1, Color3.fromRGB(34, 139, 34))
+                                                },
+                                                Rotation = 45
+                                            }),
+                                            
+                                            -- Friends icon
+                                            FriendsIcon = e("TextLabel", {
+                                                Size = UDim2.new(0, 48, 0, 48),
+                                                Position = UDim2.new(0.5, -24, 0, 20),
+                                                Text = "👥",
+                                                TextSize = 32,
+                                                BackgroundTransparency = 1,
+                                                Font = Enum.Font.SourceSansBold,
+                                                ZIndex = 33
+                                            }),
+                                            
+                                            -- Title
+                                            Title = e("TextLabel", {
+                                                Size = UDim2.new(1, -20, 0, 30),
+                                                Position = UDim2.new(0, 10, 0, 75),
+                                                Text = "FRIENDS BOOST",
+                                                TextColor3 = Color3.fromRGB(255, 255, 255),
+                                                TextSize = cardTitleSize,
+                                                TextWrapped = true,
+                                                BackgroundTransparency = 1,
+                                                Font = Enum.Font.GothamBold,
+                                                TextXAlignment = Enum.TextXAlignment.Center,
+                                                ZIndex = 33
+                                            }, {
+                                                TextStroke = e("UIStroke", {
+                                                    Color = Color3.fromRGB(0, 0, 0),
+                                                    Thickness = 2,
+                                                    Transparency = 0.5
+                                                })
+                                            }),
+                                            
+                                            -- Effect value
+                                            Effect = e("TextLabel", {
+                                                Size = UDim2.new(1, -20, 0, 40),
+                                                Position = UDim2.new(0, 10, 0, 110),
+                                                Text = boostData.effect or "+0%",
+                                                TextColor3 = Color3.fromRGB(255, 255, 255),
+                                                TextSize = math.max(cardValueSize, 20),
+                                                TextWrapped = true,
+                                                BackgroundTransparency = 1,
+                                                Font = Enum.Font.GothamBold,
+                                                TextXAlignment = Enum.TextXAlignment.Center,
+                                                ZIndex = 33
+                                            }, {
+                                                TextStroke = e("UIStroke", {
+                                                    Color = Color3.fromRGB(0, 0, 0),
+                                                    Thickness = 2,
+                                                    Transparency = 0.5
+                                                })
+                                            }),
+                                            
+                                            -- Description
+                                            Description = e("TextLabel", {
+                                                Size = UDim2.new(1, -20, 0, 60),
+                                                Position = UDim2.new(0, 10, 0, 155),
+                                                Text = boostData.description or "Friends boost",
+                                                TextColor3 = Color3.fromRGB(240, 240, 240),
+                                                TextSize = tinyTextSize,
+                                                TextWrapped = true,
+                                                BackgroundTransparency = 1,
+                                                Font = Enum.Font.Gotham,
+                                                TextXAlignment = Enum.TextXAlignment.Center,
+                                                ZIndex = 33
+                                            })
+                                        })
+                                    else
+                                        -- Generate pet cards using PetCardComponent (same as inventory)
+                                        local petItemIndex = i
+                                        if friendsBoost > 0 then
+                                            petItemIndex = i - 1 -- Adjust index if friends boost card was added
+                                        end
+                                        
+                                        if petItemIndex >= 1 and petItemIndex <= #petItems then
+                                            local petItem = petItems[petItemIndex]
+                                            local collectedTime = PetInventoryController.formatCollectionTime(petItem.latestCollectionTime)
+                                            local displayInfo = PetInventoryController.getPetDisplayInfo(petItem)
+                                            
+                                            cards["pet_" .. petItemIndex] = PetCardComponent({
+                                                petItem = petItem,
+                                                displayInfo = displayInfo,
+                                                assignedPets = assignedPets,
+                                                screenSize = screenSize,
+                                                cardWidth = cardWidth,
+                                                cardHeight = cardHeight,
+                                                layoutOrder = i,
+                                                collectedTime = collectedTime
+                                            })
+                                        end
+                                    end
                                 end
                             end
                             

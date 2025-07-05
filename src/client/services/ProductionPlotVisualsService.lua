@@ -20,6 +20,8 @@ local touchCooldowns = {} -- Store touch cooldowns per plot
 local plotStates = {} -- Track previous plot states to detect purchases
 local playerAreaNumber = nil -- Store the player's assigned area number
 local areaAssignments = {} -- Store area assignments from server
+local lastUpdateTime = 0 -- Throttle updates
+local UPDATE_THROTTLE = 0.1 -- Maximum 10 updates per second
 
 -- Touch cooldown time (in seconds)
 local TOUCH_COOLDOWN_TIME = 2
@@ -38,12 +40,17 @@ function ProductionPlotVisualsService:Initialize()
     if playerDataSync then
         playerDataSync.OnClientEvent:Connect(function(data)
             if data and data.resources then
-                lastPlayerData = {
+                local newPlayerData = {
                     money = data.resources.money or 0,
                     rebirths = data.resources.rebirths or 0,
                     boughtProductionPlots = data.boughtProductionPlots or {}
                 }
-                self:UpdateAllProductionPlots()
+                
+                -- Only update if relevant data actually changed
+                if self:ShouldUpdateProductionPlots(lastPlayerData, newPlayerData) then
+                    lastPlayerData = newPlayerData
+                    self:UpdateAllProductionPlots()
+                end
             end
         end)
     end
@@ -87,7 +94,38 @@ function ProductionPlotVisualsService:GetPlayerAreaNumber()
     return nil -- Player not assigned to any area yet
 end
 
+function ProductionPlotVisualsService:ShouldUpdateProductionPlots(oldData, newData)
+    -- Only update if data that affects production plot GUIs actually changed
+    if not oldData then return true end -- First time
+    
+    -- Check if money changed (affects purchase buttons)
+    if oldData.money ~= newData.money then return true end
+    
+    -- Check if rebirths changed (affects plot visibility and requirements)
+    if oldData.rebirths ~= newData.rebirths then return true end
+    
+    -- Check if bought production plots changed (affects plot states)
+    local oldPlots = oldData.boughtProductionPlots or {}
+    local newPlots = newData.boughtProductionPlots or {}
+    
+    if #oldPlots ~= #newPlots then return true end
+    
+    -- Compare plot arrays (simple comparison since they're usually small)
+    for i, plotId in ipairs(oldPlots) do
+        if newPlots[i] ~= plotId then return true end
+    end
+    
+    return false -- No relevant changes
+end
+
 function ProductionPlotVisualsService:UpdateAllProductionPlots()
+    -- Throttle updates to prevent excessive calls
+    local currentTime = tick()
+    if currentTime - lastUpdateTime < UPDATE_THROTTLE then
+        return -- Skip this update, too soon
+    end
+    lastUpdateTime = currentTime
+    
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then 
         return 
@@ -193,8 +231,8 @@ function ProductionPlotVisualsService:UpdateProductionPlotVisual(plot)
     -- Update plot colors based on state
     self:UpdatePlotColor(plot, state)
     
-    -- Create or update plot GUI using controller
-    PlotGUIController.updatePlotGUI(plot, plotId, state, lastPlayerData)
+    -- Create or update plot GUI using controller (pass true for production plot)
+    PlotGUIController.updatePlotGUI(plot, plotId, state, lastPlayerData, true)
 end
 
 function ProductionPlotVisualsService:GetPressedPosition(plotPart)

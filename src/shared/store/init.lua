@@ -32,6 +32,7 @@ local initialState = {
             totalPetsCollected = 0,
             totalRebirths = 0,
         },
+        maxSlots = 3,
     }
 }
 

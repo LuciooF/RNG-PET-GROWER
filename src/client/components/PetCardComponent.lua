@@ -11,6 +11,9 @@ local AnimationHelpers = require(ReplicatedStorage.utils.AnimationHelpers)
 local AssetLoader = require(ReplicatedStorage.utils.AssetLoader)
 local PetAssignmentService = require(script.Parent.Parent.services.PetAssignmentService)
 
+-- Import assets system
+local assets = require(ReplicatedStorage.assets)
+
 -- Import modular UI components for future refactoring
 -- PetCardBadge: Reusable badge components (text, icon, quantity)
 -- PetCardButton: Reusable button components (assign, action)
@@ -38,7 +41,9 @@ local function PetCardComponent(props)
     local screenSize = props.screenSize
     local cardWidth = props.cardWidth
     local cardHeight = props.cardHeight
-    local layoutOrder = props.layoutOrder
+    local layoutOrder = props.layoutOrder or 1
+    local hideAssignButton = props.hideAssignButton or false
+    local onLabSelect = props.onLabSelect -- Lab-specific selection callback
     
     local pet = petItem.pet
     local quantity = petItem.quantity
@@ -66,7 +71,7 @@ local function PetCardComponent(props)
     return e("TextButton", {
         Name = "PetCard_" .. layoutOrder,
         Text = "",
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundColor3 = petItem.isAssigned and Color3.fromRGB(255, 255, 150) or Color3.fromRGB(255, 255, 255), -- Yellow if assigned
         BackgroundTransparency = 0.05,
         BorderSizePixel = 0,
         ZIndex = 32,
@@ -84,6 +89,24 @@ local function PetCardComponent(props)
             -- Animation removed to fix React hooks issue
             if cardElement then
                 AnimationHelpers.createBounceAnimation(cardElement)
+            end
+            
+            -- Handle lab selection if callback provided
+            if onLabSelect then
+                onLabSelect()
+                return
+            end
+            
+            -- Handle assign/unassign when card is clicked
+            if petItem.isAssigned and petItem.samplePet then
+                -- Unassign this pet using the service
+                PetAssignmentService.unassignPet(petItem.samplePet)
+            elseif petItem.samplePet then
+                -- Check if we can assign more pets using the service
+                local canAssign = PetAssignmentService.canAssignPet(assignedPets, petItem.samplePet)
+                if canAssign then
+                    PetAssignmentService.assignPet(petItem.samplePet)
+                end
             end
         end
     }, {
@@ -104,35 +127,61 @@ local function PetCardComponent(props)
             Rotation = 45
         }),
         
-        -- Rarity Header (above existing rarity badge at 0.54)
-        RarityHeader = e("TextLabel", {
-            Name = "RarityHeader",
-            Size = UDim2.new(0.4, 0, 0.03, 0),
-            Position = UDim2.new(0.3, 0, 0.51, 0), -- Just above rarity badge
-            AnchorPoint = Vector2.new(0.5, 0),
-            Text = "RARITY",
-            TextColor3 = Color3.fromRGB(80, 80, 80),
-            TextSize = ScreenUtils.getProportionalTextSize(screenSize, 8),
-            BackgroundTransparency = 1,
-            Font = Enum.Font.GothamBold,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            ZIndex = 34
-        }),
         
-        -- Aura Header (above existing aura badge at 0.54)  
-        AuraHeader = e("TextLabel", {
-            Name = "AuraHeader",
-            Size = UDim2.new(0.4, 0, 0.03, 0),
-            Position = UDim2.new(0.7, 0, 0.51, 0), -- Just above aura badge
-            AnchorPoint = Vector2.new(0.5, 0),
-            Text = "AURA",
-            TextColor3 = Color3.fromRGB(80, 80, 80),
-            TextSize = ScreenUtils.getProportionalTextSize(screenSize, 8),
-            BackgroundTransparency = 1,
-            Font = Enum.Font.GothamBold,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            ZIndex = 34
-        }),
+        -- Boost Badge (above pet picture, sized to fit text)
+        BoostBadge = (displayInfo.boostText ~= "" and displayInfo.boostText ~= "0.0% money") and e("Frame", {
+            Name = "BoostBadge",
+            Size = UDim2.new(0, 0, 0, 20), -- AutomaticSize will handle width
+            Position = UDim2.new(0.5, 0, 0.06, 0),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundColor3 = Color3.fromRGB(100, 255, 100),
+            BorderSizePixel = 0,
+            ZIndex = 36,
+            AutomaticSize = Enum.AutomaticSize.X
+        }, {
+            Corner = e("UICorner", {
+                CornerRadius = UDim.new(0, 10) -- Rounded rectangle
+            }),
+            Stroke = e("UIStroke", {
+                Color = Color3.fromRGB(255, 255, 255),
+                Thickness = 2,
+                Transparency = 0.1
+            }),
+            Padding = e("UIPadding", {
+                PaddingLeft = UDim.new(0, 8),
+                PaddingRight = UDim.new(0, 8),
+                PaddingTop = UDim.new(0, 2),
+                PaddingBottom = UDim.new(0, 2)
+            }),
+            BoostText = e("TextLabel", {
+                Size = UDim2.new(0, 0, 1, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                Text = displayInfo.boostText:gsub("%% money", "%%"):gsub("%.0%%", "%%"), -- Clean up the text
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 9),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 37
+            }, {
+                TextStroke = e("UIStroke", {
+                    Color = Color3.fromRGB(0, 0, 0),
+                    Thickness = 1.5,
+                    Transparency = 0.3
+                })
+            })
+        }) or nil,
+        
+        -- Divider between boost and pet
+        BoostDivider = (displayInfo.boostText ~= "" and displayInfo.boostText ~= "0.0% money") and e("Frame", {
+            Name = "BoostDivider",
+            Size = UDim2.new(0.6, 0, 0, 1),
+            Position = UDim2.new(0.2, 0, 0.11, 0),
+            BackgroundColor3 = Color3.fromRGB(180, 180, 180),
+            BorderSizePixel = 0,
+            ZIndex = 33
+        }) or nil,
         
         -- Pet Model Display
         PetIcon = petModel and e("ViewportFrame", {
@@ -206,19 +255,33 @@ local function PetCardComponent(props)
                 })
             }),
             
+            
         }),
         
-        -- Pet Name with Combined Rarity
+        -- Pet Name
         PetName = e("TextLabel", {
             Name = "PetName",
-            Size = UDim2.new(0.9, 0, 0.06, 0),
-            Position = UDim2.new(0.05, 0, 0.32, 0),
+            Size = UDim2.new(0.9, 0, 0.12, 0),
+            Position = UDim2.new(0.05, 0, 0.30, 0),
             Text = pet.name:upper(),
             TextColor3 = Color3.fromRGB(40, 40, 40),
-            TextSize = cardTitleSize,
+            TextSize = ScreenUtils.getProportionalTextSize(screenSize, 15),
             TextWrapped = true,
+            TextScaled = false,
             BackgroundTransparency = 1,
             Font = Enum.Font.SourceSansBold,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = 33
+        }),
+        
+        -- Divider after pet name
+        NameDivider = e("Frame", {
+            Name = "NameDivider",
+            Size = UDim2.new(0.8, 0, 0, 1),
+            Position = UDim2.new(0.1, 0, 0.44, 0),
+            BackgroundColor3 = Color3.fromRGB(200, 200, 200),
+            BorderSizePixel = 0,
             ZIndex = 33
         }),
         
@@ -226,7 +289,7 @@ local function PetCardComponent(props)
         CombinedRarity = e("TextLabel", {
             Name = "CombinedRarity",
             Size = UDim2.new(0.9, 0, 0.04, 0),
-            Position = UDim2.new(0.05, 0, 0.38, 0),
+            Position = UDim2.new(0.05, 0, 0.47, 0),
             Text = displayInfo.combinedRarityText .. " • " .. displayInfo.rarityTierName,
             TextColor3 = displayInfo.rarityTierColor,
             TextSize = ScreenUtils.getProportionalTextSize(screenSize, 11),
@@ -238,91 +301,16 @@ local function PetCardComponent(props)
             TextStroke = e("UIStroke", {
                 Color = Color3.fromRGB(0, 0, 0),
                 Thickness = 2,
-                Transparency = 0.3
+                Transparency = 0
             })
         }),
         
-        -- Pet Description
-        PetDescription = e("TextLabel", {
-            Name = "PetDescription",
-            Size = UDim2.new(0.9, 0, 0.10, 0),
-            Position = UDim2.new(0.05, 0, 0.42, 0),
-            Text = displayInfo.description,
-            TextColor3 = Color3.fromRGB(70, 80, 120),
-            TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
-            BackgroundTransparency = 1,
-            Font = Enum.Font.Gotham,
-            TextWrapped = true,
-            ZIndex = 33
-        }),
         
-        -- Rarity Badge
-        RarityBadge = e("Frame", {
-            Name = "RarityBadge",
-            Size = UDim2.new(0.4, 0, 0.06, 0),
-            Position = UDim2.new(0.3, 0, 0.54, 0),
-            AnchorPoint = Vector2.new(0.5, 0),
-            BackgroundColor3 = rarityColor,
-            BorderSizePixel = 0,
-            ZIndex = 33
-        }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0, 8)
-            }),
-            RarityText = e("TextLabel", {
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = rarityName,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = smallTextSize,
-                TextWrapped = true,
-                BackgroundTransparency = 1,
-                Font = Enum.Font.SourceSansBold,
-                ZIndex = 34
-            }, {
-                TextStroke = e("UIStroke", {
-                    Color = Color3.fromRGB(0, 0, 0),
-                    Thickness = 2,
-                    Transparency = 0.3
-                })
-            })
-        }),
-        
-        -- Aura Badge (always shown, "Basic" for no aura)
-        AuraBadge = e("Frame", {
-            Name = "AuraBadge",
-            Size = UDim2.new(0.4, 0, 0.06, 0),
-            Position = UDim2.new(0.7, 0, 0.54, 0),
-            AnchorPoint = Vector2.new(0.5, 0),
-            BackgroundColor3 = petItem.aura ~= "none" and petItem.auraData.color or Color3.fromRGB(150, 150, 150),
-            BorderSizePixel = 0,
-            ZIndex = 33
-        }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0, 8)
-            }),
-            AuraText = e("TextLabel", {
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = petItem.aura ~= "none" and petItem.auraData.name:upper() or "BASIC",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = smallTextSize,
-                TextWrapped = true,
-                BackgroundTransparency = 1,
-                Font = Enum.Font.SourceSansBold,
-                ZIndex = 34
-            }, {
-                TextStroke = e("UIStroke", {
-                    Color = Color3.fromRGB(0, 0, 0),
-                    Thickness = 2,
-                    Transparency = 0.3
-                })
-            })
-        }),
-        
-        -- Boost Display with Icon
-        BoostContainer = displayInfo.boostText ~= "" and e("Frame", {
-            Name = "BoostContainer",
-            Size = UDim2.new(0.9, 0, 0.06, 0),
-            Position = UDim2.new(0.05, 0, 0.62, 0),
+        -- Rarity Row (full width)
+        RarityRow = e("Frame", {
+            Name = "RarityRow",
+            Size = UDim2.new(0.9, 0, 0.035, 0),
+            Position = UDim2.new(0.05, 0, 0.535, 0),
             BackgroundTransparency = 1,
             ZIndex = 33
         }, {
@@ -334,43 +322,153 @@ local function PetCardComponent(props)
                 SortOrder = Enum.SortOrder.LayoutOrder
             }),
             
-            BoostIcon = e("ImageLabel", {
-                Name = "BoostIcon",
-                Size = UDim2.new(0, cardValueSize, 0, cardValueSize),
-                Image = "", -- Could add boost icon here
+            RarityLabel = e("TextLabel", {
+                Name = "RarityLabel",
+                Size = UDim2.new(0, 0, 1, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                Text = "Rarity: ",
+                TextColor3 = Color3.fromRGB(60, 60, 60),
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 10),
                 BackgroundTransparency = 1,
-                ScaleType = Enum.ScaleType.Fit,
-                ImageColor3 = Color3.fromRGB(100, 255, 100),
+                Font = Enum.Font.GothamBold,
                 ZIndex = 34,
                 LayoutOrder = 1
             }),
             
-            BoostLabel = e("TextLabel", {
-                Name = "BoostText",
+            RarityValue = e("TextLabel", {
+                Name = "RarityValue",
                 Size = UDim2.new(0, 0, 1, 0),
                 AutomaticSize = Enum.AutomaticSize.X,
-                Text = displayInfo.boostText,
-                TextColor3 = Color3.fromRGB(100, 255, 100),
-                TextSize = cardValueSize,
-                TextWrapped = true,
+                Text = rarityName,
+                TextColor3 = rarityColor,
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
                 BackgroundTransparency = 1,
-                Font = Enum.Font.SourceSans,
+                Font = Enum.Font.GothamBold,
                 ZIndex = 34,
                 LayoutOrder = 2
             }, {
                 TextStroke = e("UIStroke", {
                     Color = Color3.fromRGB(0, 0, 0),
-                    Thickness = 2,
-                    Transparency = 0.3
+                    Thickness = 1.5,
+                    Transparency = 0
                 })
             })
-        }) or nil,
+        }),
+        
+        -- Aura Row (full width)
+        AuraRow = e("Frame", {
+            Name = "AuraRow",
+            Size = UDim2.new(0.9, 0, 0.035, 0),
+            Position = UDim2.new(0.05, 0, 0.585, 0),
+            BackgroundTransparency = 1,
+            ZIndex = 33
+        }, {
+            Layout = e("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                Padding = UDim.new(0, 4),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            }),
+            
+            AuraLabel = e("TextLabel", {
+                Name = "AuraLabel",
+                Size = UDim2.new(0, 0, 1, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                Text = "Aura: ",
+                TextColor3 = Color3.fromRGB(60, 60, 60),
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                ZIndex = 34,
+                LayoutOrder = 1
+            }),
+            
+            AuraValue = e("TextLabel", {
+                Name = "AuraValue",
+                Size = UDim2.new(0, 0, 1, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                Text = (petItem.aura ~= "none" and petItem.auraData.name or "Basic"),
+                TextColor3 = petItem.aura ~= "none" and petItem.auraData.color or Color3.fromRGB(150, 150, 150),
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                ZIndex = 34,
+                LayoutOrder = 2
+            }, {
+                TextStroke = e("UIStroke", {
+                    Color = Color3.fromRGB(0, 0, 0),
+                    Thickness = 1.5,
+                    Transparency = 0
+                })
+            })
+        }),
+        
+        -- Size Row (full width)
+        SizeRow = e("Frame", {
+            Name = "SizeRow",
+            Size = UDim2.new(0.9, 0, 0.035, 0),
+            Position = UDim2.new(0.05, 0, 0.635, 0),
+            BackgroundTransparency = 1,
+            ZIndex = 33
+        }, {
+            Layout = e("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                Padding = UDim.new(0, 4),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            }),
+            
+            SizeLabel = e("TextLabel", {
+                Name = "SizeLabel",
+                Size = UDim2.new(0, 0, 1, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                Text = "Size: ",
+                TextColor3 = Color3.fromRGB(60, 60, 60),
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                ZIndex = 34,
+                LayoutOrder = 1
+            }),
+            
+            SizeValue = e("TextLabel", {
+                Name = "SizeValue",
+                Size = UDim2.new(0, 0, 1, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                Text = (petItem.sizeData and petItem.sizeData.displayName or "Tiny"),
+                TextColor3 = (petItem.sizeData and petItem.sizeData.color or Color3.fromRGB(150, 150, 150)),
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                ZIndex = 34,
+                LayoutOrder = 2
+            }, {
+                TextStroke = e("UIStroke", {
+                    Color = Color3.fromRGB(0, 0, 0),
+                    Thickness = 1.5,
+                    Transparency = 0
+                })
+            })
+        }),
+        
+        -- Divider after size
+        SizeDivider = e("Frame", {
+            Name = "SizeDivider",
+            Size = UDim2.new(0.8, 0, 0, 1),
+            Position = UDim2.new(0.1, 0, 0.685, 0),
+            BackgroundColor3 = Color3.fromRGB(200, 200, 200),
+            BorderSizePixel = 0,
+            ZIndex = 33
+        }),
+        
         
         -- Value Display
         ValueContainer = e("Frame", {
             Name = "ValueContainer",
-            Size = UDim2.new(0.9, 0, 0.06, 0),
-            Position = UDim2.new(0.05, 0, 0.70, 0),
+            Size = UDim2.new(0.9, 0, 0.04, 0),
+            Position = UDim2.new(0.05, 0, 0.715, 0),
             BackgroundTransparency = 1,
             ZIndex = 33
         }, {
@@ -385,12 +483,29 @@ local function PetCardComponent(props)
             CashIcon = e("ImageLabel", {
                 Name = "CashIcon",
                 Size = UDim2.new(0, cardValueSize, 0, cardValueSize),
-                Image = "", -- Could use AssetLoader for cash icon
+                Image = (assets and assets["vector-icon-pack-2/General/Money/Money Filled 256.png"]) or "",
                 BackgroundTransparency = 1,
                 ScaleType = Enum.ScaleType.Fit,
                 ImageColor3 = Color3.fromRGB(255, 215, 0),
                 ZIndex = 34,
-                LayoutOrder = 1
+                LayoutOrder = 1,
+                Visible = assets and assets["vector-icon-pack-2/General/Money/Money Filled 256.png"] ~= nil
+            }),
+            
+            -- Fallback cash emoji if asset doesn't load
+            CashEmoji = e("TextLabel", {
+                Name = "CashEmoji",
+                Size = UDim2.new(0, cardValueSize, 0, cardValueSize),
+                Text = "💰",
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
+                TextColor3 = Color3.fromRGB(255, 215, 0),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.SourceSansBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 34,
+                LayoutOrder = 1,
+                Visible = not (assets and assets["vector-icon-pack-2/General/Money/Money Filled 256.png"])
             }),
             
             ValueLabel = e("TextLabel", {
@@ -399,7 +514,7 @@ local function PetCardComponent(props)
                 AutomaticSize = Enum.AutomaticSize.X,
                 Text = displayInfo.enhancedValue .. " each",
                 TextColor3 = Color3.fromRGB(100, 255, 100),
-                TextSize = cardValueSize,
+                TextSize = ScreenUtils.getProportionalTextSize(screenSize, 14),
                 TextWrapped = true,
                 BackgroundTransparency = 1,
                 Font = Enum.Font.SourceSans,
@@ -414,61 +529,23 @@ local function PetCardComponent(props)
             })
         }),
         
-        -- Assign/Unassign Button (centered)
-        AssignButton = e("TextButton", {
-            Name = "AssignButton",
-            Size = UDim2.new(0.4, 0, 0.08, 0),
-            Position = UDim2.new(0.5, 0, 0.86, 0),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Text = (function()
-                if petItem.isAssigned then
-                    return "UNASSIGN"
-                elseif #assignedPets >= 3 then
-                    return "FULL"
-                else
-                    return "ASSIGN"
-                end
-            end)(),
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = ScreenUtils.getProportionalTextSize(screenSize, 12),
-            BackgroundColor3 = (function()
-                if petItem.isAssigned then
-                    return Color3.fromRGB(200, 80, 80) -- Red for unassign
-                elseif #assignedPets >= 3 then
-                    return Color3.fromRGB(120, 120, 120) -- Gray for full
-                else
-                    return Color3.fromRGB(80, 200, 80) -- Green for assign
-                end
-            end)(),
+        -- Divider after value
+        ValueDivider = e("Frame", {
+            Name = "ValueDivider",
+            Size = UDim2.new(0.8, 0, 0, 1),
+            Position = UDim2.new(0.1, 0, 0.77, 0),
+            BackgroundColor3 = Color3.fromRGB(200, 200, 200),
             BorderSizePixel = 0,
-            Font = Enum.Font.SourceSansBold,
-            ZIndex = 34,
-            Active = #assignedPets < 3 or petItem.isAssigned,
-            [React.Event.Activated] = function()
-                if petItem.isAssigned and petItem.samplePet then
-                    -- Unassign this pet using the service
-                    PetAssignmentService.unassignPet(petItem.samplePet)
-                elseif #assignedPets < 3 and petItem.samplePet then
-                    -- Assign this pet using the service
-                    PetAssignmentService.assignPet(petItem.samplePet)
-                end
-            end
-        }, {
-            Corner = e("UICorner", {
-                CornerRadius = UDim.new(0, 8)
-            }),
-            TextStroke = e("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0.3
-            })
+            ZIndex = 33
         }),
         
-        -- Collection Time Display (below assign button)
+        -- Assign button removed - click the card directly to assign/unassign
+        
+        -- Collection Time Display (at bottom of card)
         CollectionTime = collectedTime ~= "" and e("TextLabel", {
             Name = "CollectionTime",
-            Size = UDim2.new(0.9, 0, 0.04, 0),
-            Position = UDim2.new(0.5, 0, 0.94, 0),
+            Size = UDim2.new(0.9, 0, 0.03, 0),
+            Position = UDim2.new(0.5, 0, 0.85, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Text = "Latest: " .. collectedTime,
             TextColor3 = Color3.fromRGB(120, 120, 120),

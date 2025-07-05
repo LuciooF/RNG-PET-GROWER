@@ -18,6 +18,7 @@ local assets = require(ReplicatedStorage.assets)
 -- Import config for products
 local DeveloperProductConfig = require(ReplicatedStorage.Shared.config.DeveloperProductConfig)
 local GamepassConfig = require(ReplicatedStorage.Shared.config.GamepassConfig)
+local ClickOutsideWrapper = require(script.Parent.ClickOutsideWrapper)
 
 -- Import card components
 local ShopPetCard = require(script.Parent.ui.ShopPetCard)
@@ -179,19 +180,10 @@ function ShopPanel.create(props)
         table.insert(gamepassProducts, gamepass)
     end
     
-    if not visible then
-        return nil
-    end
-    
-    -- Modal overlay with GamepassPanel structure
-    return e("Frame", {
-        Name = "ShopPanelOverlay",
-        Size = UDim2.new(1, 0, 1, 0),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-        BackgroundTransparency = 0.3,
-        BorderSizePixel = 0,
-        ZIndex = 30
+    -- Use ClickOutsideWrapper for overlay and click-outside-to-close
+    return e(ClickOutsideWrapper, {
+        visible = visible,
+        onClose = onClose
     }, {
         ShopContainer = e("Frame", {
             Name = "ShopContainer", 

@@ -190,9 +190,11 @@ function PlotService:PurchaseProductionPlot(player, plotId, price)
     if not plotAdded then
         -- Refund money if plot addition failed
         PlayerService:GiveMoney(player, price)
+        -- Note: PlayerService:GiveMoney already handles sync
         return false
     end
     
+    -- BuyProductionPlotForPlayer already handles sync
     return true
 end
 

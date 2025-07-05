@@ -21,6 +21,11 @@ function PetStatusGUIController:createPetStatusGUI(plotId)
     local petInfo = self.activePets[plotId]
     if not petInfo.model then return end
     
+    -- Don't create duplicate GUIs
+    if petInfo.statusGUI then
+        return
+    end
+    
     local petData = petInfo.petData
     local auraName = petData.auraData.name
     local petName = petData.name

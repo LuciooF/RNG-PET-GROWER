@@ -203,7 +203,6 @@ function PetGrowthService:StartPetGrowth(plot, plotId)
         name = petData.name,
         rarity = petData.rarity,
         value = petData.value * (auraData.valueMultiplier or 1) * (sizeData.multiplier or 1),
-        description = petData.description,
         aura = auraId,
         auraData = auraData,
         size = petSize,
@@ -254,6 +253,9 @@ function PetGrowthService:SwitchToPetPhase(plotId)
     end
     
     petModel.Parent = petInfo.plot
+    
+    -- Apply rarity outline effects
+    PetModelFactory.applyRarityOutline(petModel, petInfo.petData)
     
     -- Start pet at full size immediately (no growing phase for pet)
     local fullScale = Vector3.new(0.3, 0.3, 0.3) -- Same as final egg size

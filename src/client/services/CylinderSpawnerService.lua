@@ -26,7 +26,13 @@ local spawnCounterGUI = nil -- GUI to display spawn counter
 
 -- Configuration
 local CYLINDER_HEIGHT = 20 -- Height above FarmBase
-local PET_SPAWN_INTERVAL = 10 -- Seconds between pet spawns
+local PET_SPAWN_MIN_INTERVAL = 9 -- Minimum seconds between pet spawns
+local PET_SPAWN_MAX_INTERVAL = 12 -- Maximum seconds between pet spawns
+
+-- Generate random spawn interval for each cylinder
+local function getRandomSpawnInterval()
+    return math.random() * (PET_SPAWN_MAX_INTERVAL - PET_SPAWN_MIN_INTERVAL) + PET_SPAWN_MIN_INTERVAL
+end
 local MAX_SPAWNED_PETS = 50 -- Maximum pets that can be spawned at once
 local CYLINDER_COLORS = {
     [1] = Color3.fromRGB(139, 69, 19), -- Brown (Basic)
@@ -59,12 +65,22 @@ function CylinderSpawnerService:setupDataSync()
     if playerDataSync then
         playerDataSync.OnClientEvent:Connect(function(data)
             if data and data.resources then
+                local previousRebirths = lastPlayerData.rebirths or 0
+                local newRebirths = data.resources.rebirths or 0
+                
                 lastPlayerData = {
                     money = data.resources.money or 0,
                     rebirths = data.resources.rebirths or 0,
                     boughtPlots = data.boughtPlots or {},
                     boughtProductionPlots = data.boughtProductionPlots or {}
                 }
+                
+                -- Check if player just rebirthed (rebirth count increased)
+                if newRebirths > previousRebirths and previousRebirths > 0 then
+                    -- Clear all spawned pets when rebirth happens
+                    self:ClearAllSpawnedPets()
+                end
+                
                 self:UpdateCylinders()
             end
         end)
@@ -206,14 +222,15 @@ function CylinderSpawnerService:CreateCylinder(plotId, plotType, farmBase)
     
     cylinder.Parent = farmBase.Parent
     
-    -- Store cylinder data
+    -- Store cylinder data with random spawn interval and staggered start time
     local cylinderKey = plotType == "production" and ("prod_" .. plotId) or plotId
     activeCylinders[cylinderKey] = {
         cylinder = cylinder,
         plotType = plotType,
         plotId = plotId,
         plotData = plotData,
-        lastSpawnTime = 0,
+        lastSpawnTime = tick() - math.random() * PET_SPAWN_MAX_INTERVAL, -- Random initial offset
+        spawnInterval = getRandomSpawnInterval(), -- Individual random interval
         gui = cylinderGUI
     }
     
@@ -295,9 +312,13 @@ function CylinderSpawnerService:StartPetSpawningLoop()
         
         for cylinderKey, cylinderData in pairs(activeCylinders) do
             if cylinderData.cylinder and cylinderData.cylinder.Parent then
-                if currentTime - cylinderData.lastSpawnTime >= PET_SPAWN_INTERVAL and spawnedPetCount < MAX_SPAWNED_PETS then
+                -- Use individual cylinder's spawn interval
+                local spawnInterval = cylinderData.spawnInterval or getRandomSpawnInterval()
+                if currentTime - cylinderData.lastSpawnTime >= spawnInterval and spawnedPetCount < MAX_SPAWNED_PETS then
                     self:SpawnPetFromCylinder(cylinderData)
                     cylinderData.lastSpawnTime = currentTime
+                    -- Generate new random interval for next spawn
+                    cylinderData.spawnInterval = getRandomSpawnInterval()
                 end
             else
                 -- Clean up invalid cylinders
@@ -311,8 +332,9 @@ function CylinderSpawnerService:SpawnPetFromCylinder(cylinderData)
     local cylinder = cylinderData.cylinder
     local plotData = cylinderData.plotData
     
-    -- Generate pet data using controller
-    local petData = PetSpawningController.generatePetData(plotData)
+    -- Generate pet data using controller with player rebirths for dynamic rarity
+    local playerRebirths = lastPlayerData.rebirths or 0
+    local petData = PetSpawningController.generatePetData(plotData, playerRebirths, cylinderData.plotId)
     if not petData then return end
     
     -- Get Farm model for cleaner organization
@@ -381,6 +403,22 @@ function CylinderSpawnerService:UpdateSpawnCounterGUI()
     end
 end
 
+function CylinderSpawnerService:ClearAllSpawnedPets()
+    -- Clean up all spawned pets (used during rebirth)
+    for petId, petData in pairs(spawnedPets) do
+        if petData.model and petData.model.Parent then
+            petData.model:Destroy()
+        end
+    end
+    spawnedPets = {}
+    spawnedPetCount = 0
+    
+    -- Update spawn counter GUI
+    self:UpdateSpawnCounterGUI()
+    
+    print("CylinderSpawnerService: Cleared all spawned pets")
+end
+
 function CylinderSpawnerService:Cleanup()
     -- Clean up all cylinders
     for cylinderKey, cylinderData in pairs(activeCylinders) do
@@ -389,13 +427,7 @@ function CylinderSpawnerService:Cleanup()
     activeCylinders = {}
     
     -- Clean up spawned pets tracking
-    for petId, petData in pairs(spawnedPets) do
-        if petData.model and petData.model.Parent then
-            petData.model:Destroy()
-        end
-    end
-    spawnedPets = {}
-    spawnedPetCount = 0
+    self:ClearAllSpawnedPets()
     
     -- Clean up spawn counter GUI
     if spawnCounterGUI then

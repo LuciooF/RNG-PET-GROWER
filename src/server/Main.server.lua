@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
+local PhysicsService = game:GetService("PhysicsService")
 
 local PlayerService = require(ServerScriptService.services.PlayerService)
 local AreaService = require(ServerScriptService.services.AreaService)
@@ -8,6 +9,8 @@ local PlotService = require(ServerScriptService.services.PlotService)
 local AssetService = require(ServerScriptService.services.AssetService)
 local GamepassService = require(ServerScriptService.services.GamepassService)
 local DeveloperProductService = require(ServerScriptService.services.DeveloperProductService)
+local PetMergeService = require(ServerScriptService.services.PetMergeService)
+local CodesManager = require(ServerScriptService.modules.CodesManager)
 
 -- Rate limiting for pet collection - allow burst of 10 pets per 0.5 seconds
 local playerCollectionData = {} -- {[playerId] = {lastReset = time, count = number}}
@@ -85,6 +88,11 @@ local function createRemotes()
     debugBuyProductionPlot.Name = "DebugBuyProductionPlot"
     debugBuyProductionPlot.Parent = remoteFolder
     
+    -- Developer product purchase
+    local promptProductPurchase = Instance.new("RemoteEvent")
+    promptProductPurchase.Name = "PromptProductPurchase"
+    promptProductPurchase.Parent = remoteFolder
+    
     -- Rebirth system
     local playerRebirth = Instance.new("RemoteEvent")
     playerRebirth.Name = "PlayerRebirth"
@@ -127,6 +135,11 @@ local function createRemotes()
     gamepassSync.Name = "GamepassSync"
     gamepassSync.Parent = ReplicatedStorage
     
+    -- Music preference remote
+    local musicPreference = Instance.new("RemoteEvent")
+    musicPreference.Name = "MusicPreference"
+    musicPreference.Parent = remoteFolder
+    
     local gamepassPurchased = Instance.new("RemoteEvent")
     gamepassPurchased.Name = "GamepassPurchased"
     gamepassPurchased.Parent = ReplicatedStorage
@@ -147,6 +160,25 @@ end
 
 createRemotes()
 
+-- Initialize collision groups for pets and players
+local function initializeCollisionGroups()
+    print("Server: Setting up collision groups...")
+    
+    -- Use modern collision group system
+    PhysicsService:RegisterCollisionGroup("Pets")
+    PhysicsService:RegisterCollisionGroup("Players")
+    
+    -- Configure collision behavior: Pets don't collide with Players
+    PhysicsService:CollisionGroupSetCollidable("Pets", "Players", false)
+    PhysicsService:CollisionGroupSetCollidable("Pets", "Default", true) -- Pets still collide with ground/world
+    PhysicsService:CollisionGroupSetCollidable("Players", "Default", true) -- Players still collide with world
+    
+    print("Server: Collision groups configured - Pets and Players won't collide with each other")
+end
+
+-- Set up collision groups
+initializeCollisionGroups()
+
 -- Initialize AssetService (asset loading and caching)
 AssetService:Initialize()
 
@@ -162,6 +194,11 @@ GamepassService:Initialize()
 -- Initialize DeveloperProductService (handle developer product purchases)
 DeveloperProductService:Initialize()
 
+-- Initialize PetMergeService (handle pet merging in the Lab)
+PetMergeService:Initialize()
+
+-- Initialize CodesManager (handle code redemption)
+CodesManager.initialize()
 
 Players.PlayerAdded:Connect(function(player)
     PlayerService:OnPlayerAdded(player)
@@ -217,8 +254,8 @@ local function setupRemoteHandlers()
         end
         
         -- Check if player has exceeded 10 collections in current window
-        if collectionData.count >= 10 then
-            warn("Rate limit: Too many collections from", player.Name, "- limit is 10 per 0.5 seconds")
+        if collectionData.count >= 30 then
+            warn("Rate limit: Too many collections from", player.Name, "- limit is 30 per 0.5 seconds")
             return
         end
         
@@ -275,7 +312,7 @@ local function setupRemoteHandlers()
         serverPetData.value = finalValue
         
         -- Add pet to player's collection (immediate)
-        local success = PlayerService:AddPetToCollection(player, serverPetData)
+        local success, reason = PlayerService:AddPetToCollection(player, serverPetData)
         if success then
             -- Give 1 diamond reward for pet collection
             PlayerService:GiveDiamonds(player, 1)
@@ -285,7 +322,21 @@ local function setupRemoteHandlers()
                 PlayerService:CheckAndAnnounceDiscovery(player, serverPetData)
             end)
         else
-            warn("Failed to add pet to", player.Name, "'s collection")
+            warn("Failed to add pet to", player.Name, "'s collection - Reason:", reason)
+            
+            -- Send inventory full notification to client
+            if reason == "inventory_full" then
+                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                if remotes then
+                    local inventoryFullRemote = remotes:FindFirstChild("InventoryFull")
+                    if not inventoryFullRemote then
+                        inventoryFullRemote = Instance.new("RemoteEvent")
+                        inventoryFullRemote.Name = "InventoryFull"
+                        inventoryFullRemote.Parent = remotes
+                    end
+                    inventoryFullRemote:FireClient(player)
+                end
+            end
         end
     end)
     
@@ -362,6 +413,12 @@ local function setupRemoteHandlers()
         PlayerService:BuyProductionPlot(player, 1) -- Buy production plot 1
     end)
     
+    -- Developer product purchase prompt handler
+    remotes.PromptProductPurchase.OnServerEvent:Connect(function(player, productName)
+        print(string.format("Player %s requesting to purchase product: %s", player.Name, productName))
+        DeveloperProductService:PromptPurchase(player, productName)
+    end)
+    
     -- Send pets to heaven handler
     remotes.SendPetsToHeaven.OnServerEvent:Connect(function(player, requestData)
         PlayerService:SendPetsToHeaven(player, requestData)
@@ -396,6 +453,22 @@ local function setupRemoteHandlers()
         local success = DeveloperProductService:PromptPurchase(player, productName)
         if not success then
             warn(string.format("Failed to prompt developer product purchase %s for %s", productName, player.Name))
+        end
+    end)
+    
+    -- Music preference handler
+    remotes.MusicPreference.OnServerEvent:Connect(function(player, musicEnabled)
+        if typeof(musicEnabled) ~= "boolean" then
+            warn("Invalid music preference from", player.Name, "- expected boolean, got:", typeof(musicEnabled))
+            return
+        end
+        
+        -- Update player's music preference in their settings
+        local success = PlayerService:UpdateMusicPreference(player, musicEnabled)
+        if success then
+            print(string.format("Updated music preference for %s: %s", player.Name, tostring(musicEnabled)))
+        else
+            warn(string.format("Failed to update music preference for %s", player.Name))
         end
     end)
     

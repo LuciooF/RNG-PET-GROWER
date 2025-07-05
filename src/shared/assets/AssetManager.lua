@@ -4,45 +4,128 @@
 
 local AssetManager = {}
 
--- Import all asset modules
-local FoodAssets = require(script.Parent.FoodAssets)
-local IconAssets = require(script.Parent.IconAssets)
-local PetAssets = require(script.Parent.PetAssets)
+-- Asset loading status tracking
+local loadingStatus = {
+    initialized = false,
+    foodLoaded = false,
+    iconLoaded = false,
+    petLoaded = false,
+    startTime = tick()
+}
+
+-- Safe module loading with error handling
+local function safeRequire(module, moduleName)
+    local success, result = pcall(function()
+        return require(module)
+    end)
+    
+    if success then
+        print(string.format("AssetManager: Successfully loaded %s (%d assets)", moduleName, result and type(result) == "table" and #result or "unknown"))
+        return result
+    else
+        warn(string.format("AssetManager: Failed to load %s - %s", moduleName, tostring(result)))
+        return {}
+    end
+end
+
+-- Import all asset modules with error handling
+print("AssetManager: Starting asset loading at", tick())
+local FoodAssets = safeRequire(script.Parent.FoodAssets, "FoodAssets")
+loadingStatus.foodLoaded = true
+
+local IconAssets = safeRequire(script.Parent.IconAssets, "IconAssets") 
+loadingStatus.iconLoaded = true
+
+local PetAssets = safeRequire(script.Parent.PetAssets, "PetAssets")
+loadingStatus.petLoaded = true
 
 -- Consolidated asset table (maintains backward compatibility)
 local assets = {}
 
--- Merge all asset modules into the main table
-local function mergeAssets(sourceTable)
+-- Merge all asset modules into the main table with logging
+local function mergeAssets(sourceTable, sourceName)
+    local count = 0
     for key, value in pairs(sourceTable) do
         assets[key] = value
+        count = count + 1
     end
+    print(string.format("AssetManager: Merged %d assets from %s", count, sourceName))
+    return count
 end
 
 -- Build the consolidated asset table
-mergeAssets(FoodAssets)
-mergeAssets(IconAssets)
-mergeAssets(PetAssets)
+print("AssetManager: Building consolidated asset table...")
+local foodCount = mergeAssets(FoodAssets, "FoodAssets")
+local iconCount = mergeAssets(IconAssets, "IconAssets") 
+local petCount = mergeAssets(PetAssets, "PetAssets")
+
+local totalLoadTime = tick() - loadingStatus.startTime
+loadingStatus.initialized = true
+
+print(string.format("AssetManager: Initialization complete! Loaded %d total assets in %.3f seconds", 
+    foodCount + iconCount + petCount, totalLoadTime))
+print(string.format("AssetManager: Breakdown - Food: %d, Icons: %d, Pets: %d", 
+    foodCount, iconCount, petCount))
 
 -- Backward compatibility: expose assets table directly
 AssetManager.assets = assets
 
--- Modern API: category-specific getters
+-- Modern API: category-specific getters with logging
 function AssetManager.getFoodAsset(path)
-    return FoodAssets[path]
+    local asset = FoodAssets[path]
+    if not asset then
+        warn(string.format("AssetManager: Food asset not found: %s", tostring(path)))
+    end
+    return asset
 end
 
 function AssetManager.getIconAsset(path)
-    return IconAssets[path]
+    local asset = IconAssets[path]
+    if not asset then
+        warn(string.format("AssetManager: Icon asset not found: %s", tostring(path)))
+    end
+    return asset
 end
 
 function AssetManager.getPetAsset(path)
-    return PetAssets[path]
+    local asset = PetAssets[path]
+    if not asset then
+        warn(string.format("AssetManager: Pet asset not found: %s", tostring(path)))
+    end
+    return asset
 end
 
--- Generic getter with fallback
+-- Generic getter with fallback and logging
 function AssetManager.getAsset(path, fallback)
-    return assets[path] or fallback
+    if not loadingStatus.initialized then
+        warn("AssetManager: Attempting to get asset before initialization complete:", path)
+    end
+    
+    local asset = assets[path]
+    if not asset then
+        warn(string.format("AssetManager: Asset not found: %s (using fallback: %s)", 
+            tostring(path), tostring(fallback)))
+        return fallback
+    end
+    return asset
+end
+
+-- Safe asset getter that waits for initialization
+function AssetManager.getSafeAsset(path, fallback, timeout)
+    timeout = timeout or 5 -- 5 second timeout
+    local startTime = tick()
+    
+    -- Wait for initialization if needed
+    while not loadingStatus.initialized and (tick() - startTime) < timeout do
+        wait(0.1)
+    end
+    
+    if not loadingStatus.initialized then
+        warn(string.format("AssetManager: Timeout waiting for initialization when requesting: %s", tostring(path)))
+        return fallback
+    end
+    
+    return AssetManager.getAsset(path, fallback)
 end
 
 -- Utility functions
@@ -79,6 +162,30 @@ function AssetManager.getAssetCount()
         count = count + 1
     end
     return count
+end
+
+function AssetManager.getLoadingStatus()
+    return {
+        initialized = loadingStatus.initialized,
+        foodLoaded = loadingStatus.foodLoaded,
+        iconLoaded = loadingStatus.iconLoaded,
+        petLoaded = loadingStatus.petLoaded,
+        startTime = loadingStatus.startTime,
+        loadTime = loadingStatus.initialized and (tick() - loadingStatus.startTime) or nil,
+        assetCount = AssetManager.getAssetCount()
+    }
+end
+
+function AssetManager.printLoadingStatus()
+    local status = AssetManager.getLoadingStatus()
+    print("=== AssetManager Loading Status ===")
+    print("Initialized:", status.initialized)
+    print("Food Loaded:", status.foodLoaded) 
+    print("Icon Loaded:", status.iconLoaded)
+    print("Pet Loaded:", status.petLoaded)
+    print("Asset Count:", status.assetCount)
+    print("Load Time:", status.loadTime and string.format("%.3fs", status.loadTime) or "N/A")
+    print("==================================")
 end
 
 function AssetManager.getCategoryStats()

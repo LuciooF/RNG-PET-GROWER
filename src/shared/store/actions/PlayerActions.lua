@@ -25,6 +25,7 @@ PlayerActions.UPDATE_STATS = "UPDATE_STATS"
 PlayerActions.UPDATE_SETTINGS = "UPDATE_SETTINGS"
 PlayerActions.SET_PETS = "SET_PETS"
 PlayerActions.SET_COMPANIONS = "SET_COMPANIONS"
+PlayerActions.SET_MAX_SLOTS = "SET_MAX_SLOTS"
 
 function PlayerActions.setResources(money, rebirths, diamonds)
     return {
@@ -137,6 +138,13 @@ function PlayerActions.setCompanions(companions)
     return {
         type = PlayerActions.SET_COMPANIONS,
         companions = companions,
+    }
+end
+
+function PlayerActions.setMaxSlots(maxSlots)
+    return {
+        type = PlayerActions.SET_MAX_SLOTS,
+        maxSlots = maxSlots,
     }
 end
 

@@ -25,8 +25,36 @@ RebirthConfig.MONEY_MULTIPLIERS = {
 -- Money reset amount when rebirthing
 RebirthConfig.REBIRTH_MONEY_RESET = 100
 
--- Minimum money required to rebirth (could be useful later)
+-- Dynamic rebirth costs based on progression
+RebirthConfig.REBIRTH_COSTS = {
+    [0] = 300,      -- First rebirth - 300
+    [1] = 3000,     -- Second rebirth - 3k
+    [2] = 30000,    -- Third rebirth - 30k
+    [3] = 100000,   -- Fourth rebirth - 100k
+    [4] = 300000,   -- Fifth rebirth - 300k
+    [5] = 600000,   -- Sixth rebirth - 600k
+    [6] = 1000000,  -- Seventh rebirth - 1m
+    [7] = 2000000   -- Eighth rebirth and beyond
+}
+
+-- Legacy support - use dynamic calculation
 RebirthConfig.MINIMUM_MONEY_TO_REBIRTH = 1000
+
+-- Get dynamic rebirth cost based on current rebirth count
+function RebirthConfig:GetRebirthCost(currentRebirths)
+    local rebirths = currentRebirths or 0
+    
+    -- If we have a specific cost defined, use it
+    if self.REBIRTH_COSTS[rebirths] then
+        return self.REBIRTH_COSTS[rebirths]
+    end
+    
+    -- For very high rebirth counts, use exponential scaling
+    -- Cost = 30,000,000 * (2.5 ^ (rebirths - 7))
+    local baseCost = 30000000
+    local multiplier = math.pow(2.5, rebirths - 7)
+    return math.floor(baseCost * multiplier)
+end
 
 -- Get money multiplier for a given rebirth count
 function RebirthConfig:GetMoneyMultiplier(rebirths)

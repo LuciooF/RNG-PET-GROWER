@@ -229,6 +229,42 @@ function PetModelFactory.scaleModel(model, scale)
     end
 end
 
+-- Apply rarity outline effects to model
+function PetModelFactory.applyRarityOutline(model, petData)
+    if not model or not petData then 
+        return 
+    end
+    
+    -- Calculate combined rarity (pet + aura combination)
+    local combinedProbability, rarityText = PetConfig:CalculateCombinedRarity(petData.id or 1, petData.aura)
+    if not combinedProbability then
+        return
+    end
+    
+    -- Get the combined rarity tier and color
+    local rarityTierName, rarityColor = PetConfig:GetRarityTierName(combinedProbability)
+    
+    -- Don't add outline for Common rarity (most basic combined rarity)
+    if rarityTierName == "Common" then
+        return
+    end
+    
+    -- Find all BaseParts in the model to apply outline
+    for _, part in pairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            -- Create SelectionBox for outline effect
+            local selectionBox = Instance.new("SelectionBox")
+            selectionBox.Name = "RarityOutline"
+            selectionBox.Adornee = part
+            selectionBox.Color3 = rarityColor -- Use combined rarity color
+            selectionBox.LineThickness = 0.04 -- Ultra-thin outline
+            selectionBox.Transparency = 0.2 -- Slightly less transparent for visibility
+            selectionBox.SurfaceTransparency = 1 -- No surface fill, just outline
+            selectionBox.Parent = part
+        end
+    end
+end
+
 -- Apply aura visual effects to model
 function PetModelFactory.applyAuraEffects(model, auraData)
     if not model or not auraData then 
