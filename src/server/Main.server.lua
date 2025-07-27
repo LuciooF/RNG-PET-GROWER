@@ -1,478 +1,185 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- Main Server Script
+-- Handles map creation, player assignment, and data management
+
 local ServerScriptService = game:GetService("ServerScriptService")
-local Players = game:GetService("Players")
-local PhysicsService = game:GetService("PhysicsService")
 
-local PlayerService = require(ServerScriptService.services.PlayerService)
-local AreaService = require(ServerScriptService.services.AreaService)
+-- Initialize data services first
+local DataService = require(ServerScriptService.services.DataService)
+local StateService = require(ServerScriptService.services.StateService)
+local PetService = require(ServerScriptService.services.PetService)
 local PlotService = require(ServerScriptService.services.PlotService)
-local AssetService = require(ServerScriptService.services.AssetService)
-local GamepassService = require(ServerScriptService.services.GamepassService)
-local DeveloperProductService = require(ServerScriptService.services.DeveloperProductService)
-local PetMergeService = require(ServerScriptService.services.PetMergeService)
-local CodesManager = require(ServerScriptService.modules.CodesManager)
 
--- Rate limiting for pet collection - allow burst of 10 pets per 0.5 seconds
-local playerCollectionData = {} -- {[playerId] = {lastReset = time, count = number}}
+DataService:Initialize()
+StateService:Initialize()
+PetService:Initialize()
 
--- Create remotes directly here instead of requiring from ReplicatedStorage
-local function createRemotes()
-    local remoteFolder = Instance.new("Folder")
-    remoteFolder.Name = "Remotes"
-    remoteFolder.Parent = ReplicatedStorage
-    
-    local playerDataSync = Instance.new("RemoteEvent")
-    playerDataSync.Name = "PlayerDataSync"
-    playerDataSync.Parent = ReplicatedStorage
-    
-    local buyPlot = Instance.new("RemoteEvent")
-    buyPlot.Name = "BuyPlot"
-    buyPlot.Parent = remoteFolder
-    
-    local buyProductionPlot = Instance.new("RemoteEvent")
-    buyProductionPlot.Name = "BuyProductionPlot"
-    buyProductionPlot.Parent = remoteFolder
-    
-    local collectPet = Instance.new("RemoteEvent")
-    collectPet.Name = "CollectPet"
-    collectPet.Parent = remoteFolder
-    
-    local sellPet = Instance.new("RemoteEvent")
-    sellPet.Name = "SellPet"
-    sellPet.Parent = remoteFolder
-    
-    local equipCompanion = Instance.new("RemoteEvent")
-    equipCompanion.Name = "EquipCompanion"
-    equipCompanion.Parent = remoteFolder
-    
-    local unequipCompanion = Instance.new("RemoteEvent")
-    unequipCompanion.Name = "UnequipCompanion"
-    unequipCompanion.Parent = remoteFolder
-    
-    -- Response remotes for rollback mechanism
-    local assignPetResponse = Instance.new("RemoteEvent")
-    assignPetResponse.Name = "AssignPetResponse"
-    assignPetResponse.Parent = remoteFolder
-    
-    local unassignPetResponse = Instance.new("RemoteEvent")
-    unassignPetResponse.Name = "UnassignPetResponse"
-    unassignPetResponse.Parent = remoteFolder
-    
-    -- State reconciliation remote
-    local requestStateReconciliation = Instance.new("RemoteEvent")
-    requestStateReconciliation.Name = "RequestStateReconciliation"
-    requestStateReconciliation.Parent = remoteFolder
-    
-    local buyBoost = Instance.new("RemoteEvent")
-    buyBoost.Name = "BuyBoost"
-    buyBoost.Parent = remoteFolder
-    
-    -- Debug remotes
-    local debugAddMoney = Instance.new("RemoteEvent")
-    debugAddMoney.Name = "DebugAddMoney"
-    debugAddMoney.Parent = remoteFolder
-    
-    local debugAddDiamonds = Instance.new("RemoteEvent")
-    debugAddDiamonds.Name = "DebugAddDiamonds"
-    debugAddDiamonds.Parent = remoteFolder
-    
-    local debugAddRebirths = Instance.new("RemoteEvent")
-    debugAddRebirths.Name = "DebugAddRebirths"
-    debugAddRebirths.Parent = remoteFolder
-    
-    local debugResetData = Instance.new("RemoteEvent")
-    debugResetData.Name = "DebugResetData"
-    debugResetData.Parent = remoteFolder
-    
-    local debugBuyProductionPlot = Instance.new("RemoteEvent")
-    debugBuyProductionPlot.Name = "DebugBuyProductionPlot"
-    debugBuyProductionPlot.Parent = remoteFolder
-    
-    -- Developer product purchase
-    local promptProductPurchase = Instance.new("RemoteEvent")
-    promptProductPurchase.Name = "PromptProductPurchase"
-    promptProductPurchase.Parent = remoteFolder
-    
-    -- Rebirth system
-    local playerRebirth = Instance.new("RemoteEvent")
-    playerRebirth.Name = "PlayerRebirth"
-    playerRebirth.Parent = remoteFolder
-    
-    local sendPetsToHeaven = Instance.new("RemoteEvent")
-    sendPetsToHeaven.Name = "SendPetsToHeaven"
-    sendPetsToHeaven.Parent = remoteFolder
-    
-    local heavenAnimation = Instance.new("RemoteEvent")
-    heavenAnimation.Name = "HeavenAnimation"
-    heavenAnimation.Parent = remoteFolder
-    
-    -- Area assignment sync
-    local areaAssignmentSync = Instance.new("RemoteEvent")
-    areaAssignmentSync.Name = "AreaAssignmentSync"
-    areaAssignmentSync.Parent = ReplicatedStorage
-    
-    -- Discovery announcement remote
-    local discoveryAnnouncement = Instance.new("RemoteEvent")
-    discoveryAnnouncement.Name = "DiscoveryAnnouncement"
-    discoveryAnnouncement.Parent = ReplicatedStorage
-    
-    -- Asset loading remote function
-    local loadAssetRemote = Instance.new("RemoteFunction")
-    loadAssetRemote.Name = "LoadAsset"
-    loadAssetRemote.Parent = remoteFolder
-    
-    -- Pet assignment remotes
-    local assignPet = Instance.new("RemoteEvent")
-    assignPet.Name = "AssignPet"
-    assignPet.Parent = remoteFolder
-    
-    local unassignPet = Instance.new("RemoteEvent")
-    unassignPet.Name = "UnassignPet"
-    unassignPet.Parent = remoteFolder
-    
-    -- Gamepass and Developer Product remotes
-    local gamepassSync = Instance.new("RemoteEvent")
-    gamepassSync.Name = "GamepassSync"
-    gamepassSync.Parent = ReplicatedStorage
-    
-    -- Music preference remote
-    local musicPreference = Instance.new("RemoteEvent")
-    musicPreference.Name = "MusicPreference"
-    musicPreference.Parent = remoteFolder
-    
-    local gamepassPurchased = Instance.new("RemoteEvent")
-    gamepassPurchased.Name = "GamepassPurchased"
-    gamepassPurchased.Parent = ReplicatedStorage
-    
-    local developerProductPurchased = Instance.new("RemoteEvent")
-    developerProductPurchased.Name = "DeveloperProductPurchased"
-    developerProductPurchased.Parent = ReplicatedStorage
-    
-    local promptGamepassPurchase = Instance.new("RemoteEvent")
-    promptGamepassPurchase.Name = "PromptGamepassPurchase"
-    promptGamepassPurchase.Parent = remoteFolder
-    
-    local promptDeveloperProductPurchase = Instance.new("RemoteEvent")
-    promptDeveloperProductPurchase.Name = "PromptDeveloperProductPurchase"
-    promptDeveloperProductPurchase.Parent = remoteFolder
-    
+-- Set up callback so StateService syncs data when ProfileStore loads
+DataService.OnPlayerDataLoaded = function(player)
+    StateService:BroadcastPlayerDataUpdate(player)
+    -- Initialize doors and tubes for owned plots when data loads
+    PlotService:InitializePlayerDoors(player)
 end
 
-createRemotes()
-
--- Initialize collision groups for pets and players
-local function initializeCollisionGroups()
-    print("Server: Setting up collision groups...")
-    
-    -- Use modern collision group system
-    PhysicsService:RegisterCollisionGroup("Pets")
-    PhysicsService:RegisterCollisionGroup("Players")
-    
-    -- Configure collision behavior: Pets don't collide with Players
-    PhysicsService:CollisionGroupSetCollidable("Pets", "Players", false)
-    PhysicsService:CollisionGroupSetCollidable("Pets", "Default", true) -- Pets still collide with ground/world
-    PhysicsService:CollisionGroupSetCollidable("Players", "Default", true) -- Players still collide with world
-    
-    print("Server: Collision groups configured - Pets and Players won't collide with each other")
-end
-
--- Set up collision groups
-initializeCollisionGroups()
-
--- Initialize AssetService (asset loading and caching)
-AssetService:Initialize()
-
--- Initialize AreaService (create all player areas)
+-- Initialize area service
+local AreaService = require(ServerScriptService.services.AreaService)
 AreaService:Initialize()
 
--- Initialize PlotService (handle plot purchases)
+-- Initialize plot service after areas are created
 PlotService:Initialize()
 
--- Initialize GamepassService (handle gamepass ownership and benefits)
-GamepassService:Initialize()
+-- Set up remote event handlers
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Initialize DeveloperProductService (handle developer product purchases)
-DeveloperProductService:Initialize()
+-- Create or get remote event for pet collection
+local collectPetRemote = ReplicatedStorage:FindFirstChild("CollectPet")
+if not collectPetRemote then
+    collectPetRemote = Instance.new("RemoteEvent")
+    collectPetRemote.Name = "CollectPet"
+    collectPetRemote.Parent = ReplicatedStorage
+end
 
--- Initialize PetMergeService (handle pet merging in the Lab)
-PetMergeService:Initialize()
+-- Create remote events for data synchronization
+local syncPlayerDataRemote = ReplicatedStorage:FindFirstChild("SyncPlayerData")
+if not syncPlayerDataRemote then
+    syncPlayerDataRemote = Instance.new("RemoteEvent")
+    syncPlayerDataRemote.Name = "SyncPlayerData"
+    syncPlayerDataRemote.Parent = ReplicatedStorage
+end
 
--- Initialize CodesManager (handle code redemption)
-CodesManager.initialize()
+local updateResourceRemote = ReplicatedStorage:FindFirstChild("UpdateResource")
+if not updateResourceRemote then
+    updateResourceRemote = Instance.new("RemoteEvent")
+    updateResourceRemote.Name = "UpdateResource"
+    updateResourceRemote.Parent = ReplicatedStorage
+end
 
-Players.PlayerAdded:Connect(function(player)
-    PlayerService:OnPlayerAdded(player)
+local requestDataRemote = ReplicatedStorage:FindFirstChild("RequestData")
+if not requestDataRemote then
+    requestDataRemote = Instance.new("RemoteEvent")
+    requestDataRemote.Name = "RequestData"
+    requestDataRemote.Parent = ReplicatedStorage
+end
+
+-- Create debug remote event for resetting player data
+local resetPlayerDataRemote = ReplicatedStorage:FindFirstChild("ResetPlayerData")
+if not resetPlayerDataRemote then
+    resetPlayerDataRemote = Instance.new("RemoteEvent")
+    resetPlayerDataRemote.Name = "ResetPlayerData"
+    resetPlayerDataRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for sending pets to heaven
+local sendToHeavenRemote = ReplicatedStorage:FindFirstChild("SendToHeaven")
+if not sendToHeavenRemote then
+    sendToHeavenRemote = Instance.new("RemoteEvent")
+    sendToHeavenRemote.Name = "SendToHeaven"
+    sendToHeavenRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for rebirth
+local rebirthRemote = ReplicatedStorage:FindFirstChild("RebirthPlayer")
+if not rebirthRemote then
+    rebirthRemote = Instance.new("RemoteEvent")
+    rebirthRemote.Name = "RebirthPlayer"
+    rebirthRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for error messages
+local errorMessageRemote = ReplicatedStorage:FindFirstChild("ShowErrorMessage")
+if not errorMessageRemote then
+    errorMessageRemote = Instance.new("RemoteEvent")
+    errorMessageRemote.Name = "ShowErrorMessage"
+    errorMessageRemote.Parent = ReplicatedStorage
+end
+
+-- Handle pet collection from client
+collectPetRemote.OnServerEvent:Connect(function(player, petData, ballPath)
+    -- Validate the pet data
+    if not petData or not petData.Name or not petData.Rarity then
+        warn("Main: Invalid pet data received from", player.Name)
+        return
+    end
     
-    -- Assign an area to the player and teleport them there
-    local areaId, areaData = AreaService:AssignAreaToPlayer(player)
-    if areaId then
-        -- Wait a moment for character to load
-        player.CharacterAdded:Connect(function(character)
-            wait(1) -- Give character time to fully load
-            AreaService:TeleportPlayerToArea(player, areaId)
-            -- Sync area assignments to this player after they spawn
-            AreaService:SyncAreaAssignmentsToPlayer(player)
-        end)
+    -- Add pet to player's inventory
+    DataService:AddPetToPlayer(player, petData)
+    
+    -- Notify PlotService that a ball was collected for counter update
+    if ballPath then
+        PlotService:OnPetBallCollected(ballPath)
+    end
+    
+    -- Sync updated data to client
+    StateService:BroadcastPlayerDataUpdate(player)
+    
+end)
+
+-- Handle reset player data from debug panel
+resetPlayerDataRemote.OnServerEvent:Connect(function(player)
+    print("Main: Reset data request from", player.Name)
+    
+    -- Reset player data to template
+    local success = DataService:ResetPlayerData(player)
+    if success then
+        -- Sync updated data to client
+        StateService:BroadcastPlayerDataUpdate(player)
         
-        -- If character already exists, teleport immediately
-        if player.Character then
-            wait(1)
-            AreaService:TeleportPlayerToArea(player, areaId)
-            AreaService:SyncAreaAssignmentsToPlayer(player)
-        end
+        -- Re-initialize the player's area to update visuals
+        PlotService:ReinitializePlayerArea(player)
     end
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    PlayerService:OnPlayerRemoving(player)
+-- Handle send to heaven from client
+sendToHeavenRemote.OnServerEvent:Connect(function(player)
+    print("Main: Send to heaven request from", player.Name)
     
-    -- Release the player's area
-    AreaService:ReleaseAreaFromPlayer(player)
+    -- Start heaven processing for this player
+    PetService:StartHeavenProcessing(player)
 end)
 
--- Remote handlers
-local function setupRemoteHandlers()
-    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+-- Handle rebirth from client
+rebirthRemote.OnServerEvent:Connect(function(player)
+    print("Main: Rebirth request from", player.Name)
     
-    -- Pet collection handler - Server validates and generates all critical data
-    remotes.CollectPet.OnServerEvent:Connect(function(player, clientPetData)
-        
-        -- Rate limiting check - allow burst of 10 pets per 0.5 seconds
-        local now = tick()
-        local playerId = tostring(player.UserId)
-        
-        if not playerCollectionData[playerId] then
-            playerCollectionData[playerId] = {lastReset = now, count = 0}
-        end
-        
-        local collectionData = playerCollectionData[playerId]
-        
-        -- Reset counter if 0.5 seconds have passed
-        if now - collectionData.lastReset >= 0.5 then
-            collectionData.lastReset = now
-            collectionData.count = 0
-        end
-        
-        -- Check if player has exceeded 10 collections in current window
-        if collectionData.count >= 30 then
-            warn("Rate limit: Too many collections from", player.Name, "- limit is 30 per 0.5 seconds")
-            return
-        end
-        
-        -- Increment collection count
-        collectionData.count = collectionData.count + 1
-        
-        -- Validate basic client data structure
-        if not clientPetData or not clientPetData.petId or not clientPetData.plotId then
-            warn("Invalid pet data structure from", player.Name)
-            return
-        end
-        
-        -- SERVER-SIDE VALIDATION: Get authoritative pet data from config
-        local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
-        local petConfig = PetConfig:GetPetData(clientPetData.petId)
-        
-        if not petConfig then
-            warn("Invalid pet ID", clientPetData.petId, "from", player.Name)
-            return
-        end
-        
-        -- SERVER GENERATES ALL CRITICAL VALUES (never trust client)
-        local serverPetData = {
-            id = clientPetData.petId,
-            uniqueId = game:GetService("HttpService"):GenerateGUID(false), -- Server-generated unique ID
-            name = petConfig.name, -- From server config, not client
-            rarity = petConfig.rarity, -- From server config, not client
-            value = petConfig.value, -- From server config, not client
-            collectedAt = tick(), -- Server timestamp
-            plotId = clientPetData.plotId, -- This is acceptable from client as it's just for tracking
-            aura = clientPetData.aura or "none", -- Validated below
-            size = clientPetData.size or 1 -- Validated below
-        }
-        
-        -- Validate aura and size if provided
-        if serverPetData.aura ~= "none" then
-            local auraData = PetConfig.AURAS[serverPetData.aura]
-            if not auraData then
-                warn("Invalid aura", serverPetData.aura, "from", player.Name, "- using 'none'")
-                serverPetData.aura = "none"
-            end
-        end
-        
-        if serverPetData.size > 1 then
-            local sizeData = PetConfig:GetSizeData(serverPetData.size)
-            if not sizeData then
-                warn("Invalid size", serverPetData.size, "from", player.Name, "- using size 1")
-                serverPetData.size = 1
-            end
-        end
-        
-        -- Calculate final value with aura/size multipliers (server-authoritative)
-        local finalValue = PetConfig:CalculatePetValue(serverPetData.id, serverPetData.aura, serverPetData.size)
-        serverPetData.value = finalValue
-        
-        -- Add pet to player's collection (immediate)
-        local success, reason = PlayerService:AddPetToCollection(player, serverPetData)
-        if success then
-            -- Give 1 diamond reward for pet collection
-            PlayerService:GiveDiamonds(player, 1)
-            
-            -- Do discovery check and announcement asynchronously to reduce delay
-            task.spawn(function()
-                PlayerService:CheckAndAnnounceDiscovery(player, serverPetData)
-            end)
-        else
-            warn("Failed to add pet to", player.Name, "'s collection - Reason:", reason)
-            
-            -- Send inventory full notification to client
-            if reason == "inventory_full" then
-                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                if remotes then
-                    local inventoryFullRemote = remotes:FindFirstChild("InventoryFull")
-                    if not inventoryFullRemote then
-                        inventoryFullRemote = Instance.new("RemoteEvent")
-                        inventoryFullRemote.Name = "InventoryFull"
-                        inventoryFullRemote.Parent = remotes
-                    end
-                    inventoryFullRemote:FireClient(player)
-                end
-            end
-        end
-    end)
+    -- Check if player has enough money (1000)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData or not playerData.Resources or playerData.Resources.Money < 1000 then
+        warn("Main: Player", player.Name, "does not have enough money for rebirth")
+        return
+    end
     
-    -- Pet assignment handlers with rollback response
-    remotes.AssignPet.OnServerEvent:Connect(function(player, petUniqueId)
-        if not petUniqueId or petUniqueId == "" then
-            warn("Invalid pet unique ID received from", player.Name, "- ID:", petUniqueId)
-            -- Send rollback signal to client
-            remotes.AssignPetResponse:FireClient(player, false, petUniqueId, "Invalid pet ID")
-            return
-        end
-        
-        local success, reason = PlayerService:AssignPet(player, petUniqueId)
-        if success then
-            PlayerService:SyncPlayerDataToClient(player)
-            -- Confirm success to client (prevents rollback)
-            remotes.AssignPetResponse:FireClient(player, true, petUniqueId, "Pet assigned successfully")
-        else
-            warn("Failed to assign pet for", player.Name, "- ID:", petUniqueId, "- Reason:", reason)
-            -- Send rollback signal to client
-            remotes.AssignPetResponse:FireClient(player, false, petUniqueId, reason or "Assignment failed")
-        end
-    end)
+    -- Perform rebirth - reset everything except rebirths
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        warn("Main: No profile found for player", player.Name)
+        return
+    end
     
-    remotes.UnassignPet.OnServerEvent:Connect(function(player, petUniqueId)
-        if not petUniqueId or petUniqueId == "" then
-            warn("Invalid pet unique ID received from", player.Name, "- ID:", petUniqueId)
-            -- Send rollback signal to client
-            remotes.UnassignPetResponse:FireClient(player, false, petUniqueId, "Invalid pet ID")
-            return
-        end
-        
-        local success, reason = PlayerService:UnassignPet(player, petUniqueId)
-        if success then
-            PlayerService:SyncPlayerDataToClient(player)
-            -- Confirm success to client (prevents rollback)
-            remotes.UnassignPetResponse:FireClient(player, true, petUniqueId, "Pet unassigned successfully")
-        else
-            warn("Failed to unassign pet for", player.Name, "- ID:", petUniqueId, "- Reason:", reason)
-            -- Send rollback signal to client
-            remotes.UnassignPetResponse:FireClient(player, false, petUniqueId, reason or "Unassignment failed")
-        end
-    end)
+    -- Increment rebirth count and reset everything else
+    local currentRebirths = playerData.Resources.Rebirths or 0
+    profile.Data.Resources = {
+        Diamonds = 0,
+        Money = 0, -- Starting money
+        Rebirths = currentRebirths + 1
+    }
+    profile.Data.Pets = {}
+    profile.Data.EquippedPets = {}
+    profile.Data.ProcessingPets = {}
+    profile.Data.OwnedTubes = {}
+    profile.Data.OwnedPlots = {}
     
-    -- State reconciliation handler
-    remotes.RequestStateReconciliation.OnServerEvent:Connect(function(player)
-        -- Send complete authoritative state to client for reconciliation
-        PlayerService:SyncPlayerDataToClient(player)
-    end)
+    -- Stop any active heaven processing
+    PetService:StopHeavenProcessing(player)
     
-    -- Debug remote handlers
-    remotes.DebugAddMoney.OnServerEvent:Connect(function(player)
-        PlayerService:GiveMoney(player, 1000)
-    end)
+    -- Clear spawned pet balls in player's area
+    PlotService:ClearAllPetBallsInPlayerArea(player)
     
-    remotes.DebugAddDiamonds.OnServerEvent:Connect(function(player)
-        PlayerService:GiveDiamonds(player, 1000)
-    end)
+    -- Sync updated data to client
+    StateService:BroadcastPlayerDataUpdate(player)
     
-    remotes.DebugAddRebirths.OnServerEvent:Connect(function(player)
-        PlayerService:GivePlayerRebirths(player, 1)
-    end)
+    -- Re-initialize the player's area to update visuals
+    PlotService:ReinitializePlayerArea(player)
     
-    -- Rebirth system handler
-    remotes.PlayerRebirth.OnServerEvent:Connect(function(player)
-        PlayerService:PerformPlayerRebirth(player)
-    end)
-    
-    remotes.DebugResetData.OnServerEvent:Connect(function(player)
-        PlayerService:ResetPlayerData(player)
-    end)
-    
-    remotes.DebugBuyProductionPlot.OnServerEvent:Connect(function(player)
-        PlayerService:BuyProductionPlot(player, 1) -- Buy production plot 1
-    end)
-    
-    -- Developer product purchase prompt handler
-    remotes.PromptProductPurchase.OnServerEvent:Connect(function(player, productName)
-        print(string.format("Player %s requesting to purchase product: %s", player.Name, productName))
-        DeveloperProductService:PromptPurchase(player, productName)
-    end)
-    
-    -- Send pets to heaven handler
-    remotes.SendPetsToHeaven.OnServerEvent:Connect(function(player, requestData)
-        PlayerService:SendPetsToHeaven(player, requestData)
-    end)
-    
-    -- Gamepass purchase prompt handler
-    remotes.PromptGamepassPurchase.OnServerEvent:Connect(function(player, gamepassName)
-        -- Get gamepass data
-        local GamepassConfig = require(ReplicatedStorage.Shared.config.GamepassConfig)
-        local gamepassData = GamepassConfig:GetGamepassByName(gamepassName)
-        
-        if not gamepassData then
-            warn(string.format("Unknown gamepass: %s requested by %s", gamepassName, player.Name))
-            return
-        end
-        
-        -- Prompt purchase
-        local MarketplaceService = game:GetService("MarketplaceService")
-        local success, errorMessage = pcall(function()
-            MarketplaceService:PromptGamePassPurchase(player, gamepassData.id)
-        end)
-        
-        if not success then
-            warn(string.format("Failed to prompt gamepass purchase for %s: %s", player.Name, errorMessage))
-        else
-            print(string.format("Prompted %s to purchase gamepass %s", player.Name, gamepassName))
-        end
-    end)
-    
-    -- Developer product purchase prompt handler
-    remotes.PromptDeveloperProductPurchase.OnServerEvent:Connect(function(player, productName)
-        local success = DeveloperProductService:PromptPurchase(player, productName)
-        if not success then
-            warn(string.format("Failed to prompt developer product purchase %s for %s", productName, player.Name))
-        end
-    end)
-    
-    -- Music preference handler
-    remotes.MusicPreference.OnServerEvent:Connect(function(player, musicEnabled)
-        if typeof(musicEnabled) ~= "boolean" then
-            warn("Invalid music preference from", player.Name, "- expected boolean, got:", typeof(musicEnabled))
-            return
-        end
-        
-        -- Update player's music preference in their settings
-        local success = PlayerService:UpdateMusicPreference(player, musicEnabled)
-        if success then
-            print(string.format("Updated music preference for %s: %s", player.Name, tostring(musicEnabled)))
-        else
-            warn(string.format("Failed to update music preference for %s", player.Name))
-        end
-    end)
-    
-end
+    print("Main: Rebirth completed for", player.Name, "- now has", currentRebirths + 1, "rebirths")
+end)
 
-setupRemoteHandlers()
-
+-- StateService handles the other remote events, we just need pet collection here

@@ -1,689 +1,218 @@
+-- DataService - Handles player data with ProfileStore
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
-local ServerStorage = game:GetService("ServerStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-local Packages = ServerStorage:WaitForChild("Packages")
-local ProfileStore = require(Packages.profilestore)
-local RebirthConfig = require(ReplicatedStorage.Shared.config.RebirthConfig)
+local ProfileService = require(game.ServerStorage.Packages:WaitForChild("profilestore"))
 
 local DataService = {}
 DataService.__index = DataService
 
 -- Configuration
-local PET_INVENTORY_CAP = 1000 -- Maximum pets a player can hold
-
 local PROFILE_TEMPLATE = {
-    resources = {
-        money = 50, -- Starting money
-        rebirths = 0,
-        diamonds = 10, -- Start with some diamonds for testing
+    Resources = {
+        Diamonds = 0,
+        Money = 0, -- Starting money
+        Rebirths = 0
     },
-    boughtPlots = {},
-    boughtProductionPlots = {},
-    ownedPets = {},
-    discoveredCombinations = {},
-    companionPets = {},
-    activeBoosts = {},
-    ownedGamepasses = {}, -- Store owned gamepasses with purchase info
-    temporaryEffects = {}, -- Store temporary effects from developer products
-    friends = {}, -- Store friend user IDs for boost calculation
-    settings = {
-        musicEnabled = true,
-        sfxEnabled = true,
-    },
-    stats = {
-        playtime = 0,
-        joins = 0,
-        totalPetsCollected = 0,
-        totalRebirths = 0,
-        totalMoneySpent = 0,
-        totalDiamondsSpent = 0,
-    },
-    heavenQueue = {
-        pets = {}, -- Array of pets waiting to be processed
-        lastProcessTime = 0 -- Timestamp of last processing
-    },
-    maxSlots = 3 -- Maximum pet companion slots (can be expanded through purchases)
+    Pets = {}, -- Array of pet objects
+    EquippedPets = {}, -- Array of equipped pets
+    ProcessingPets = {}, -- Array of pets being processed (sent to heaven)
+    OwnedTubes = {}, -- Array of tube numbers
+    OwnedPlots = {} -- Array of plot numbers
 }
 
--- Create ProfileStore instance
-local PlayerProfileStore = ProfileStore.New("PlayerData_v1", PROFILE_TEMPLATE)
+local DATASTORE_NAME = "PlayerData"
 
+-- Create ProfileStore using the correct API
+local ProfileStore = ProfileService.New(DATASTORE_NAME, PROFILE_TEMPLATE)
+
+
+-- Store active profiles
 local Profiles = {}
 
-function DataService:GetProfile(player)
-    return Profiles[player]
-end
-
-function DataService:GetAllProfiles()
-    return Profiles
-end
-
-function DataService:LoadProfile(player)
-    local profile = PlayerProfileStore:StartSessionAsync(tostring(player.UserId))
+function DataService:Initialize()
+    -- Handle players already in game
+    for _, player in pairs(Players:GetPlayers()) do
+        self:LoadPlayerProfile(player)
+    end
     
-    if profile then
-        Profiles[player] = profile
+    -- Handle new players joining
+    Players.PlayerAdded:Connect(function(player)
+        self:LoadPlayerProfile(player)
+    end)
+    
+    -- Handle players leaving
+    Players.PlayerRemoving:Connect(function(player)
+        self:UnloadPlayerProfile(player)
+    end)
+end
+
+function DataService:LoadPlayerProfile(player)
+    local profileKey = "Player_" .. player.UserId
+    
+    
+    local profile = ProfileStore:StartSessionAsync(profileKey, {
+        Cancel = function()
+            return player.Parent ~= Players
+        end
+    })
+    
+    if profile ~= nil then
+        -- GDPR compliance and data reconciliation
+        profile:Reconcile() -- Fill in missing template values
         
-        -- Initialize stats
-        profile.Data.stats.joins = profile.Data.stats.joins + 1
-        
-        -- Migrate existing pets to have unique IDs if they don't have them
-        self:MigratePetUniqueIds(player)
-        
-        -- Migrate existing players to have maxSlots field
-        self:MigrateMaxSlots(player)
-        
-        self:CleanupExpiredBoosts(player)
-        
-        print("Loaded ProfileStore data for player:", player.Name, "Money:", profile.Data.resources.money)
-        return profile
+        if player.Parent == Players then
+            Profiles[player] = profile
+            
+            -- Initialize player data
+            self:InitializePlayerData(player, profile.Data)
+            
+            -- Trigger initial data sync callback if set
+            if self.OnPlayerDataLoaded then
+                self.OnPlayerDataLoaded(player)
+            end
+        else
+            -- Player left before profile loaded
+            profile:EndSession()
+        end
     else
-        player:Kick("Failed to load data")
-        return nil
+        -- Profile couldn't be loaded (probably due to other Roblox servers)
+        player:Kick("Failed to load data. Please rejoin.")
     end
 end
 
-function DataService:ReleaseProfile(player)
+function DataService:UnloadPlayerProfile(player)
     local profile = Profiles[player]
-    if profile then
-        print("Releasing ProfileStore data for player:", player.Name)
-        -- Check what methods are available on the profile
-        print("Profile methods:")
-        for key, value in pairs(profile) do
-            if type(value) == "function" then
-                print("  " .. tostring(key) .. ": function")
-            end
-        end
-        
-        -- Try different release methods
-        if profile.Release then
-            profile:Release()
-        elseif profile.EndSession then
-            profile:EndSession()
-        elseif profile.Close then
-            profile:Close()
-        else
-            print("No known release method found")
-        end
-        
+    if profile ~= nil then
+        profile:EndSession()
         Profiles[player] = nil
     end
 end
 
-function DataService:GetData(player, key)
-    local profile = self:GetProfile(player)
-    if profile then
-        return profile.Data[key]
-    end
-    return nil
+function DataService:InitializePlayerData(player, data)
+    -- Player data initialized successfully
+end
+
+function DataService:GetPlayerProfile(player)
+    return Profiles[player]
 end
 
 function DataService:GetPlayerData(player)
-    local profile = self:GetProfile(player)
+    local profile = Profiles[player]
     if profile then
         return profile.Data
     end
     return nil
 end
 
-function DataService:SetData(player, key, value)
-    local profile = self:GetProfile(player)
-    if profile then
-        profile.Data[key] = value
+-- Helper functions for common data operations
+function DataService:UpdatePlayerResources(player, resourceType, amount)
+    local profile = Profiles[player]
+    if profile and profile.Data.Resources[resourceType] then
+        profile.Data.Resources[resourceType] = profile.Data.Resources[resourceType] + amount
+        
+        -- Update plot colors and GUIs when money changes
+        if resourceType == "Money" then
+            local PlotService = require(script.Parent.PlotService)
+            local AreaService = require(script.Parent.AreaService)
+            
+            local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
+            if assignedAreaNumber then
+                local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+                if playerAreas then
+                    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
+                    if area then
+                        PlotService:UpdatePlotColors(area, player)
+                        PlotService:UpdatePlotGUIs(area, player)
+                    end
+                end
+            end
+        end
+        
         return true
     end
     return false
 end
 
-function DataService:UpdateData(player, key, callback)
-    local profile = self:GetProfile(player)
-    if profile then
-        local newValue = callback(profile.Data[key])
-        profile.Data[key] = newValue
-        return newValue
+function DataService:SetPlayerResource(player, resourceType, amount)
+    local profile = Profiles[player]
+    if profile and profile.Data.Resources[resourceType] then
+        profile.Data.Resources[resourceType] = amount
+        return true
     end
-    return nil
-end
-
--- Add money with rebirth multiplier applied
-function DataService:AddMoney(player, baseAmount)
-    local multipliedAmount = 0
-    local result = self:UpdateData(player, "resources", function(resources)
-        -- Apply rebirth multiplier to the base amount
-        multipliedAmount = RebirthConfig:CalculateMoneyWithMultiplier(baseAmount, resources.rebirths or 0)
-        resources.money = resources.money + multipliedAmount
-        return resources
-    end)
-    return result
-end
-
--- Add raw money without multiplier (for internal use only)
-function DataService:AddRawMoney(player, amount)
-    local result = self:UpdateData(player, "resources", function(resources)
-        resources.money = resources.money + amount
-        return resources
-    end)
-    return result
-end
-
-function DataService:SpendMoney(player, amount)
-    return self:UpdateData(player, "resources", function(resources)
-        if resources.money >= amount then
-            resources.money = resources.money - amount
-            return resources
-        end
-        return resources
-    end)
-end
-
-function DataService:AddDiamonds(player, amount)
-    local result = self:UpdateData(player, "resources", function(resources)
-        resources.diamonds = resources.diamonds + amount
-        return resources
-    end)
-    return result
-end
-
-function DataService:SpendDiamonds(player, amount)
-    return self:UpdateData(player, "resources", function(resources)
-        if resources.diamonds >= amount then
-            resources.diamonds = resources.diamonds - amount
-            return resources
-        end
-        return resources
-    end)
-end
-
-function DataService:AddRebirths(player, amount)
-    local result = self:UpdateData(player, "resources", function(resources)
-        resources.rebirths = resources.rebirths + amount
-        return resources
-    end)
-    return result
-end
-
--- Perform a rebirth: increase rebirths by 1, reset money to starting amount, and reset purchased plots
-function DataService:PerformRebirth(player)
-    local profile = self:GetProfile(player)
-    if not profile then
-        return false
-    end
-    
-    -- Update resources (rebirths and money)
-    local resourceResult = self:UpdateData(player, "resources", function(resources)
-        -- Increase rebirth count
-        resources.rebirths = resources.rebirths + 1
-        -- Reset money to rebirth amount
-        resources.money = RebirthConfig.REBIRTH_MONEY_RESET
-        return resources
-    end)
-    
-    if resourceResult then
-        -- Reset purchased plots so player can buy new rarity spawners
-        profile.Data.boughtPlots = {}
-        
-        -- Also reset production plots if they exist
-        profile.Data.boughtProductionPlots = {}
-        
-        -- Clear heaven queue to remove all pets being processed
-        if profile.Data.heavenQueue then
-            profile.Data.heavenQueue.pets = {}
-            profile.Data.heavenQueue.lastProcessTime = 0
-        end
-        
-        print(string.format("DataService:PerformRebirth - %s rebirthed (rebirths: %d, money reset to %d, plots reset, heaven queue cleared)", 
-            player.Name, resourceResult.rebirths, resourceResult.money))
-    end
-    
-    return resourceResult
-end
-
-function DataService:ResetPlayerData(player)
-    local profile = self:GetProfile(player)
-    if profile then
-        -- Reset to template data
-        for key, value in pairs(PROFILE_TEMPLATE) do
-            if type(value) == "table" then
-                profile.Data[key] = {}
-                for subKey, subValue in pairs(value) do
-                    profile.Data[key][subKey] = subValue
-                end
-            else
-                profile.Data[key] = value
-            end
-        end
-        return profile.Data
-    end
-    return nil
+    return false
 end
 
 function DataService:AddPet(player, petData)
-    local profile = self:GetProfile(player)
-    if not profile then
-        return false, "no_profile"
-    end
-    
-    local ownedPets = profile.Data.ownedPets or {}
-    
-    -- Calculate actual inventory capacity (including gamepass bonuses)
-    local actualCapacity = self:GetPlayerInventoryCapacity(player)
-    
-    -- Check if inventory is at capacity
-    if #ownedPets >= actualCapacity then
-        warn(string.format("DataService: Player %s inventory at capacity (%d/%d)", 
-            player.Name, #ownedPets, actualCapacity))
-        return false, "inventory_full"
-    end
-    
-    -- Add the pet
-    table.insert(ownedPets, petData)
-    profile.Data.ownedPets = ownedPets
-    
-    return true, "success"
-end
-
--- Get friends that are currently online in the same server
-function DataService:GetOnlineFriends(player)
-    local profile = self:GetProfile(player)
-    if not profile then return {} end
-    
-    local onlineFriends = {}
-    local friendsList = profile.Data.friends or {}
-    
-    -- Check which friends are in the current server
-    for _, friendUserId in ipairs(friendsList) do
-        for _, serverPlayer in pairs(game.Players:GetPlayers()) do
-            if serverPlayer.UserId == friendUserId and serverPlayer ~= player then
-                table.insert(onlineFriends, {
-                    userId = friendUserId,
-                    name = serverPlayer.Name
-                })
-            end
-        end
-    end
-    
-    return onlineFriends
-end
-
--- Calculate friends boost percentage
-function DataService:GetFriendsBoost(player)
-    local onlineFriends = self:GetOnlineFriends(player)
-    local friendsCount = #onlineFriends
-    return friendsCount * 100 -- 100% boost per friend
-end
-
--- Update friends list when players join/leave
-function DataService:UpdateFriendsList(player)
-    local profile = self:GetProfile(player)
-    if not profile then return end
-    
-    -- Get player's Roblox friends
-    local success, friendsPages = pcall(function()
-        return player:GetFriendsAsync(200) -- Max 200 friends per call
-    end)
-    
-    if success and friendsPages then
-        local friends = {}
-        
-        -- Process the friends pages
-        while true do
-            local currentPage = friendsPages:GetCurrentPage()
-            for _, friend in pairs(currentPage) do
-                table.insert(friends, friend.Id)
-            end
-            
-            if friendsPages.IsFinished then
-                break
-            end
-            
-            local success2, error = pcall(function()
-                friendsPages:AdvanceToNextPageAsync()
-            end)
-            
-            if not success2 then
-                warn("Error getting friends list for", player.Name, ":", error)
-                break
-            end
-        end
-        
-        -- Update profile
-        profile.Data.friends = friends
-        print(string.format("Updated friends list for %s: %d friends", player.Name, #friends))
-    else
-        warn("Failed to get friends list for", player.Name)
-    end
-end
-
--- Get player's actual inventory capacity (base + gamepass bonuses + temporary effects)
-function DataService:GetPlayerInventoryCapacity(player)
-    local baseCapacity = PET_INVENTORY_CAP
-    local actualCapacity = baseCapacity
-    
-    local profile = self:GetProfile(player)
-    if not profile then
-        return baseCapacity
-    end
-    
-    -- Check for gamepass bonuses (PetCollector doubles capacity)
-    local ownedGamepasses = profile.Data.ownedGamepasses or {}
-    if ownedGamepasses.PetCollector then
-        actualCapacity = actualCapacity * 2 -- 2000 instead of 1000
-    end
-    
-    -- Check for temporary effects (like max inventory dev product)
-    local temporaryEffects = profile.Data.temporaryEffects or {}
-    if temporaryEffects.expandedInventory then
-        local expansion = temporaryEffects.expandedInventory
-        if expansion.expirationTime > tick() then
-            actualCapacity = actualCapacity + (expansion.additionalSpace or 0)
-        else
-            -- Effect expired, clean it up
-            temporaryEffects.expandedInventory = nil
-            profile.Data.temporaryEffects = temporaryEffects
-        end
-    end
-    
-    return actualCapacity
-end
-
--- Get pet inventory count and capacity info
-function DataService:GetPetInventoryInfo(player)
-    local profile = self:GetProfile(player)
+    local profile = Profiles[player]
     if profile then
-        local ownedPets = profile.Data.ownedPets or {}
-        local actualCapacity = self:GetPlayerInventoryCapacity(player)
-        return {
-            count = #ownedPets,
-            capacity = actualCapacity,
-            baseCapacity = PET_INVENTORY_CAP,
-            isFull = #ownedPets >= actualCapacity
-        }
+        table.insert(profile.Data.Pets, petData)
+        return true
     end
-    return {
-        count = 0,
-        capacity = PET_INVENTORY_CAP,
-        baseCapacity = PET_INVENTORY_CAP,
-        isFull = false
-    }
+    return false
 end
 
-function DataService:AddDiscoveredCombination(player, combination)
-    return self:UpdateData(player, "discoveredCombinations", function(discovered)
-        -- Check if already discovered
-        for _, combo in ipairs(discovered) do
-            if combo == combination then
-                return discovered -- Already discovered, no change
-            end
+function DataService:EquipPet(player, petData)
+    local profile = Profiles[player]
+    if profile then
+        table.insert(profile.Data.EquippedPets, petData)
+        return true
+    end
+    return false
+end
+
+function DataService:AddOwnedTube(player, tubeNumber)
+    local profile = Profiles[player]
+    if profile then
+        table.insert(profile.Data.OwnedTubes, tubeNumber)
+        return true
+    end
+    return false
+end
+
+function DataService:AddOwnedPlot(player, plotNumber)
+    local profile = Profiles[player]
+    if profile then
+        table.insert(profile.Data.OwnedPlots, plotNumber)
+        return true
+    end
+    return false
+end
+
+function DataService:AddPetToPlayer(player, petData)
+    local profile = Profiles[player]
+    if profile then
+        -- Ensure pet has an ID
+        if not petData.ID then
+            petData.ID = game:GetService("HttpService"):GenerateGUID(false)
         end
-        -- New discovery!
-        table.insert(discovered, combination)
         
-        -- Update cache for faster future lookups
-        local profile = self:GetProfile(player)
-        if profile and profile.Data._discoveryCache then
-            profile.Data._discoveryCache[combination] = true
-        end
-        
-        return discovered
-    end)
+        table.insert(profile.Data.Pets, petData)
+        return true
+    end
+    return false
 end
 
-function DataService:HasDiscoveredCombination(player, combination)
-    local profile = self:GetProfile(player)
-    if not profile then return false end
-    
-    local discovered = profile.Data.discoveredCombinations or {}
-    
-    -- Convert to hash table lookup for O(1) performance instead of O(n)
-    if not profile.Data._discoveryCache then
-        profile.Data._discoveryCache = {}
-        for _, combo in ipairs(discovered) do
-            profile.Data._discoveryCache[combo] = true
-        end
-    end
-    
-    return profile.Data._discoveryCache[combination] == true
-end
-
-function DataService:RemovePet(player, petId)
-    return self:UpdateData(player, "ownedPets", function(ownedPets)
-        for i, pet in ipairs(ownedPets) do
-            if pet.id == petId then
-                table.remove(ownedPets, i)
-                break
-            end
-        end
-        return ownedPets
-    end)
-end
-
-function DataService:AddPlot(player, plotId)
-    return self:UpdateData(player, "boughtPlots", function(boughtPlots)
-        table.insert(boughtPlots, plotId)
-        return boughtPlots
-    end)
-end
-
-function DataService:AddProductionPlot(player, plotId)
-    return self:UpdateData(player, "boughtProductionPlots", function(boughtProductionPlots)
-        table.insert(boughtProductionPlots, plotId)
-        return boughtProductionPlots
-    end)
-end
-
-function DataService:AddBoost(player, boostData)
-    return self:UpdateData(player, "activeBoosts", function(activeBoosts)
-        table.insert(activeBoosts, boostData)
-        return activeBoosts
-    end)
-end
-
-function DataService:CleanupExpiredBoosts(player)
-    local currentTime = tick()
-    return self:UpdateData(player, "activeBoosts", function(activeBoosts)
-        local newBoosts = {}
-        for _, boost in ipairs(activeBoosts) do
-            if boost.endsAtTimeStamp > currentTime then
-                table.insert(newBoosts, boost)
-            end
-        end
-        return newBoosts
-    end)
-end
-
-function DataService:UpdatePlaytime(player, deltaTime)
-    return self:UpdateData(player, "stats", function(stats)
-        stats.playtime = stats.playtime + deltaTime
-        return stats
-    end)
-end
-
-function DataService:AssignPet(player, petUniqueId)
-    local profile = self:GetProfile(player)
-    if not profile then return false end
-    
-    -- Check if player already has maximum assigned pets (dynamic based on purchases)
-    local companionPets = profile.Data.companionPets or {}
-    local maxSlots = profile.Data.maxSlots or 3 -- Default to 3 if not set
-    if #companionPets >= maxSlots then
-        return false -- Already at maximum
-    end
-    
-    -- Find the pet in owned pets
-    local ownedPets = profile.Data.ownedPets or {}
-    local targetPet = nil
-    
-    for _, pet in ipairs(ownedPets) do
-        if pet.uniqueId == petUniqueId then
-            targetPet = pet
-            break
-        end
-    end
-    
-    if not targetPet then
-        return false -- Pet not found
-    end
-    
-    -- Check if pet is already assigned
-    for _, assignedPet in ipairs(companionPets) do
-        if assignedPet.uniqueId == petUniqueId then
-            return false -- Pet already assigned
-        end
-    end
-    
-    -- Add to companionPets
-    table.insert(companionPets, targetPet)
-    profile.Data.companionPets = companionPets
-    
-    return true
-end
-
-function DataService:UnassignPet(player, petUniqueId)
-    local profile = self:GetProfile(player)
-    if not profile then return false end
-    
-    local companionPets = profile.Data.companionPets or {}
-    
-    -- Find and remove the pet from companionPets
-    for i, assignedPet in ipairs(companionPets) do
-        if assignedPet.uniqueId == petUniqueId then
-            table.remove(companionPets, i)
-            profile.Data.companionPets = companionPets
-            return true
-        end
-    end
-    
-    return false -- Pet not found in assigned pets
-end
-
-function DataService:MigratePetUniqueIds(player)
-    local profile = self:GetProfile(player)
-    if not profile then return end
-    
-    local ownedPets = profile.Data.ownedPets or {}
-    local HttpService = game:GetService("HttpService")
-    local needsUpdate = false
-    
-    -- Add unique IDs to pets that don't have them
-    for _, pet in ipairs(ownedPets) do
-        if not pet.uniqueId then
-            pet.uniqueId = HttpService:GenerateGUID(false)
-            needsUpdate = true
-        end
-    end
-    
-    if needsUpdate then
-        print("DataService: Migrated", #ownedPets, "pets to have unique IDs for", player.Name)
-    end
-end
-
-function DataService:MigrateMaxSlots(player)
-    local profile = self:GetProfile(player)
-    if not profile then return end
-    
-    -- Initialize maxSlots for existing players who don't have it
-    if not profile.Data.maxSlots then
-        profile.Data.maxSlots = 3 -- Default value
-        print("DataService: Migrated maxSlots field for", player.Name, "with default value 3")
-    end
-end
-
-function DataService:SellUnassignedPets(player, petsToSell, expectedValue)
-    local profile = self:GetProfile(player)
-    if not profile then
-        return false, 0
-    end
-    
-    local PetConfig = require(ReplicatedStorage.Shared.config.PetConfig)
-    local ownedPets = profile.Data.ownedPets or {}
-    local companionPets = profile.Data.companionPets or {}
-    
-    -- Create lookup table for assigned pets
-    local assignedPetIds = {}
-    for _, assignedPet in ipairs(companionPets) do
-        if assignedPet.uniqueId then
-            assignedPetIds[assignedPet.uniqueId] = true
-        end
-    end
-    
-    -- Create lookup table for pets to sell
-    local sellPetIds = {}
-    for _, sellPet in ipairs(petsToSell) do
-        if sellPet.uniqueId then
-            sellPetIds[sellPet.uniqueId] = true
-        end
-    end
-    
-    -- Validate and calculate actual value
-    local actualValue = 0
-    local validPetsToSell = {}
-    
-    for _, pet in ipairs(ownedPets) do
-        if pet.uniqueId and sellPetIds[pet.uniqueId] then
-            -- Check that this pet is not assigned
-            if not assignedPetIds[pet.uniqueId] then
-                -- Calculate authoritative pet value
-                local petValue = PetConfig:CalculatePetValue(pet.id or 1, pet.aura, pet.size)
-                actualValue = actualValue + petValue
-                table.insert(validPetsToSell, pet)
-            else
-                warn("DataService:SellUnassignedPets - Attempted to sell assigned pet:", pet.name, "from", player.Name)
-                return false, 0 -- Reject entire transaction if trying to sell assigned pet
-            end
-        end
-    end
-    
-    -- Security check: Verify expected value matches calculated value (within 10% tolerance)
-    local tolerance = math.max(1, expectedValue * 0.1)
-    if math.abs(actualValue - expectedValue) > tolerance then
-        warn(string.format("DataService:SellUnassignedPets - Value mismatch for %s: expected %d, calculated %d", 
-            player.Name, expectedValue, actualValue))
-        return false, 0
-    end
-    
-    if #validPetsToSell == 0 then
-        print("DataService:SellUnassignedPets - No valid pets to sell for", player.Name)
-        return false, 0
-    end
-    
-    -- Remove sold pets from owned pets
-    local remainingPets = {}
-    for _, pet in ipairs(ownedPets) do
-        if not (pet.uniqueId and sellPetIds[pet.uniqueId]) then
-            table.insert(remainingPets, pet)
-        end
-    end
-    
-    -- Remove sold pets from owned pets
-    profile.Data.ownedPets = remainingPets
-    
-    -- Add pets to heaven processing queue instead of giving money immediately
-    if not profile.Data.heavenQueue then
-        profile.Data.heavenQueue = {pets = {}, lastProcessTime = 0}
-    end
-    
-    for _, pet in ipairs(validPetsToSell) do
-        -- Get pet config for asset path
-        local petData = PetConfig:GetPetData(pet.id or 1)
-        local queuedPet = {
-            uniqueId = pet.uniqueId,
-            name = pet.name,
-            value = PetConfig:CalculatePetValue(pet.id or 1, pet.aura, pet.size),
-            id = pet.id,
-            aura = pet.aura,
-            size = pet.size,
-            assetPath = petData and petData.assetPath or ("Pets/" .. (pet.name or "Unknown")),
-            queuedAt = tick()
+function DataService:ResetPlayerData(player)
+    local profile = Profiles[player]
+    if profile then
+        -- Reset data to template values
+        profile.Data.Resources = {
+            Diamonds = 0,
+            Money = 0, -- Starting money
+            Rebirths = 0
         }
-        table.insert(profile.Data.heavenQueue.pets, queuedPet)
+        profile.Data.Pets = {}
+        profile.Data.EquippedPets = {}
+        profile.Data.ProcessingPets = {}
+        profile.Data.OwnedTubes = {}
+        profile.Data.OwnedPlots = {}
+        
+        print("DataService: Reset player data for", player.Name)
+        return true
     end
-    
-    print(string.format("DataService:SellUnassignedPets - %s queued %d pets for processing (had %d, now has %d pets, queue size: %d)", 
-        player.Name, #validPetsToSell, #ownedPets, #remainingPets, #profile.Data.heavenQueue.pets))
-    
-    return true, actualValue
+    return false
 end
 
 return DataService

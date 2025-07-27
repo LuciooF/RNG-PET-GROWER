@@ -1,0 +1,539 @@
+-- PetService - Handles pet creation, management, and operations
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local DataService = require(script.Parent.DataService)
+local PetConfig = require(ReplicatedStorage.config.PetConfig)
+local PetUtils = require(ReplicatedStorage.utils.PetUtils)
+
+local PetService = {}
+PetService.__index = PetService
+
+function PetService:Initialize()
+    -- Service initialized
+end
+
+-- Create a new random pet for a player
+function PetService:CreateRandomPet(player, rarityWeights, variationWeights)
+    local newPet = PetConfig.createRandomPet(rarityWeights, variationWeights)
+    
+    if newPet then
+        local success = DataService:AddPet(player, newPet)
+        if success then
+            return newPet
+        end
+    end
+    
+    return nil
+end
+
+-- Create a specific pet for a player
+function PetService:CreatePet(player, petName, variation)
+    local basePet = PetConfig.getBasePetByName(petName)
+    if not basePet then
+        warn("PetService: Pet not found: " .. tostring(petName))
+        return nil
+    end
+    
+    local newPet = PetConfig.createPet(basePet, variation)
+    local success = DataService:AddPet(player, newPet)
+    
+    if success then
+        return newPet
+    end
+    
+    return nil
+end
+
+-- Equip a pet for a player
+function PetService:EquipPet(player, petId)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return false
+    end
+    
+    -- Find the pet in player's collection
+    local petToEquip = nil
+    for _, pet in pairs(playerData.Pets) do
+        if pet.ID == petId then
+            petToEquip = pet
+            break
+        end
+    end
+    
+    if not petToEquip then
+        warn("PetService: Pet not found in player's collection: " .. tostring(petId))
+        return false
+    end
+    
+    -- Check if pet is already equipped
+    for _, equippedPet in pairs(playerData.EquippedPets) do
+        if equippedPet.ID == petId then
+            warn("PetService: Pet already equipped: " .. tostring(petId))
+            return false
+        end
+    end
+    
+    -- Add to equipped pets
+    local success = DataService:EquipPet(player, petToEquip)
+    return success
+end
+
+-- Unequip a pet for a player
+function PetService:UnequipPet(player, petId)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return false
+    end
+    
+    -- Find and remove from equipped pets
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        return false
+    end
+    
+    local newEquippedPets = {}
+    local found = false
+    
+    for _, equippedPet in pairs(playerData.EquippedPets) do
+        if equippedPet.ID ~= petId then
+            table.insert(newEquippedPets, equippedPet)
+        else
+            found = true
+        end
+    end
+    
+    if found then
+        profile.Data.EquippedPets = newEquippedPets
+        return true
+    end
+    
+    return false
+end
+
+-- Get best pets from player's collection
+function PetService:GetBestPets(player, maxCount)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return {}
+    end
+    
+    return PetUtils.getBestPets(playerData.Pets, maxCount or 10)
+end
+
+-- Auto-equip best pets for a player
+function PetService:AutoEquipBestPets(player, maxEquipped)
+    maxEquipped = maxEquipped or 6 -- Default max equipped pets
+    
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return false
+    end
+    
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        return false
+    end
+    
+    -- Get best pets
+    local bestPets = self:GetBestPets(player, maxEquipped)
+    
+    -- Replace equipped pets with best pets
+    profile.Data.EquippedPets = bestPets
+    
+    return true
+end
+
+-- Calculate total boost from equipped pets
+function PetService:GetEquippedBoost(player)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return 1.0
+    end
+    
+    return PetUtils.calculateTotalBoost(playerData.EquippedPets)
+end
+
+-- Calculate total value from equipped pets
+function PetService:GetEquippedValue(player)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return 0
+    end
+    
+    return PetUtils.calculateTotalValue(playerData.EquippedPets)
+end
+
+-- Get pets by rarity from player's collection
+function PetService:GetPlayerPetsByRarity(player, rarity)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return {}
+    end
+    
+    local petsOfRarity = {}
+    for _, pet in pairs(playerData.Pets) do
+        if pet.Rarity == rarity then
+            table.insert(petsOfRarity, pet)
+        end
+    end
+    
+    return petsOfRarity
+end
+
+-- Validate pet ownership
+function PetService:PlayerOwnsPet(player, petId)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return false
+    end
+    
+    for _, pet in pairs(playerData.Pets) do
+        if pet.ID == petId then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Remove a pet from player's collection
+function PetService:RemovePet(player, petId)
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        return false
+    end
+    
+    -- Remove from pets collection
+    local newPets = {}
+    local found = false
+    
+    for _, pet in pairs(profile.Data.Pets) do
+        if pet.ID ~= petId then
+            table.insert(newPets, pet)
+        else
+            found = true
+        end
+    end
+    
+    if found then
+        profile.Data.Pets = newPets
+        
+        -- Also remove from equipped pets if equipped
+        self:UnequipPet(player, petId)
+        
+        return true
+    end
+    
+    return false
+end
+
+-- Store active heaven processing per player
+local heavenProcessing = {}
+
+-- Show error message to player
+function PetService:ShowErrorMessage(player, message)
+    -- Get the remote event (should already exist from Main.server.lua)
+    local errorMessageRemote = ReplicatedStorage:FindFirstChild("ShowErrorMessage")
+    if errorMessageRemote then
+        -- Send error message to client
+        errorMessageRemote:FireClient(player, message)
+    else
+        warn("PetService: ShowErrorMessage remote event not found!")
+    end
+end
+
+-- Start heaven processing for a player
+function PetService:StartHeavenProcessing(player)
+    -- Get player data
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return false
+    end
+    
+    -- Check if player has any tubes unlocked
+    local PlotService = require(script.Parent.PlotService)
+    local ownedTubes = PlotService:GetPlayerOwnedTubes(player)
+    
+    if #ownedTubes == 0 then
+        -- Show error message to player
+        self:ShowErrorMessage(player, "You have to have unlocked at least 1 heaven tube first before sending pets to heaven!")
+        return false
+    end
+    
+    -- Since we don't have equipping yet, ALL pets should be processable
+    -- Combine pets from both Pets and EquippedPets arrays (temporary fix until equipping is implemented)
+    local allPets = {}
+    
+    -- Add pets from main Pets array
+    for _, pet in pairs(playerData.Pets or {}) do
+        table.insert(allPets, pet)
+    end
+    
+    -- Add pets from EquippedPets array (these shouldn't be here but they are due to previous bug)
+    for _, pet in pairs(playerData.EquippedPets or {}) do
+        table.insert(allPets, pet)
+    end
+    
+    if #allPets == 0 then
+        return false
+    end
+    
+    -- Move all pets to ProcessingPets
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        return false
+    end
+    
+    -- Set ProcessingPets to all pets
+    profile.Data.ProcessingPets = allPets
+    
+    -- Clear both pet arrays since all pets are now being processed
+    -- New pets will be added to Pets array when collected
+    profile.Data.Pets = {}
+    profile.Data.EquippedPets = {}
+    
+    -- Sync data to client
+    local StateService = require(script.Parent.StateService)
+    StateService:BroadcastPlayerDataUpdate(player)
+    
+    -- Update processing counter
+    self:UpdateProcessingCounter(player)
+    
+    -- Start the heaven processing loop
+    self:StartHeavenProcessingLoop(player)
+    
+    return true
+end
+
+-- Start the heaven processing loop for a player
+function PetService:StartHeavenProcessingLoop(player)
+    -- Stop any existing processing
+    if heavenProcessing[player] then
+        task.cancel(heavenProcessing[player])
+    end
+    
+    -- Get player's owned tubes
+    local PlotService = require(script.Parent.PlotService)
+    local ownedTubes = PlotService:GetPlayerOwnedTubes(player)
+    
+    if #ownedTubes == 0 then
+        return
+    end
+    
+    -- Start processing thread
+    heavenProcessing[player] = task.spawn(function()
+        while true do
+            local success = self:ProcessOnePetPerTube(player, ownedTubes)
+            if not success then
+                break -- No more pets to process
+            end
+            wait(3) -- Process one pet per tube every 3 seconds
+        end
+        
+        -- Clean up when done
+        heavenProcessing[player] = nil
+    end)
+end
+
+-- Process one pet per tube
+function PetService:ProcessOnePetPerTube(player, ownedTubes)
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        return false
+    end
+    
+    local processingPets = profile.Data.ProcessingPets or {}
+    if #processingPets == 0 then
+        return false -- No more pets to process
+    end
+    
+    -- Process up to one pet per tube
+    local petsProcessed = 0
+    local maxProcessThisRound = math.min(#ownedTubes, #processingPets)
+    
+    for i = 1, maxProcessThisRound do
+        local pet = processingPets[1] -- Always take first pet
+        local tubeNumber = ownedTubes[i]
+        
+        -- Calculate pet value (BaseValue * VariationMultiplier)
+        local petValue = self:CalculatePetValue(pet)
+        
+        -- Add money to player
+        DataService:UpdatePlayerResources(player, "Money", petValue)
+        
+        -- Create visual heaven effect
+        self:CreateHeavenEffect(player, pet, tubeNumber)
+        
+        -- Remove pet from ProcessingPets
+        table.remove(processingPets, 1)
+        
+        petsProcessed = petsProcessed + 1
+    end
+    
+    -- Update ProcessingPets
+    profile.Data.ProcessingPets = processingPets
+    
+    if petsProcessed > 0 then
+        -- Sync data to client
+        local StateService = require(script.Parent.StateService)
+        StateService:BroadcastPlayerDataUpdate(player)
+        
+        -- Update processing counter
+        self:UpdateProcessingCounter(player)
+    end
+    
+    return #processingPets > 0 -- Return true if more pets to process
+end
+
+-- Calculate pet value including variation multiplier
+function PetService:CalculatePetValue(pet)
+    -- Get base value
+    local baseValue = pet.BaseValue or 1
+    
+    -- Get variation multiplier from pet constants
+    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+    local variationMultiplier = PetConstants.getVariationMultiplier(pet.Variation or "Bronze")
+    
+    return math.floor(baseValue * variationMultiplier)
+end
+
+-- Create heaven effect (floating pet ball)
+function PetService:CreateHeavenEffect(player, pet, tubeNumber)
+    -- Get player's area
+    local AreaService = require(script.Parent.AreaService)
+    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
+    
+    if not assignedAreaNumber then
+        return
+    end
+    
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        return
+    end
+    
+    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
+    if not area then
+        return
+    end
+    
+    -- Find the tube and its base
+    local tubesFolder = area:FindFirstChild("Tubes")
+    if not tubesFolder then
+        return
+    end
+    
+    local innerTubesFolder = tubesFolder:FindFirstChild("Tubes")
+    if not innerTubesFolder then
+        return
+    end
+    
+    local tube = innerTubesFolder:FindFirstChild("Tube" .. tubeNumber)
+    if not tube then
+        return
+    end
+    
+    local tubeBase = tube:FindFirstChild("TubeBase")
+    if not tubeBase then
+        return
+    end
+    
+    -- Create floating pet ball
+    local petBall = Instance.new("Part")
+    petBall.Name = "HeavenPetBall"
+    petBall.Shape = Enum.PartType.Ball
+    petBall.Size = Vector3.new(3, 3, 3) -- Larger for better visibility
+    petBall.Material = Enum.Material.Neon
+    petBall.CanCollide = false
+    petBall.Anchored = true
+    petBall.Transparency = 0 -- Completely visible
+    
+    -- Color by rarity
+    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+    local rarityColor = PetConstants.getRarityColor(pet.Rarity or "Common")
+    petBall.Color = rarityColor
+    
+    -- Position at tube base (higher up for visibility)
+    local startPosition = tubeBase.Position + Vector3.new(0, 10, 0) -- Much higher
+    petBall.Position = startPosition
+    petBall.Parent = game.Workspace -- Parent to workspace for maximum visibility
+    
+    print("PetService: Created heaven ball for", pet.Name, "at position", startPosition, "in tube", tubeNumber)
+    print("PetService: Ball size:", petBall.Size, "transparency:", petBall.Transparency, "color:", petBall.Color)
+    
+    -- Wait a moment so the ball is visible before starting animation
+    wait(0.5)
+    
+    -- Animate floating up to heaven (slower and longer)
+    local TweenService = game:GetService("TweenService")
+    local endPosition = startPosition + Vector3.new(0, 100, 0) -- Float up 100 studs
+    local floatTween = TweenService:Create(petBall,
+        TweenInfo.new(2.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), -- 2.5 seconds, 2x faster again
+        {
+            Position = endPosition -- Float higher, keep size and transparency the same
+        }
+    )
+    
+    floatTween:Play()
+    
+    -- After animation, wait a bit then fade out
+    floatTween.Completed:Connect(function()
+        -- Fade out over 1 second
+        local fadeOut = TweenService:Create(petBall,
+            TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {
+                Transparency = 1,
+                Size = Vector3.new(1, 1, 1)
+            }
+        )
+        fadeOut:Play()
+        
+        -- Destroy after fade completes
+        fadeOut.Completed:Connect(function()
+            petBall:Destroy()
+        end)
+    end)
+end
+
+-- Stop heaven processing for a player
+function PetService:StopHeavenProcessing(player)
+    if heavenProcessing[player] then
+        task.cancel(heavenProcessing[player])
+        heavenProcessing[player] = nil
+    end
+end
+
+-- Update processing counter for a player's area
+function PetService:UpdateProcessingCounter(player)
+    -- Get player's area
+    local AreaService = require(script.Parent.AreaService)
+    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
+    
+    if not assignedAreaNumber then
+        return
+    end
+    
+    -- Get processing pets count
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return
+    end
+    
+    local processingCount = #(playerData.ProcessingPets or {})
+    
+    -- Update the counter GUI
+    local PlotService = require(script.Parent.PlotService)
+    local areaName = "PlayerArea" .. assignedAreaNumber
+    PlotService:UpdateProcessingCounter(areaName, processingCount)
+end
+
+-- Clean up when player leaves
+Players.PlayerRemoving:Connect(function(player)
+    if heavenProcessing[player] then
+        task.cancel(heavenProcessing[player])
+        heavenProcessing[player] = nil
+    end
+end)
+
+return PetService

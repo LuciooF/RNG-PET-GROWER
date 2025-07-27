@@ -1,5 +1,5 @@
 [package]
-name = "your-username/pet-grower-rng"
+name = "lucioof/pet-grower-rng"
 version = "0.1.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"

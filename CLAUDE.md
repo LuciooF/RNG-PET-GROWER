@@ -1,3 +1,77 @@
+## Game Architecture and Data Model
+
+### Core Game Structure
+
+This is a pet collection and growth RNG game with the following core systems:
+
+#### **Data Types and Relationships**
+
+##### **Pet System**
+```lua
+Pet = {
+    Name = "string",           -- Pet species (e.g., "Dog", "Cat", "Lizard")
+    Rarity = Rarity,          -- Reference to Rarity object
+    Variation = Variation,    -- Reference to Variation object
+    BaseValue = number,       -- Base monetary value
+    BaseBoost = number,       -- Base processing multiplier
+    -- Runtime calculated properties:
+    FinalValue = BaseValue * VariationMultiplier,
+    FinalBoost = BaseBoost * VariationMultiplier
+}
+
+Rarity = {
+    RarityName = "string",    -- e.g., "Common", "Rare", "Epic"
+    RarityChance = number,    -- Spawn probability (0-100)
+    RarityColor = Color3      -- Visual representation color
+}
+
+Variation = {
+    VariationName = "string", -- e.g., "Bronze", "Silver", "Gold"
+    VariationChance = number, -- Spawn probability (0-100)
+    VariationColor = Color3   -- Visual representation color
+}
+```
+
+##### **Player Data Structure**
+```lua
+PlayerData = {
+    Resources = {
+        Money = number,       -- Primary currency
+        Diamonds = number,    -- Premium currency
+        Rebirths = number     -- Prestige counter
+    },
+    OwnedPets = Pet[],       -- All pets in inventory
+    EquippedPets = Pet[],    -- Active pets providing boosts
+    ProcessingPets = Pet[],  -- Pets currently being processed
+    OwnedPlots = number[],   -- Plot IDs (1-35)
+    OwnedTubes = number[]    -- Tube plot IDs
+}
+```
+
+##### **World Objects**
+- **Plot**: Touch-to-purchase parts that unlock doors when bought (10 money each)
+- **TubePlot**: Similar to plots but unlock processing tubes instead of doors
+- **Door**: Visual barriers that turn green when corresponding plot is purchased
+- **Tube**: Processing stations unlocked by purchasing tube plots
+
+#### **Game Flow**
+
+1. **Spawn & Assignment**: Players spawn in one of 6 circular areas
+2. **Plot Purchase**: Touch plots to spend money and unlock progression
+3. **Door Unlocking**: Each plot purchase unlocks specific doors:
+   - Level 1: Plots 1-5 unlock doors 1-5
+   - Level 2: Plots 8-14 unlock doors 1-7
+   - Level 3-5: Similar mapping pattern
+4. **Pet Collection**: 30% chance for purple pet balls to spawn at unlocked doors
+5. **Pet Processing**: Use tubes to process pets for rewards
+6. **Progression Loop**: Money → Plots → Doors → Pets → Processing → More Money
+
+#### **Key Connections**
+- Plots are mapped to specific doors via level/door configuration
+- Pet spawning is triggered by door unlocking events
+- Pet values and boosts are calculated from base stats × variation multipliers
+- Player areas are persistent and assigned on join
+
 ## Engineering Principles
 
 - Never use weird fallbacks like "If database doesn't work lets fallback into client data". That masks the issue, if the database fails, that's a problem!

@@ -1,37 +1,41 @@
+-- RemoteService - Manages remote events and functions
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteService = {}
 
-function RemoteService:CreateRemotes()
-    local remoteFolder = Instance.new("Folder")
-    remoteFolder.Name = "Remotes"
-    remoteFolder.Parent = ReplicatedStorage
+-- Storage for remote events/functions
+local remotes = {}
+
+function RemoteService:GetRemote(name, remoteType)
+    -- Check if remote already exists
+    if remotes[name] then
+        return remotes[name]
+    end
     
-    local playerDataSync = Instance.new("RemoteEvent")
-    playerDataSync.Name = "PlayerDataSync"
-    playerDataSync.Parent = ReplicatedStorage
+    -- Look for existing remote in ReplicatedStorage
+    local existingRemote = ReplicatedStorage:FindFirstChild(name)
+    if existingRemote then
+        remotes[name] = existingRemote
+        return existingRemote
+    end
     
-    local buyPlot = Instance.new("RemoteEvent")
-    buyPlot.Name = "BuyPlot"
-    buyPlot.Parent = remoteFolder
+    -- Create new remote
+    local remote
+    if remoteType == "RemoteEvent" then
+        remote = Instance.new("RemoteEvent")
+    elseif remoteType == "RemoteFunction" then
+        remote = Instance.new("RemoteFunction")
+    else
+        error("Invalid remote type: " .. tostring(remoteType))
+    end
     
-    local sellPet = Instance.new("RemoteEvent")
-    sellPet.Name = "SellPet"
-    sellPet.Parent = remoteFolder
+    remote.Name = name
+    remote.Parent = ReplicatedStorage
     
-    local equipCompanion = Instance.new("RemoteEvent")
-    equipCompanion.Name = "EquipCompanion"
-    equipCompanion.Parent = remoteFolder
+    -- Store reference
+    remotes[name] = remote
     
-    local unequipCompanion = Instance.new("RemoteEvent")
-    unequipCompanion.Name = "UnequipCompanion"
-    unequipCompanion.Parent = remoteFolder
-    
-    local buyBoost = Instance.new("RemoteEvent")
-    buyBoost.Name = "BuyBoost"
-    buyBoost.Parent = remoteFolder
-    
-    print("Remotes created successfully")
+    return remote
 end
 
 return RemoteService

@@ -1,416 +1,249 @@
+-- AreaService - Creates 6 player areas in circular formation
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
-
--- Plot generators removed - using pre-built plots from AreaTemplate
+local Players = game:GetService("Players")
 
 local AreaService = {}
 AreaService.__index = AreaService
 
 -- Configuration
-local AREAS_CONFIG = {
-    totalAreas = 6,
-    gridSize = {rows = 2, columns = 3},
-    areaSpacing = Vector3.new(200, 0, 200), -- Distance between area centers (doubled from 100 to 200)
-    startPosition = Vector3.new(0, 0, 0) -- Center position for the first area
-}
+local MAX_PLAYERS = 6
+local CIRCLE_RADIUS = 350 -- Distance from center to each area
+local AREA_ASSIGNMENTS = {} -- playerUserId -> areaNumber
 
--- Store references to all created areas
+-- Store created areas
 local playerAreas = {}
-local areaTemplate = nil
 
 function AreaService:Initialize()
-    -- Initializing AreaService
-    
-    -- Wait for the AreaTemplate model to exist in Workspace
-    areaTemplate = Workspace:WaitForChild("AreaTemplate", 10)
+    -- Wait for AreaTemplate
+    local areaTemplate = Workspace:WaitForChild("AreaTemplate", 10)
     if not areaTemplate then
-        warn("AreaService: AreaTemplate not found in Workspace!")
-        return false
+        warn("AreaService: AreaTemplate not found in Workspace after 10 seconds!")
+        return
     end
     
-    -- Creating player areas from template
-    self:CreatePlayerAreas()
-    
-    return true
-end
-
-function AreaService:CreatePlayerAreas()
-    -- Create a container for all player areas
+    -- Create container for all areas
     local areasContainer = Instance.new("Folder")
     areasContainer.Name = "PlayerAreas"
     areasContainer.Parent = Workspace
     
-    local areaIndex = 1
+    -- Create 6 areas in circular formation
+    self:CreateCircularAreas(areaTemplate, areasContainer)
     
-    -- Create areas in a 2x3 grid
-    for row = 1, AREAS_CONFIG.gridSize.rows do
-        for column = 1, AREAS_CONFIG.gridSize.columns do
-            if areaIndex <= AREAS_CONFIG.totalAreas then
-                local areaPosition = self:CalculateAreaPosition(row, column)
-                local newArea = self:CreateSingleArea(areaIndex, areaPosition)
-                
-                if newArea then
-                    newArea.Parent = areasContainer
-                    
-                    -- Ensure all plots have PlotId values
-                    self:EnsurePlotIds(newArea)
-                    
-                    playerAreas[areaIndex] = {
-                        model = newArea,
-                        position = areaPosition,
-                        assignedPlayer = nil, -- Will be assigned when player joins
-                        plots = self:GetPlotsFromArea(newArea),
-                        spawnPoint = self:GetSpawnPointFromArea(newArea)
-                    }
-                    
-                    -- Area created successfully
-                end
-                
-                areaIndex = areaIndex + 1
-            end
-        end
-    end
-    
-    print(string.format("AreaService: Successfully created %d player areas", #playerAreas))
-    
-    -- Plot generation removed - plots are now pre-built in AreaTemplate
-    -- Remove the original template from workspace now that we've cloned it
-    if areaTemplate and areaTemplate.Parent then
-        areaTemplate:Destroy()
-    end
+    -- Set up player assignment system
+    self:SetupPlayerAssignment()
 end
 
-function AreaService:CalculateAreaPosition(row, column)
-    local baseX = AREAS_CONFIG.startPosition.X + ((column - 1) - (AREAS_CONFIG.gridSize.columns - 1) / 2) * AREAS_CONFIG.areaSpacing.X
-    local baseY = AREAS_CONFIG.startPosition.Y
-    local baseZ = AREAS_CONFIG.startPosition.Z + ((row - 1) - (AREAS_CONFIG.gridSize.rows - 1) / 2) * AREAS_CONFIG.areaSpacing.Z
-    
-    return Vector3.new(baseX, baseY, baseZ)
-end
-
-function AreaService:CreateSingleArea(areaNumber, position)
-    if not areaTemplate then
-        warn("AreaService: No area template available")
-        return nil
-    end
-    
-    -- Clone the template
-    local newArea = areaTemplate:Clone()
-    newArea.Name = "PlayerArea" .. areaNumber
-    
-    -- Move the area to the correct position
-    if newArea.PrimaryPart then
-        newArea:SetPrimaryPartCFrame(CFrame.new(position))
-    else
-        -- If no PrimaryPart, calculate offset from template's current position
-        local templateCenter = self:GetModelCenter(areaTemplate)
-        local offset = position - templateCenter
+function AreaService:CreateCircularAreas(template, container)
+    for i = 1, MAX_PLAYERS do
+        -- Calculate position around circle
+        local angle = (i - 1) * (math.pi * 2 / MAX_PLAYERS) -- Evenly distribute around circle
+        local x = math.cos(angle) * CIRCLE_RADIUS
+        local z = math.sin(angle) * CIRCLE_RADIUS
+        local position = Vector3.new(x, 0, z)
         
-        -- Move all parts in the model
-        self:MoveModelParts(newArea, offset)
+        -- Clone and position area
+        local area = template:Clone()
+        area.Name = "PlayerArea" .. i
+        area.Parent = container
+        
+        -- Position area so SpawnPoint is at baseplate level
+        self:PositionAreaWithSpawnPointAtBaseplate(area, position)
+        
+        -- Store reference
+        playerAreas[i] = {
+            model = area,
+            assignedPlayer = nil,
+            position = position
+        }
+        
+        -- Create initial "Unassigned Area" nameplate
+        self:UpdateAreaNameplate(i)
     end
-    
-    -- Set up area-specific properties
-    self:SetupAreaProperties(newArea, areaNumber)
-    
-    return newArea
 end
 
-function AreaService:GetModelCenter(model)
-    local parts = {}
-    local function collectParts(parent)
-        for _, child in pairs(parent:GetChildren()) do
-            if child:IsA("BasePart") then
-                table.insert(parts, child)
-            elseif child:IsA("Model") then
-                collectParts(child)
-            elseif child:IsA("Folder") then
-                collectParts(child) -- Also collect parts from folders like "Plots"
-            end
+function AreaService:PositionAreaWithSpawnPointAtBaseplate(area, targetPosition)
+    -- Find the SpawnPoint in the area
+    local spawnPoint = area:FindFirstChild("SpawnPoint", true) -- Recursive search
+    
+    if spawnPoint and spawnPoint:IsA("SpawnLocation") then
+        -- Get current SpawnPoint position
+        local currentSpawnPointY = spawnPoint.Position.Y
+        
+        -- Calculate how much to offset the entire area so SpawnPoint ends up at Y = 0 (baseplate level)
+        local yOffset = 0 - currentSpawnPointY
+        
+        -- Move the entire area to target position with Y offset to put SpawnPoint at baseplate level
+        local finalPosition = Vector3.new(targetPosition.X, targetPosition.Y + yOffset, targetPosition.Z)
+        area:MoveTo(finalPosition)
+        
+        -- Area positioned successfully
+    else
+        -- Fallback: just move to target position if no SpawnPoint found
+        area:MoveTo(targetPosition)
+        warn("AreaService: SpawnPoint not found in " .. area.Name .. ", using fallback positioning")
+    end
+end
+
+function AreaService:SetupPlayerAssignment()
+    -- Handle player joining
+    Players.PlayerAdded:Connect(function(player)
+        self:AssignPlayerToArea(player)
+    end)
+    
+    -- Handle player leaving
+    Players.PlayerRemoving:Connect(function(player)
+        self:UnassignPlayerFromArea(player)
+    end)
+    
+    -- Handle players already in game
+    for _, player in pairs(Players:GetPlayers()) do
+        self:AssignPlayerToArea(player)
+    end
+end
+
+function AreaService:AssignPlayerToArea(player)
+    -- Find first available area
+    for areaNumber = 1, MAX_PLAYERS do
+        local areaData = playerAreas[areaNumber]
+        if not areaData.assignedPlayer then
+            -- Assign player to this area
+            areaData.assignedPlayer = player
+            AREA_ASSIGNMENTS[player.UserId] = areaNumber
+            
+            -- Player assigned successfully
+            
+            -- Teleport player to their assigned area
+            self:TeleportPlayerToArea(player, areaNumber)
+            
+            -- Update area nameplate
+            self:UpdateAreaNameplate(areaNumber)
+            
+            -- Initialize doors for this area based on player's owned plots
+            local PlotService = require(script.Parent.PlotService)
+            task.spawn(function()
+                -- Small delay to ensure data is loaded
+                wait(0.5)
+                PlotService:InitializeAreaDoors(areaData.model)
+            end)
+            
+            return
         end
     end
     
-    collectParts(model)
-    
-    if #parts == 0 then
-        return Vector3.new(0, 0, 0)
-    end
-    
-    local sumPosition = Vector3.new(0, 0, 0)
-    for _, part in pairs(parts) do
-        sumPosition = sumPosition + part.Position
-    end
-    
-    return sumPosition / #parts
+    -- Server is full
+    warn(string.format("AreaService: Server full! Could not assign area to %s", player.Name))
 end
 
-function AreaService:MoveModelParts(model, offset)
-    local function moveParts(parent)
-        for _, child in pairs(parent:GetChildren()) do
-            if child:IsA("BasePart") then
-                child.Position = child.Position + offset
-            elseif child:IsA("Model") then
-                if child.PrimaryPart then
-                    child:SetPrimaryPartCFrame(child.PrimaryPart.CFrame + offset)
-                else
-                    moveParts(child) -- Recursively move parts in nested models
-                end
-            elseif child:IsA("Folder") then
-                moveParts(child) -- Also handle folders like "Plots"
-            end
-        end
-    end
-    
-    moveParts(model)
+function AreaService:GetPlayerAssignedArea(player)
+    return AREA_ASSIGNMENTS[player.UserId]
 end
 
-function AreaService:SetupAreaProperties(area, areaNumber)
-    -- Add area identification
-    local areaValue = Instance.new("IntValue")
-    areaValue.Name = "AreaNumber"
-    areaValue.Value = areaNumber
-    areaValue.Parent = area
+function AreaService:TeleportPlayerToArea(player, areaNumber)
+    -- Wait for player character to load
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        player.CharacterAdded:Wait()
+    end
     
-    -- Create nameplate anchor point
-    local nameplateAnchor = Instance.new("Part")
-    nameplateAnchor.Name = "NameplateAnchor"
-    nameplateAnchor.Size = Vector3.new(1, 1, 1)
-    nameplateAnchor.Transparency = 1
-    nameplateAnchor.CanCollide = false
-    nameplateAnchor.Anchored = true
+    local character = player.Character
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
     
-    -- Position the anchor above the area center
-    local areaCenter = self:GetModelCenter(area)
-    nameplateAnchor.Position = areaCenter + Vector3.new(0, 20, 0)
-    nameplateAnchor.Parent = area
-    
-    -- Set up plots if they exist
-    local plotsFolder = area:FindFirstChild("Plots")
-    if plotsFolder then
-        for _, plot in pairs(plotsFolder:GetChildren()) do
-            if plot:IsA("Model") then
-                -- Add plot identification
-                local plotAreaValue = Instance.new("IntValue")
-                plotAreaValue.Name = "AreaNumber"
-                plotAreaValue.Value = areaNumber
-                plotAreaValue.Parent = plot
-                
-                -- Add plot ID based on name (Plot1, Plot2, etc.)
-                local plotId = plot.Name:match("Plot(%d+)")
-                if plotId then
-                    local plotIdValue = Instance.new("IntValue")
-                    plotIdValue.Name = "PlotId"
-                    plotIdValue.Value = tonumber(plotId)
-                    plotIdValue.Parent = plot
-                end
-                
-                -- Plot configured successfully
-            end
+    if humanoidRootPart then
+        local areaData = playerAreas[areaNumber]
+        local area = areaData.model
+        
+        -- Find the SpawnPoint in the area
+        local spawnPoint = area:FindFirstChild("SpawnPoint", true)
+        if spawnPoint and spawnPoint:IsA("SpawnLocation") then
+            -- Teleport to SpawnPoint position
+            humanoidRootPart.CFrame = CFrame.new(spawnPoint.Position + Vector3.new(0, 3, 0))
+            -- Player teleported successfully
+        else
+            -- Fallback to area position if no SpawnPoint found
+            local areaPosition = areaData.position
+            humanoidRootPart.CFrame = CFrame.new(areaPosition + Vector3.new(0, 10, 0))
+            -- Player teleported to fallback position
         end
     else
-        warn(string.format("AreaService: No Plots folder found in area %d", areaNumber))
+        warn(string.format("AreaService: Could not teleport %s - HumanoidRootPart not found", player.Name))
     end
 end
 
-function AreaService:GetPlotsFromArea(area)
-    local plots = {}
-    local plotsFolder = area:FindFirstChild("Plots")
-    
-    if plotsFolder then
-        for _, plot in pairs(plotsFolder:GetChildren()) do
-            if plot:IsA("Model") then
-                local plotId = plot:FindFirstChild("PlotId")
-                if plotId and plotId:IsA("IntValue") then
-                    plots[plotId.Value] = {
-                        model = plot,
-                        id = plotId.Value,
-                        name = plot.Name,
-                        position = plot.PrimaryPart and plot.PrimaryPart.Position or Vector3.new()
-                    }
-                end
-            end
-        end
-    end
-    
-    return plots
-end
-
-function AreaService:GetSpawnPointFromArea(area)
-    -- Look for a SpawnPoint part or model
-    local spawnPoint = area:FindFirstChild("SpawnPoint")
-    
-    if spawnPoint then
-        if spawnPoint:IsA("BasePart") then
-            return spawnPoint.Position + Vector3.new(0, 3, 0) -- Slightly above the spawn point
-        elseif spawnPoint:IsA("Model") and spawnPoint.PrimaryPart then
-            return spawnPoint.PrimaryPart.Position + Vector3.new(0, 3, 0)
-        end
-    end
-    
-    -- If no spawn point found, use area center + some height
-    return area:FindFirstChild("AreaNumber") and Vector3.new(0, 10, 0) or Vector3.new(0, 10, 0)
-end
-
-function AreaService:AssignAreaToPlayer(player)
-    -- Find an unassigned area
-    for areaId, areaData in pairs(playerAreas) do
-        if not areaData.assignedPlayer then
-            areaData.assignedPlayer = player
-            -- Area assigned successfully
-            
-            -- Sync to all clients
-            self:SyncAreaAssignments()
-            
-            return areaId, areaData
-        end
-    end
-    
-    warn(string.format("AreaService: No available areas for player %s", player.Name))
-    return nil, nil
-end
-
-function AreaService:ReleaseAreaFromPlayer(player)
-    for areaId, areaData in pairs(playerAreas) do
-        if areaData.assignedPlayer == player then
-            areaData.assignedPlayer = nil
-            -- Area released successfully
-            
-            -- Sync to all clients
-            self:SyncAreaAssignments()
-            
-            return true
-        end
-    end
-    
-    return false
-end
-
-function AreaService:GetPlayerArea(player)
-    for areaId, areaData in pairs(playerAreas) do
-        if areaData.assignedPlayer == player then
-            return areaId, areaData
-        end
-    end
-    
-    return nil, nil
-end
-
-function AreaService:GetAreaById(areaId)
-    return playerAreas[areaId]
-end
-
-function AreaService:GetAllAreas()
-    return playerAreas
-end
-
-function AreaService:TeleportPlayerToArea(player, areaId)
-    local areaData = playerAreas[areaId]
-    if not areaData then
-        warn(string.format("AreaService: Area %d not found", areaId))
-        return false
-    end
-    
-    -- Use the spawn point if available, otherwise use area center
-    local spawnPosition = areaData.spawnPoint or (areaData.position + Vector3.new(0, 10, 0))
-    
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(spawnPosition)
-        -- Player teleported successfully
-        return true
-    end
-    
-    return false
-end
-
-function AreaService:SyncAreaAssignments()
-    -- Create area assignment data to send to clients
-    local assignmentData = {}
-    
-    for areaId, areaData in pairs(playerAreas) do
-        assignmentData[areaId] = {
-            playerName = areaData.assignedPlayer and areaData.assignedPlayer.Name or nil,
-            areaNumber = areaId
-        }
-    end
-    
-    -- Send to all players
-    local areaAssignmentSync = ReplicatedStorage:FindFirstChild("AreaAssignmentSync")
-    if areaAssignmentSync then
-        areaAssignmentSync:FireAllClients(assignmentData)
-        -- Area assignments synced
+function AreaService:UnassignPlayerFromArea(player)
+    local areaNumber = AREA_ASSIGNMENTS[player.UserId]
+    if areaNumber then
+        local areaData = playerAreas[areaNumber]
+        areaData.assignedPlayer = nil
+        AREA_ASSIGNMENTS[player.UserId] = nil
+        
+        -- Player unassigned successfully
+        
+        -- Update area nameplate
+        self:UpdateAreaNameplate(areaNumber)
     end
 end
 
-function AreaService:SyncAreaAssignmentsToPlayer(player)
-    -- Send current assignments to a specific player (for when they join)
-    local assignmentData = {}
+function AreaService:UpdateAreaNameplate(areaNumber)
+    local areaData = playerAreas[areaNumber]
+    local area = areaData.model
     
-    for areaId, areaData in pairs(playerAreas) do
-        assignmentData[areaId] = {
-            playerName = areaData.assignedPlayer and areaData.assignedPlayer.Name or nil,
-            areaNumber = areaId
-        }
+    -- Remove existing nameplate
+    local existingNameplate = area:FindFirstChild("AreaNameplate")
+    if existingNameplate then
+        existingNameplate:Destroy()
     end
     
-    -- Send to specific player
-    local areaAssignmentSync = ReplicatedStorage:FindFirstChild("AreaAssignmentSync")
-    if areaAssignmentSync then
-        areaAssignmentSync:FireClient(player, assignmentData)
-        -- Area assignments synced to player
-    end
+    -- Create new nameplate
+    local nameplate = self:CreateAreaNameplate(areaData.assignedPlayer, areaNumber)
+    nameplate.Parent = area
 end
 
-function AreaService:EnsurePlotIds(area)
-    -- Ensure regular plots have PlotId values
-    local plotsFolder = area:FindFirstChild("Plots")
-    if plotsFolder then
-        for _, plot in pairs(plotsFolder:GetChildren()) do
-            if plot:IsA("Model") then
-                local plotIdValue = plot:FindFirstChild("PlotId")
-                if not plotIdValue then
-                    -- Extract plot ID from name (Plot1, Plot2, etc.)
-                    local plotId = plot.Name:match("Plot(%d+)")
-                    if plotId then
-                        plotIdValue = Instance.new("IntValue")
-                        plotIdValue.Name = "PlotId"
-                        plotIdValue.Value = tonumber(plotId)
-                        plotIdValue.Parent = plot
-                        -- PlotId assigned
-                    end
-                end
-            end
-        end
+function AreaService:CreateAreaNameplate(assignedPlayer, areaNumber)
+    -- Create invisible part to hold the GUI
+    local namePart = Instance.new("Part")
+    namePart.Name = "AreaNameplate"
+    namePart.Size = Vector3.new(1, 1, 1)
+    namePart.Transparency = 1
+    namePart.CanCollide = false
+    namePart.Anchored = true
+    
+    -- Position above the area
+    local areaPosition = playerAreas[areaNumber].position
+    namePart.Position = areaPosition + Vector3.new(0, 50, 0) -- 50 studs above area
+    
+    -- Create BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "NameplateBillboard"
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 0, 0)
+    billboard.Parent = namePart
+    
+    -- Create text label
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 24
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    textLabel.Parent = billboard
+    
+    -- Set text based on assignment - always white with black outline
+    if assignedPlayer then
+        textLabel.Text = assignedPlayer.Name .. "'s Area"
+    else
+        textLabel.Text = "Unassigned Area"
     end
     
-    -- Ensure production plots have PlotId values
-    local productionPlotsFolder = area:FindFirstChild("ProductionPlots")
-    if productionPlotsFolder then
-        for _, plot in pairs(productionPlotsFolder:GetChildren()) do
-            if plot:IsA("Model") then
-                local plotIdValue = plot:FindFirstChild("PlotId")
-                if not plotIdValue then
-                    -- Extract plot ID from name (ProductionPlot1, ProductionPlot2, etc.)
-                    local plotId = plot.Name:match("ProductionPlot(%d+)")
-                    if plotId then
-                        plotIdValue = Instance.new("IntValue")
-                        plotIdValue.Name = "PlotId"
-                        plotIdValue.Value = tonumber(plotId)
-                        plotIdValue.Parent = plot
-                        
-                        -- Add PlotType identifier for production plots
-                        local plotTypeValue = Instance.new("StringValue")
-                        plotTypeValue.Name = "PlotType"
-                        plotTypeValue.Value = "Production"
-                        plotTypeValue.Parent = plot
-                        
-                        -- PlotId assigned
-                    end
-                end
-            end
-        end
-    end
+    -- Always white text with black outline
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    return namePart
 end
 
 return AreaService
