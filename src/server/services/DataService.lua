@@ -111,25 +111,6 @@ function DataService:UpdatePlayerResources(player, resourceType, amount)
     local profile = Profiles[player]
     if profile and profile.Data.Resources[resourceType] then
         profile.Data.Resources[resourceType] = profile.Data.Resources[resourceType] + amount
-        
-        -- Update plot colors and GUIs when money changes
-        if resourceType == "Money" then
-            local PlotService = require(script.Parent.PlotService)
-            local AreaService = require(script.Parent.AreaService)
-            
-            local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-            if assignedAreaNumber then
-                local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
-                if playerAreas then
-                    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
-                    if area then
-                        PlotService:UpdatePlotColors(area, player)
-                        PlotService:UpdatePlotGUIs(area, player)
-                    end
-                end
-            end
-        end
-        
         return true
     end
     return false

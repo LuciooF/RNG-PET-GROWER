@@ -69,8 +69,6 @@ function StateService:SyncPlayerDataToClient(player)
     local playerData = DataService:GetPlayerData(player)
     if playerData then
         remoteEvents.SyncPlayerData:FireClient(player, playerData)
-    else
-        warn(string.format("StateService: No data found for %s", player.Name))
     end
 end
 

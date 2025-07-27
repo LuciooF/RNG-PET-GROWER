@@ -18,6 +18,12 @@ local function TopStatsUI()
     
     -- Subscribe to data changes
     React.useEffect(function()
+        -- Get initial data
+        local initialData = DataSyncService:GetPlayerData()
+        if initialData then
+            setPlayerData(initialData)
+        end
+        
         local unsubscribe = DataSyncService:Subscribe(function(newState)
             if newState.player then
                 setPlayerData(newState.player)

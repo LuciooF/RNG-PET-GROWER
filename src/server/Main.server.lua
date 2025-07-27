@@ -92,6 +92,21 @@ if not errorMessageRemote then
     errorMessageRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote events for pet equipping
+local equipPetRemote = ReplicatedStorage:FindFirstChild("EquipPet")
+if not equipPetRemote then
+    equipPetRemote = Instance.new("RemoteEvent")
+    equipPetRemote.Name = "EquipPet"
+    equipPetRemote.Parent = ReplicatedStorage
+end
+
+local unequipPetRemote = ReplicatedStorage:FindFirstChild("UnequipPet")
+if not unequipPetRemote then
+    unequipPetRemote = Instance.new("RemoteEvent")
+    unequipPetRemote.Name = "UnequipPet"
+    unequipPetRemote.Parent = ReplicatedStorage
+end
+
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData, ballPath)
     -- Validate the pet data
@@ -102,6 +117,9 @@ collectPetRemote.OnServerEvent:Connect(function(player, petData, ballPath)
     
     -- Add pet to player's inventory
     DataService:AddPetToPlayer(player, petData)
+    
+    -- Give player 1 diamond for collecting a pet ball (non-scalable currency)
+    DataService:UpdatePlayerResources(player, "Diamonds", 1)
     
     -- Notify PlotService that a ball was collected for counter update
     if ballPath then
@@ -134,6 +152,34 @@ sendToHeavenRemote.OnServerEvent:Connect(function(player)
     
     -- Start heaven processing for this player
     PetService:StartHeavenProcessing(player)
+end)
+
+-- Handle equip pet from client
+equipPetRemote.OnServerEvent:Connect(function(player, petId)
+    if not petId then
+        warn("Main: Invalid pet ID received for equip from", player.Name)
+        return
+    end
+    
+    local success, message = PetService:EquipPet(player, petId)
+    if not success then
+        -- Show error message to player
+        errorMessageRemote:FireClient(player, message or "Failed to equip pet")
+    end
+end)
+
+-- Handle unequip pet from client
+unequipPetRemote.OnServerEvent:Connect(function(player, petId)
+    if not petId then
+        warn("Main: Invalid pet ID received for unequip from", player.Name)
+        return
+    end
+    
+    local success, message = PetService:UnequipPet(player, petId)
+    if not success then
+        -- Show error message to player
+        errorMessageRemote:FireClient(player, message or "Failed to unequip pet")
+    end
 end)
 
 -- Handle rebirth from client

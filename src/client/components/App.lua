@@ -9,6 +9,7 @@ local TopStatsUI = require(script.Parent.TopStatsUI)
 local PetInventoryUI = require(script.Parent.PetInventoryUI)
 local DebugPanel = require(script.Parent.DebugPanel)
 local ErrorMessage = require(script.Parent.ErrorMessage)
+local PlotVisual = require(script.Parent.PlotVisual)
 
 local function App()
     return React.createElement("ScreenGui", {
@@ -18,7 +19,8 @@ local function App()
         TopStats = React.createElement(TopStatsUI),
         PetInventory = React.createElement(PetInventoryUI),
         DebugPanel = React.createElement(DebugPanel),
-        ErrorMessage = React.createElement(ErrorMessage)
+        ErrorMessage = React.createElement(ErrorMessage),
+        PlotVisual = React.createElement(PlotVisual) -- Reactive plot color management
     })
 end
 

@@ -16,6 +16,10 @@ DataSyncService:Initialize()
 local PetCollectionService = require(script.Parent.services.PetCollectionService)
 PetCollectionService:Initialize()
 
+-- Initialize pet follow service
+local PetFollowService = require(script.Parent.services.PetFollowService)
+PetFollowService:Initialize()
+
 -- Initialize React app
 local App = require(script.Parent.components.App)
 local root = ReactRoblox.createRoot(Players.LocalPlayer:WaitForChild("PlayerGui"))

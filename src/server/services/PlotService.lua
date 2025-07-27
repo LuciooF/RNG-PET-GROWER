@@ -36,6 +36,7 @@ local spawningDoors = {}
 local areaPetBallCounts = {}
 local MAX_PET_BALLS_PER_AREA = 50
 
+
 -- Helper functions for rebirth requirements
 local function isMiddlePlotOfRow(plotNumber)
     -- Check if this plot is the middle plot of its row
@@ -201,14 +202,15 @@ function PlotService:SetupAreaPlots(area)
         for _, player in pairs(Players:GetPlayers()) do
             local playerArea = AreaService:GetPlayerAssignedArea(player)
             if playerArea == areaNumber then
-                self:UpdatePlotColors(area, player)
                 self:UpdatePlotGUIs(area, player)
+                self:UpdatePlotColors(area, player) -- Add "Purchased" SurfaceGuis for owned plots
                 self:UpdatePlotVisibility(area, player)
                 break
             end
         end
     end
 end
+
 
 function PlotService:SetupPlotPurchasing(area, plot, plotNumber)
     -- Find the assigned player for this area
@@ -456,7 +458,6 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
     local requiredRebirths = getPlotRebirthRequirement(plotNumber)
     local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
     if playerRebirths < requiredRebirths then
-        print("PlotService: Player", player.Name, "needs", requiredRebirths, "rebirths for plot", plotNumber, "(has", playerRebirths, ")")
         return false
     end
     
@@ -489,10 +490,15 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
                 if area then
                     -- Play press animation
                     self:PlayPlotPressAnimation(area, plotNumber, false)
-                    -- Update colors, GUIs, and visibility
-                    self:UpdatePlotColors(area, player)
-                    self:UpdatePlotGUIs(area, player)
-                    self:UpdatePlotVisibility(area, player)
+                    
+                    -- Add "Purchased" SurfaceGui to the plot
+                    local buttons = area:FindFirstChild("Buttons")
+                    if buttons then
+                        local plot = buttons:FindFirstChild("Plot" .. plotNumber)
+                        if plot then
+                            self:AddPurchasedSurfaceGui(area, plot)
+                        end
+                    end
                 end
             end
         end
@@ -521,7 +527,6 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     local requiredRebirths = getTubePlotRebirthRequirement(tubePlotNumber)
     local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
     if playerRebirths < requiredRebirths then
-        print("PlotService: Player", player.Name, "needs", requiredRebirths, "rebirths for TubePlot", tubePlotNumber, "(has", playerRebirths, ")")
         return false
     end
     
@@ -554,10 +559,15 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
                 if area then
                     -- Play press animation for TubePlot
                     self:PlayPlotPressAnimation(area, tubePlotNumber, true)
-                    -- Update colors, GUIs, and visibility
-                    self:UpdatePlotColors(area, player)
-                    self:UpdatePlotGUIs(area, player)
-                    self:UpdatePlotVisibility(area, player)
+                    
+                    -- Add "Purchased" SurfaceGui to the tube plot
+                    local buttons = area:FindFirstChild("Buttons")
+                    if buttons then
+                        local tubePlot = buttons:FindFirstChild("TubePlot" .. tubePlotNumber)
+                        if tubePlot then
+                            self:AddPurchasedSurfaceGui(area, tubePlot)
+                        end
+                    end
                 end
             end
         end
@@ -596,6 +606,196 @@ end
 function PlotService:HidePlotUI(player, plotNumber)
     -- No longer hide plot UI when purchased - let UpdatePlotGUIs handle showing "Purchased"
     -- This function is kept for compatibility but does nothing
+end
+
+function PlotService:AddPurchasedSurfaceGui(area, plot)
+    -- Check if it already has a purchased GUI
+    if plot:FindFirstChild("PurchasedSurfaceGui") then
+        return
+    end
+    
+    -- Keep level/door GUI when plot is purchased (both GUIs will show simultaneously)
+    
+    -- Create SurfaceGui on the plot itself
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "PurchasedSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 50
+    
+    -- Create text label with rotation based on plot type (positioned in the middle)
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 0.4, 0) -- Smaller height to fit in middle
+    textLabel.Position = UDim2.new(0, 0, 0.3, 0) -- Position in the middle (30% from top)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Purchased"
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 32 -- Smaller text to fit with level/door text
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    
+    -- Check if it's a TubePlot and apply different rotation
+    if plot.Name:match("^TubePlot") then
+        textLabel.Rotation = 270  -- 270 degrees (opposite direction) for TubePlots
+        -- For tube plots, adjust positioning to not overlap with tube number text
+        textLabel.Position = UDim2.new(0, 0, 0.4, 0) -- Lower position for tube plots
+        textLabel.Size = UDim2.new(1, 0, 0.3, 0) -- Smaller height
+    else
+        textLabel.Rotation = 90  -- 90 degrees for regular Plots
+    end
+    
+    textLabel.Parent = surfaceGui
+    
+    -- Find the Cube.009 part inside the plot model
+    if plot:IsA("Model") then
+        local cube = plot:FindFirstChild("Cube.009")
+        if cube and cube:IsA("BasePart") then
+            surfaceGui.Parent = cube
+        end
+    elseif plot:IsA("BasePart") then
+        surfaceGui.Parent = plot
+    end
+end
+
+function PlotService:AddLevelDoorSurfaceGui(plot, plotNumber)
+    -- Skip plots 6 and 7 (they don't exist)
+    if plotNumber == 6 or plotNumber == 7 then
+        return
+    end
+    
+    -- Get level and door info for this plot
+    local level, doorNumber = self:GetLevelAndDoorForPlot(plotNumber)
+    if not level or not doorNumber then
+        return
+    end
+    
+    -- Check if it already has a level/door GUI
+    if plot:FindFirstChild("LevelDoorSurfaceGui") then
+        return
+    end
+    
+    -- Create SurfaceGui on the plot itself
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "LevelDoorSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 50
+    
+    -- Create text label
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Level " .. level .. "\n\nDoor " .. doorNumber
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 36
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow text
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    textLabel.Rotation = 90  -- 90 degrees for regular Plots
+    textLabel.Parent = surfaceGui
+    
+    -- Find the Cube.009 part inside the plot model
+    if plot:IsA("Model") then
+        local cube = plot:FindFirstChild("Cube.009")
+        if cube and cube:IsA("BasePart") then
+            surfaceGui.Parent = cube
+        end
+    elseif plot:IsA("BasePart") then
+        surfaceGui.Parent = plot
+    end
+end
+
+function PlotService:RemoveLevelDoorSurfaceGui(plot)
+    -- Remove level/door GUI if present
+    if plot:IsA("Model") then
+        local cube = plot:FindFirstChild("Cube.009")
+        if cube then
+            local levelDoorGui = cube:FindFirstChild("LevelDoorSurfaceGui")
+            if levelDoorGui then
+                levelDoorGui:Destroy()
+            end
+        end
+    elseif plot:IsA("BasePart") then
+        local levelDoorGui = plot:FindFirstChild("LevelDoorSurfaceGui")
+        if levelDoorGui then
+            levelDoorGui:Destroy()
+        end
+    end
+end
+
+function PlotService:AddTubeNumberSurfaceGui(tubePlot, tubePlotNumber)
+    -- Check if it already has a tube number GUI
+    if tubePlot:FindFirstChild("TubeNumberSurfaceGui") then
+        return
+    end
+    
+    -- Create SurfaceGui on the tube plot itself
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "TubeNumberSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 50
+    
+    -- Create text label
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    
+    -- Convert number to ordinal (1st, 2nd, 3rd, etc.) with line breaks for proper spacing
+    local ordinalText
+    if tubePlotNumber == 1 then
+        ordinalText = "\n\n1st Tube"
+    elseif tubePlotNumber == 2 then
+        ordinalText = "\n\n2nd Tube"
+    elseif tubePlotNumber == 3 then
+        ordinalText = "\n\n3rd Tube"
+    else
+        ordinalText = "\n\n" .. tubePlotNumber .. "th Tube"
+    end
+    
+    textLabel.Text = ordinalText
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 36
+    textLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange text to match tube plots
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    textLabel.Rotation = 270  -- 270 degrees for TubePlots (same as "Purchased")
+    textLabel.Parent = surfaceGui
+    
+    -- Find the Cube.009 part inside the tube plot model
+    if tubePlot:IsA("Model") then
+        local cube = tubePlot:FindFirstChild("Cube.009")
+        if cube and cube:IsA("BasePart") then
+            surfaceGui.Parent = cube
+        end
+    elseif tubePlot:IsA("BasePart") then
+        surfaceGui.Parent = tubePlot
+    end
+end
+
+function PlotService:RemoveTubeNumberSurfaceGui(tubePlot)
+    -- Remove tube number GUI if present
+    if tubePlot:IsA("Model") then
+        local cube = tubePlot:FindFirstChild("Cube.009")
+        if cube then
+            local tubeNumberGui = cube:FindFirstChild("TubeNumberSurfaceGui")
+            if tubeNumberGui then
+                tubeNumberGui:Destroy()
+            end
+        end
+    elseif tubePlot:IsA("BasePart") then
+        local tubeNumberGui = tubePlot:FindFirstChild("TubeNumberSurfaceGui")
+        if tubeNumberGui then
+            tubeNumberGui:Destroy()
+        end
+    end
 end
 
 function PlotService:HideTubePlotUI(player, tubePlotNumber)
@@ -987,8 +1187,8 @@ function PlotService:InitializePlayerDoors(player)
     if playerAreas then
         local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
         if area then
-            self:UpdatePlotColors(area, player)
             self:UpdatePlotGUIs(area, player)
+            self:UpdatePlotColors(area, player)
             self:UpdatePlotVisibility(area, player)
         end
     end
@@ -1165,18 +1365,14 @@ function PlotService:UnlockDoorForPlotInArea(player, plotNumber, areaNumber)
     
     -- Find the door in the level structure
     local levelFolder = targetArea:FindFirstChild("Level" .. level)
-    print(string.format("PlotService: Looking for Level%d folder, found: %s", level, tostring(levelFolder ~= nil)))
     
     if levelFolder then
         local doorsFolder = levelFolder:FindFirstChild("Level" .. level .. "Doors")
-        print(string.format("PlotService: Looking for Level%dDoors folder, found: %s", level, tostring(doorsFolder ~= nil)))
         
         if doorsFolder then
             local door = doorsFolder:FindFirstChild("Door" .. doorNumber)
-            print(string.format("PlotService: Looking for Door%d, found: %s", doorNumber, tostring(door ~= nil)))
             
             if door then
-                print(string.format("PlotService: Unlocking door: %s", door.Name))
                 self:UnlockDoor(door)
             else
                 print(string.format("PlotService: Door%d not found in %s", doorNumber, doorsFolder.Name))
@@ -1211,18 +1407,14 @@ function PlotService:UnlockTubeForTubePlot(player, tubePlotNumber)
             
             -- Find the tube: AreaTemplate>Tubes>Tubes>TubeX
             local tubesFolder = area:FindFirstChild("Tubes")
-            print(string.format("PlotService: Looking for Tubes folder, found: %s", tostring(tubesFolder ~= nil)))
             
             if tubesFolder then
                 local innerTubesFolder = tubesFolder:FindFirstChild("Tubes")
-                print(string.format("PlotService: Looking for inner Tubes folder, found: %s", tostring(innerTubesFolder ~= nil)))
                 
                 if innerTubesFolder then
                     local tube = innerTubesFolder:FindFirstChild("Tube" .. tubePlotNumber)
-                    print(string.format("PlotService: Looking for Tube%d, found: %s", tubePlotNumber, tostring(tube ~= nil)))
                     
                     if tube then
-                        print(string.format("PlotService: Unlocking tube: %s", tube.Name))
                         self:UnlockTube(tube)
                     else
                         print(string.format("PlotService: Tube%d not found in %s", tubePlotNumber, innerTubesFolder.Name))
@@ -1240,7 +1432,6 @@ end
 
 -- Unlock tube for a specific TubePlot in a specific area (used during initialization)
 function PlotService:UnlockTubeForTubePlotInArea(player, tubeNumber, areaNumber)
-    print(string.format("PlotService: UnlockTubeForTubePlotInArea for player %s, TubePlot %d in area %d", player.Name, tubeNumber, areaNumber))
     
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then
@@ -1255,18 +1446,14 @@ function PlotService:UnlockTubeForTubePlotInArea(player, tubeNumber, areaNumber)
     
     -- Find the tube: AreaTemplate>Tubes>Tubes>TubeX
     local tubesFolder = targetArea:FindFirstChild("Tubes")
-    print(string.format("PlotService: Looking for Tubes folder, found: %s", tostring(tubesFolder ~= nil)))
     
     if tubesFolder then
         local innerTubesFolder = tubesFolder:FindFirstChild("Tubes")
-        print(string.format("PlotService: Looking for inner Tubes folder, found: %s", tostring(innerTubesFolder ~= nil)))
         
         if innerTubesFolder then
             local tube = innerTubesFolder:FindFirstChild("Tube" .. tubeNumber)
-            print(string.format("PlotService: Looking for Tube%d, found: %s", tubeNumber, tostring(tube ~= nil)))
             
             if tube then
-                print(string.format("PlotService: Unlocking tube: %s", tube.Name))
                 self:UnlockTube(tube)
             else
                 print(string.format("PlotService: Tube%d not found in %s", tubeNumber, innerTubesFolder.Name))
@@ -1323,6 +1510,7 @@ function PlotService:SpawnPetBall(door)
     petBall.Color = rarityColor
     
     petBall.Material = Enum.Material.Neon
+    petBall.Transparency = 0.3 -- Make ball slightly transparent for pet asset visibility
     petBall.CanCollide = true  -- Enable collision so it can hit the ground
     petBall.Anchored = false   -- Not anchored so it can fall
     
@@ -1486,9 +1674,9 @@ function PlotService:UpdateCounterGUI(areaName, count)
         textLabel.BackgroundTransparency = 1
         textLabel.Font = Enum.Font.GothamBold
         textLabel.TextSize = 36
-        textLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         textLabel.TextStrokeTransparency = 0
-        textLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         textLabel.TextXAlignment = Enum.TextXAlignment.Center
         textLabel.TextYAlignment = Enum.TextYAlignment.Center
         textLabel.ZIndex = 2
@@ -1538,29 +1726,37 @@ function PlotService:UpdateProcessingCounter(areaName, processingCount)
     local deposit = innerTubesFolder:FindFirstChild("Deposit")
     if not deposit then return end
     
-    -- Find or create BillboardGui
-    local billboardGui = deposit:FindFirstChild("ProcessingCounterGUI")
-    if not billboardGui then
-        billboardGui = Instance.new("BillboardGui")
-        billboardGui.Name = "ProcessingCounterGUI"
-        billboardGui.Size = UDim2.new(4, 0, 2, 0)
-        billboardGui.StudsOffset = Vector3.new(0, 15, 0)
-        billboardGui.Parent = deposit
+    -- Find Cube.005 inside Deposit
+    local cube005 = deposit:FindFirstChild("Cube.005")
+    if not cube005 then return end
+    
+    -- Find or create SurfaceGui
+    local surfaceGui = cube005:FindFirstChild("ProcessingCounterGUI")
+    if not surfaceGui then
+        surfaceGui = Instance.new("SurfaceGui")
+        surfaceGui.Name = "ProcessingCounterGUI"
+        surfaceGui.Face = Enum.NormalId.Front
+        surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        surfaceGui.PixelsPerStud = 50
+        surfaceGui.Parent = cube005
         
         local textLabel = Instance.new("TextLabel")
         textLabel.Name = "ProcessingCounterText"
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.BackgroundTransparency = 1
         textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 24
+        textLabel.TextSize = 32
         textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         textLabel.TextStrokeTransparency = 0
         textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        textLabel.Parent = billboardGui
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        -- No rotation - horizontal text
+        textLabel.Parent = surfaceGui
     end
     
     -- Update text
-    local textLabel = billboardGui:FindFirstChild("ProcessingCounterText")
+    local textLabel = surfaceGui:FindFirstChild("ProcessingCounterText")
     if textLabel then
         textLabel.Text = string.format("Processing: %d", processingCount)
         
@@ -1630,9 +1826,9 @@ function PlotService:ReinitializePlayerArea(player)
     self:InitializeAreaDoors(targetArea)
     self:InitializeAreaTubes(targetArea)
     
-    -- Update plot colors, GUIs, and visibility
-    self:UpdatePlotColors(targetArea, player)
+    -- Update plot GUIs and visibility
     self:UpdatePlotGUIs(targetArea, player)
+    self:UpdatePlotColors(targetArea, player)
     self:UpdatePlotVisibility(targetArea, player)
     
     print("PlotService: Area reinitialized for player", player.Name)
@@ -1771,6 +1967,15 @@ function PlotService:UpdatePlotVisibility(area, player)
         return
     end
     
+    -- Get player's owned plots for level/door GUI management
+    local ownedPlots = {}
+    if player then
+        local ownedPlotsArray = self:GetPlayerOwnedPlots(player)
+        for _, plotNumber in pairs(ownedPlotsArray) do
+            ownedPlots[plotNumber] = true
+        end
+    end
+    
     -- Update plot visibility
     for i = 1, TOTAL_PLOTS do
         local plotName = "Plot" .. i
@@ -1791,6 +1996,15 @@ function PlotService:UpdatePlotVisibility(area, player)
             elseif plot:IsA("BasePart") then
                 plot.Transparency = shouldShowPlot and 0 or 1
                 plot.CanCollide = shouldShowPlot
+            end
+            
+            -- Manage level/door GUI based on visibility only (show on both owned and unowned visible plots)
+            if shouldShowPlot then
+                -- Plot is visible - add level/door GUI if not already present
+                self:AddLevelDoorSurfaceGui(plot, i)
+            else
+                -- Plot is invisible - remove level/door GUI if present
+                self:RemoveLevelDoorSurfaceGui(plot)
             end
         end
     end
@@ -1815,6 +2029,15 @@ function PlotService:UpdatePlotVisibility(area, player)
             elseif tubePlot:IsA("BasePart") then
                 tubePlot.Transparency = shouldShowTubePlot and 0 or 1
                 tubePlot.CanCollide = shouldShowTubePlot
+            end
+            
+            -- Manage tube number GUI based on visibility (show on all visible tube plots)
+            if shouldShowTubePlot then
+                -- Tube plot is visible - add tube number GUI if not already present
+                self:AddTubeNumberSurfaceGui(tubePlot, i)
+            else
+                -- Tube plot is invisible - remove tube number GUI if present
+                self:RemoveTubeNumberSurfaceGui(tubePlot)
             end
         end
     end
@@ -2020,122 +2243,43 @@ end
 -- Update plot colors based on ownership and affordability
 function PlotService:UpdatePlotColors(area, player)
     if not player then
-        print("PlotService: UpdatePlotColors - No player provided")
         return
     end
     
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData then
-        print("PlotService: UpdatePlotColors - No player data for", player.Name)
-        return
-    end
-    
-    local playerMoney = playerData.Resources and playerData.Resources.Money or 0
-    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
     local ownedPlots = self:GetPlayerOwnedPlots(player)
+    local ownedTubes = self:GetPlayerOwnedTubes(player)
     
-    print("PlotService: UpdatePlotColors for", player.Name, "- Money:", playerMoney, "Rebirths:", playerRebirths, "Owned plots:", #ownedPlots)
-    
-    -- Create set of owned plots for faster lookup
+    -- Create sets for faster lookup
     local ownedPlotsSet = {}
     for _, plotNumber in pairs(ownedPlots) do
         ownedPlotsSet[plotNumber] = true
     end
     
-    -- Update colors for all plots in the area
-    for plotNumber = 1, TOTAL_PLOTS do
-        -- Skip plots 6 and 7 as they don't exist
-        if plotNumber ~= 6 and plotNumber ~= 7 then
-            local plotName = "Plot" .. plotNumber
-            
-            -- Look for plot in Buttons folder first, then in area directly
-            local plot = nil
-            local buttonsFolder = area:FindFirstChild("Buttons")
-            if buttonsFolder then
-                plot = buttonsFolder:FindFirstChild(plotName)
-            end
-            if not plot then
-                plot = area:FindFirstChild(plotName)
-            end
-            
-            if plot and plot:IsA("Model") then
-                local cube009 = plot:FindFirstChild("Cube.009")
-                if cube009 and cube009:IsA("BasePart") then
-                    -- Make it neon for shiny effect
-                    cube009.Material = Enum.Material.Neon
-                    
-                    local requiredRebirths = getPlotRebirthRequirement(plotNumber)
-                    
-                    if ownedPlotsSet[plotNumber] then
-                        -- White if purchased
-                        cube009.Color = Color3.fromRGB(255, 255, 255)
-                        print("PlotService: Set", plotName, "to WHITE (owned)")
-                    elseif playerRebirths < requiredRebirths then
-                        -- Black if not enough rebirths
-                        cube009.Color = Color3.fromRGB(0, 0, 0)
-                        print("PlotService: Set", plotName, "to BLACK (need", requiredRebirths, "rebirths, have", playerRebirths, ")")
-                    elseif playerMoney >= self:GetPlotCost(plotNumber) then
-                        -- Green if can afford and has enough rebirths
-                        cube009.Color = Color3.fromRGB(0, 255, 0)
-                        print("PlotService: Set", plotName, "to GREEN (affordable)")
-                    else
-                        -- Red if can't afford money but has enough rebirths
-                        cube009.Color = Color3.fromRGB(255, 0, 0)
-                        print("PlotService: Set", plotName, "to RED (unaffordable)")
-                    end
-                else
-                    print("PlotService: Cube.009 not found in", plotName)
-                end
-            else
-                print("PlotService: Plot not found:", plotName, "in area", area.Name)
-            end
-        end
-    end
-    
-    -- Also update TubePlot colors
-    local ownedTubes = self:GetPlayerOwnedTubes(player)
     local ownedTubesSet = {}
     for _, tubeNumber in pairs(ownedTubes) do
         ownedTubesSet[tubeNumber] = true
     end
     
+    -- Only add "Purchased" SurfaceGuis for owned plots/tubes
+    for plotNumber = 1, TOTAL_PLOTS do
+        if plotNumber ~= 6 and plotNumber ~= 7 and ownedPlotsSet[plotNumber] then
+            local buttonsFolder = area:FindFirstChild("Buttons")
+            if buttonsFolder then
+                local plot = buttonsFolder:FindFirstChild("Plot" .. plotNumber)
+                if plot then
+                    self:AddPurchasedSurfaceGui(area, plot)
+                end
+            end
+        end
+    end
+    
     for tubeNumber = 1, TOTAL_TUBEPLOTS do
-        local tubePlotName = "TubePlot" .. tubeNumber
-        
-        -- Look for TubePlot in Buttons folder first, then in area directly
-        local tubePlot = nil
-        local buttonsFolder = area:FindFirstChild("Buttons")
-        if buttonsFolder then
-            tubePlot = buttonsFolder:FindFirstChild(tubePlotName)
-        end
-        if not tubePlot then
-            tubePlot = area:FindFirstChild(tubePlotName)
-        end
-        
-        if tubePlot and tubePlot:IsA("Model") then
-            local cube009 = tubePlot:FindFirstChild("Cube.009")
-            if cube009 and cube009:IsA("BasePart") then
-                -- Make it neon for shiny effect
-                cube009.Material = Enum.Material.Neon
-                
-                local requiredRebirths = getTubePlotRebirthRequirement(tubeNumber)
-                
-                if ownedTubesSet[tubeNumber] then
-                    -- White if purchased
-                    cube009.Color = Color3.fromRGB(255, 255, 255)
-                    print("PlotService: Set", tubePlotName, "to WHITE (owned)")
-                elseif playerRebirths < requiredRebirths then
-                    -- Black if not enough rebirths
-                    cube009.Color = Color3.fromRGB(0, 0, 0)
-                    print("PlotService: Set", tubePlotName, "to BLACK (need", requiredRebirths, "rebirths, have", playerRebirths, ")")
-                elseif playerMoney >= self:GetTubePlotCost(tubeNumber) then
-                    -- Green if can afford and has enough rebirths
-                    cube009.Color = Color3.fromRGB(0, 255, 0)
-                    print("PlotService: Set", tubePlotName, "to GREEN (affordable)")
-                else
-                    -- Red if can't afford money but has enough rebirths
-                    cube009.Color = Color3.fromRGB(255, 0, 0)
-                    print("PlotService: Set", tubePlotName, "to RED (unaffordable)")
+        if ownedTubesSet[tubeNumber] then
+            local buttonsFolder = area:FindFirstChild("Buttons")
+            if buttonsFolder then
+                local tubePlot = buttonsFolder:FindFirstChild("TubePlot" .. tubeNumber)
+                if tubePlot then
+                    self:AddPurchasedSurfaceGui(area, tubePlot)
                 end
             end
         end
@@ -2189,9 +2333,9 @@ function PlotService:DebugUpdateAllPlotColors()
             if playerAreas then
                 local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
                 if area then
-                    print("PlotService: DEBUG - Updating colors, GUIs, and visibility for", player.Name, "in area", assignedAreaNumber)
-                    self:UpdatePlotColors(area, player)
+                    print("PlotService: DEBUG - Updating GUIs and visibility for", player.Name, "in area", assignedAreaNumber)
                     self:UpdatePlotGUIs(area, player)
+                    self:UpdatePlotColors(area, player)
                     self:UpdatePlotVisibility(area, player)
                 end
             end

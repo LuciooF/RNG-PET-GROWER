@@ -48,6 +48,14 @@ local function PetInventoryUI()
     end, {})
 
     local pets = playerData and playerData.Pets or {}
+    local equippedPets = playerData and playerData.EquippedPets or {}
+    
+    -- Create equipped pets set for quick lookup
+    local equippedPetsSet = {}
+    for _, pet in ipairs(equippedPets) do
+        local key = string.format("%s_%s_%s", pet.Name or "Unknown", pet.Rarity or "Common", pet.Variation or "Bronze")
+        equippedPetsSet[key] = (equippedPetsSet[key] or 0) + 1
+    end
     
     -- Group pets by name, rarity, and variation
     local groupedPets = {}
@@ -58,17 +66,31 @@ local function PetInventoryUI()
                 Name = pet.Name or "Unknown",
                 Rarity = pet.Rarity or "Common", 
                 Variation = pet.Variation or "Bronze",
-                Quantity = 0
+                Quantity = 0,
+                EquippedCount = equippedPetsSet[key] or 0,
+                SamplePet = pet -- Store sample pet for equip/unequip
             }
         end
         groupedPets[key].Quantity = groupedPets[key].Quantity + 1
     end
     
-    -- Convert to array for easier iteration
+    -- Convert to array and sort (equipped pets first)
     local petGroups = {}
     for _, group in pairs(groupedPets) do
         table.insert(petGroups, group)
     end
+    
+    -- Sort: equipped pets first, then by rarity/name
+    table.sort(petGroups, function(a, b)
+        if a.EquippedCount > 0 and b.EquippedCount == 0 then
+            return true
+        elseif a.EquippedCount == 0 and b.EquippedCount > 0 then
+            return false
+        else
+            -- Both equipped or both not equipped, sort by name
+            return a.Name < b.Name
+        end
+    end)
 
     -- Side buttons (Pets and Rebirth)
     local sideButtons = React.createElement("Frame", {
@@ -309,6 +331,57 @@ local function PetInventoryUI()
                         TextXAlignment = Enum.TextXAlignment.Center,
                         ZIndex = 103,
                         Visible = true
+                    }),
+                    
+                    -- Equipped indicator
+                    EquippedIndicator = petGroup.EquippedCount > 0 and React.createElement("TextLabel", {
+                        Size = UDim2.new(0, 60, 0, 12),
+                        Position = UDim2.new(1, -65, 0, 5),
+                        BackgroundColor3 = Color3.fromRGB(100, 255, 100),
+                        BorderSizePixel = 0,
+                        Text = "EQUIPPED",
+                        TextColor3 = Color3.fromRGB(0, 0, 0),
+                        TextScaled = true,
+                        Font = Enum.Font.GothamBold,
+                        TextXAlignment = Enum.TextXAlignment.Center,
+                        ZIndex = 104,
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = UDim.new(0, 4)
+                        })
+                    }) or nil,
+                    
+                    -- Equip/Unequip button
+                    EquipButton = React.createElement("TextButton", {
+                        Size = UDim2.new(1, -10, 0, 18),
+                        Position = UDim2.new(0, 5, 1, -23),
+                        BackgroundColor3 = petGroup.EquippedCount > 0 and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100),
+                        BorderSizePixel = 0,
+                        Text = petGroup.EquippedCount > 0 and "Unequip" or "Equip",
+                        TextColor3 = Color3.fromRGB(0, 0, 0),
+                        TextScaled = true,
+                        Font = Enum.Font.GothamBold,
+                        ZIndex = 103,
+                        [React.Event.Activated] = function()
+                            local equipRemote = ReplicatedStorage:FindFirstChild("EquipPet")
+                            local unequipRemote = ReplicatedStorage:FindFirstChild("UnequipPet")
+                            
+                            if petGroup.EquippedCount > 0 then
+                                -- Unequip pet
+                                if unequipRemote and petGroup.SamplePet then
+                                    unequipRemote:FireServer(petGroup.SamplePet.ID)
+                                end
+                            else
+                                -- Equip pet
+                                if equipRemote and petGroup.SamplePet then
+                                    equipRemote:FireServer(petGroup.SamplePet.ID)
+                                end
+                            end
+                        end
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = UDim.new(0, 4)
+                        })
                     })
                 })
             end
