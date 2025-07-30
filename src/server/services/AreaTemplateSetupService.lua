@@ -327,22 +327,22 @@ function AreaTemplateSetupService:CreateRebirthInstructionGUI(areaTemplate)
 end
 
 function AreaTemplateSetupService:CreateGamepassButtonGUIs(areaTemplate)
-    -- Create base GUIs for all gamepass buttons
+    -- Create base GUIs for all gamepass buttons with proper structure
     local gamepassButtons = {
-        {name = "2xMoneyButton", text = "2x Money", color = Color3.fromRGB(85, 170, 85)},
-        {name = "2xDiamondsButton", text = "2x Diamonds", color = Color3.fromRGB(100, 149, 237)},
-        {name = "2xHeavenSpeedButton", text = "2x Heaven Speed", color = Color3.fromRGB(255, 165, 0)},
-        {name = "VIPButton", text = "VIP", color = Color3.fromRGB(255, 215, 0)},
-        {name = "PetMagnetButton", text = "Pet Magnet", color = Color3.fromRGB(138, 43, 226)},
-        {name = "AutoHeavenButton", text = "Auto Heaven", color = Color3.fromRGB(255, 69, 0)}
+        {name = "2xMoneyButton", text = "2x Money", description = "Double money from\nall pet sales!", color = Color3.fromRGB(85, 170, 85)},
+        {name = "2xDiamondsButton", text = "2x Diamonds", description = "Double diamonds from\nall sources!", color = Color3.fromRGB(100, 149, 237)},
+        {name = "2xHeavenSpeedButton", text = "2x Heaven Speed", description = "Process pets twice\nas fast in heaven!", color = Color3.fromRGB(255, 165, 0)},
+        {name = "VIPButton", text = "VIP", description = "All gamepasses included\n+ exclusive benefits!", color = Color3.fromRGB(255, 215, 0)},
+        {name = "PetMagnet", text = "Pet Magnet", description = "Auto-collect pet balls\nwithin range!", color = Color3.fromRGB(0, 162, 255)},
+        {name = "AutoSendHeaven", text = "Auto Heaven", description = "Auto-send pets every 30s\nwith countdown timer!", color = Color3.fromRGB(255, 215, 0)}
     }
     
     for _, buttonConfig in ipairs(gamepassButtons) do
-        self:CreateGamepassButtonGUI(areaTemplate, buttonConfig.name, buttonConfig.text, buttonConfig.color)
+        self:CreateGamepassButtonGUI(areaTemplate, buttonConfig.name, buttonConfig.text, buttonConfig.description, buttonConfig.color)
     end
 end
 
-function AreaTemplateSetupService:CreateGamepassButtonGUI(areaTemplate, buttonName, buttonText, buttonColor)
+function AreaTemplateSetupService:CreateGamepassButtonGUI(areaTemplate, buttonName, buttonText, buttonDescription, buttonColor)
     -- Find the gamepass button
     local button = areaTemplate:FindFirstChild(buttonName, true)
     if not button then
@@ -354,28 +354,63 @@ function AreaTemplateSetupService:CreateGamepassButtonGUI(areaTemplate, buttonNa
         return
     end
     
-    -- Create BillboardGui for the button (matches current design)
+    -- Create BillboardGui for the button (better design)
     local billboardGui = Instance.new("BillboardGui")
     billboardGui.Name = "GamepassBillboard"
-    billboardGui.Size = UDim2.new(0, 200, 0, 80)
-    billboardGui.StudsOffset = Vector3.new(0, 8, 0)
-    billboardGui.MaxDistance = 50
+    billboardGui.Size = UDim2.new(0, 150, 0, 80)  -- Better proportions
+    billboardGui.StudsOffset = Vector3.new(0, 5, 0)  -- Float 5 studs above
+    billboardGui.MaxDistance = 80
     billboardGui.Parent = button
     
-    -- Create main text label (matches current simple design)
-    local mainLabel = Instance.new("TextLabel")
-    mainLabel.Name = "MainLabel"
-    mainLabel.Size = UDim2.new(1, 0, 1, 0)
-    mainLabel.BackgroundTransparency = 1
-    mainLabel.Font = Enum.Font.GothamBold
-    mainLabel.Text = buttonText
-    mainLabel.TextColor3 = buttonColor
-    mainLabel.TextSize = 20
-    mainLabel.TextStrokeTransparency = 0
-    mainLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    mainLabel.TextXAlignment = Enum.TextXAlignment.Center
-    mainLabel.TextYAlignment = Enum.TextYAlignment.Center
-    mainLabel.Parent = billboardGui
+    -- Create title label (shows gamepass name)
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Size = UDim2.new(1, 0, 0, 30)
+    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Text = buttonText
+    titleLabel.TextColor3 = buttonColor
+    titleLabel.TextSize = 18
+    titleLabel.TextStrokeTransparency = 0
+    titleLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+    titleLabel.Parent = billboardGui
+    
+    -- Create description label (shows gamepass benefits)
+    local descriptionLabel = Instance.new("TextLabel")
+    descriptionLabel.Name = "DescriptionLabel"
+    descriptionLabel.Size = UDim2.new(1, 0, 0, 50)
+    descriptionLabel.Position = UDim2.new(0, 0, 0, 30)
+    descriptionLabel.BackgroundTransparency = 1
+    descriptionLabel.Font = Enum.Font.Gotham
+    descriptionLabel.Text = buttonDescription
+    descriptionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    descriptionLabel.TextSize = 12
+    descriptionLabel.TextWrapped = true
+    descriptionLabel.TextStrokeTransparency = 0
+    descriptionLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    descriptionLabel.TextXAlignment = Enum.TextXAlignment.Center
+    descriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+    descriptionLabel.Parent = billboardGui
+    
+    -- Create owned label (hidden by default, shown when owned)
+    local ownedLabel = Instance.new("TextLabel")
+    ownedLabel.Name = "OwnedLabel"
+    ownedLabel.Size = UDim2.new(1, 0, 1, 0)
+    ownedLabel.Position = UDim2.new(0, 0, 0, 0)
+    ownedLabel.BackgroundTransparency = 1
+    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Text = buttonText .. "\nOWNED"
+    ownedLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for owned
+    ownedLabel.TextSize = 20
+    ownedLabel.TextStrokeTransparency = 0
+    ownedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    ownedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ownedLabel.TextYAlignment = Enum.TextYAlignment.Center
+    ownedLabel.Visible = false -- Hidden by default
+    ownedLabel.Parent = billboardGui
 end
 
 return AreaTemplateSetupService

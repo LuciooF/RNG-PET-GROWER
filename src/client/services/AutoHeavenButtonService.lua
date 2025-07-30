@@ -63,11 +63,8 @@ function AutoHeavenButtonService:FindAutoHeavenButton()
         return
     end
     
-    -- Add GUI to the button
-    self:CreateAutoHeavenButtonGUI()
-    
-    -- Set initial visibility based on gamepass ownership
-    self:UpdateButtonVisibility()
+    -- Update existing template GUI with ownership status
+    self:UpdateGamepassGUI()
 end
 
 function AutoHeavenButtonService:CreateAutoHeavenButtonGUI()

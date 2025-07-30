@@ -103,17 +103,11 @@ function TwoXMoneyButtonService:UpdateGamepassGUI()
         return
     end
     
-    local mainLabel = existingBillboard:FindFirstChild("MainLabel")
-    if not mainLabel then
-        warn("TwoXMoneyButtonService: MainLabel not found in GamepassBillboard")
-        return
-    end
-    
-    -- Check ownership and update text
-    self:CheckOwnershipAndUpdateGUI(mainLabel)
+    -- Check ownership and update visibility
+    self:CheckOwnershipAndUpdateGUI(existingBillboard)
 end
 
-function TwoXMoneyButtonService:CheckOwnershipAndUpdateGUI(mainLabel)
+function TwoXMoneyButtonService:CheckOwnershipAndUpdateGUI(billboard)
     -- Get player data to check ownership
     local DataSyncService = require(script.Parent.DataSyncService)
     local playerData = DataSyncService:GetPlayerData()
@@ -128,13 +122,21 @@ function TwoXMoneyButtonService:CheckOwnershipAndUpdateGUI(mainLabel)
         end
     end
     
-    -- Update GUI text based on ownership
+    -- Get template labels
+    local titleLabel = billboard:FindFirstChild("TitleLabel")
+    local descriptionLabel = billboard:FindFirstChild("DescriptionLabel")
+    local ownedLabel = billboard:FindFirstChild("OwnedLabel")
+    
     if ownsGamepass then
-        mainLabel.Text = "2x Money\nOWNED"
-        mainLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for owned
+        -- Show owned state: hide title+description, show owned label
+        if titleLabel then titleLabel.Visible = false end
+        if descriptionLabel then descriptionLabel.Visible = false end
+        if ownedLabel then ownedLabel.Visible = true end
     else
-        mainLabel.Text = "2x Money"
-        mainLabel.TextColor3 = Color3.fromRGB(85, 170, 85) -- Original color
+        -- Show purchase state: show title+description, hide owned label
+        if titleLabel then titleLabel.Visible = true end
+        if descriptionLabel then descriptionLabel.Visible = true end
+        if ownedLabel then ownedLabel.Visible = false end
     end
     
     print("TwoXMoneyButtonService: Player owns gamepass:", ownsGamepass)
