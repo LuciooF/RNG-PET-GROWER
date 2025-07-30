@@ -62,91 +62,56 @@ function TwoXDiamondsButtonService:FindTwoXDiamondsButton()
     twoXDiamondsButtonPart = buttonsFolder:FindFirstChild("2xDiamondsButton")
     if twoXDiamondsButtonPart then
         print("TwoXDiamondsButtonService: Found 2xDiamondsButton")
-        self:CreateGamepassGUI()
+        self:UpdateGamepassGUI()
     else
         warn("TwoXDiamondsButtonService: 2xDiamondsButton not found")
     end
 end
 
-function TwoXDiamondsButtonService:CreateGamepassGUI()
-    -- Find the best part to attach GUI to
-    local targetPart = nil
-    if twoXDiamondsButtonPart:IsA("Model") then
-        -- Look for a suitable part in the model
-        for _, part in pairs(twoXDiamondsButtonPart:GetDescendants()) do
-            if part:IsA("BasePart") then
-                targetPart = part
-                break
-            end
-        end
-    else
-        targetPart = twoXDiamondsButtonPart
-    end
-    
-    if not targetPart then
-        warn("TwoXDiamondsButtonService: No suitable part found for GUI attachment")
+function TwoXDiamondsButtonService:UpdateGamepassGUI()
+    -- GUI already exists from AreaTemplate, just update ownership status
+    local existingBillboard = twoXDiamondsButtonPart:FindFirstChild("GamepassBillboard", true)
+    if not existingBillboard then
+        warn("TwoXDiamondsButtonService: GamepassBillboard not found - should exist from template")
         return
     end
     
-    -- Clean up existing GUIs
-    local existingBillboard = twoXDiamondsButtonPart:FindFirstChild("GamepassBillboard", true)
-    if existingBillboard then
-        existingBillboard:Destroy()
+    -- Check ownership and update visibility
+    self:CheckOwnershipAndUpdateGUI(existingBillboard)
+end
+
+function TwoXDiamondsButtonService:CheckOwnershipAndUpdateGUI(billboard)
+    -- Get player data to check ownership
+    local playerData = DataSyncService:GetPlayerData()
+    
+    local ownsGamepass = false
+    if playerData and playerData.OwnedGamepasses then
+        for _, gamepassName in pairs(playerData.OwnedGamepasses) do
+            if gamepassName == "TwoXDiamonds" then
+                ownsGamepass = true
+                break
+            end
+        end
     end
     
-    -- Create BillboardGui for gamepass information
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "GamepassBillboard"
-    billboardGui.Size = UDim2.new(0, 150, 0, 80) -- Smaller size
-    billboardGui.StudsOffset = Vector3.new(0, 4, 0) -- Float 4 studs above the part
-    billboardGui.MaxDistance = 80 -- Much further visibility for camera angles
-    billboardGui.Parent = targetPart
+    -- Get template labels
+    local titleLabel = billboard:FindFirstChild("TitleLabel")
+    local descriptionLabel = billboard:FindFirstChild("DescriptionLabel")
+    local ownedLabel = billboard:FindFirstChild("OwnedLabel")
     
-    -- Create gamepass icon
-    local iconLabel = Instance.new("ImageLabel")
-    iconLabel.Name = "GamepassIcon"
-    iconLabel.Size = UDim2.new(0, 40, 0, 40)
-    iconLabel.Position = UDim2.new(0.5, -20, 0, 5)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png" -- Default, will be updated
-    iconLabel.Parent = billboardGui
+    if ownsGamepass then
+        -- Show owned state: hide title+description, show owned label
+        if titleLabel then titleLabel.Visible = false end
+        if descriptionLabel then descriptionLabel.Visible = false end
+        if ownedLabel then ownedLabel.Visible = true end
+    else
+        -- Show purchase state: show title+description, hide owned label
+        if titleLabel then titleLabel.Visible = true end
+        if descriptionLabel then descriptionLabel.Visible = true end
+        if ownedLabel then ownedLabel.Visible = false end
+    end
     
-    -- Create gamepass label
-    local gamepassLabel = Instance.new("TextLabel")
-    gamepassLabel.Name = "GamepassText"
-    gamepassLabel.Size = UDim2.new(1, 0, 0, 20)
-    gamepassLabel.Position = UDim2.new(0, 0, 0, 48)
-    gamepassLabel.BackgroundTransparency = 1
-    gamepassLabel.Font = Enum.Font.GothamBold
-    gamepassLabel.Text = "2x Diamonds"
-    gamepassLabel.TextColor3 = Color3.fromRGB(100, 255, 255) -- Cyan color for diamonds
-    gamepassLabel.TextSize = 18
-    gamepassLabel.TextStrokeTransparency = 0
-    gamepassLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    gamepassLabel.Parent = billboardGui
-    
-    -- Create status label (will show "Owned" or price)
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusText"
-    statusLabel.Size = UDim2.new(1, 0, 0, 14)
-    statusLabel.Position = UDim2.new(0, 0, 1, -16)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Loading..."
-    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    statusLabel.TextSize = 14
-    statusLabel.TextStrokeTransparency = 0
-    statusLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    statusLabel.Parent = billboardGui
-    
-    -- Update status and icon based on ownership
-    self:UpdateGamepassStatus(statusLabel, iconLabel)
-    
-    -- Also try to update immediately in case data is already loaded
-    task.spawn(function()
-        task.wait(0.5) -- Small delay to ensure MarketplaceService is ready
-        self:UpdateGamepassStatus(statusLabel, iconLabel)
-    end)
+    print("TwoXDiamondsButtonService: Player owns gamepass:", ownsGamepass)
 end
 
 function TwoXDiamondsButtonService:UpdateGamepassStatus(statusLabel, iconLabel)
@@ -255,24 +220,25 @@ end
 
 function TwoXDiamondsButtonService:SetupDataSubscription()
     -- Subscribe to data changes to update GUI
-    DataSyncService:Subscribe(function(newState)
+    local unsubscribe = DataSyncService:Subscribe(function(newState)
         if newState and newState.player then
-            local billboard = twoXDiamondsButtonPart and twoXDiamondsButtonPart:FindFirstChild("GamepassBillboard", true)
-            if billboard then
-                local statusLabel = billboard:FindFirstChild("StatusText")
-                local iconLabel = billboard:FindFirstChild("GamepassIcon")
-                if statusLabel then
-                    self:UpdateGamepassStatus(statusLabel, iconLabel)
-                end
-            end
+            self:UpdateGamepassGUI()
         end
     end)
+    
+    -- Store unsubscribe function for cleanup
+    self.dataSubscription = unsubscribe
 end
 
 function TwoXDiamondsButtonService:Cleanup()
     if proximityConnection then
         proximityConnection:Disconnect()
         proximityConnection = nil
+    end
+    
+    if self.dataSubscription then
+        self.dataSubscription()
+        self.dataSubscription = nil
     end
     
     lastKnownOwnership = nil

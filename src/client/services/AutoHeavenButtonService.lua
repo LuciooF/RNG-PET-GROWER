@@ -67,100 +67,50 @@ function AutoHeavenButtonService:FindAutoHeavenButton()
     self:UpdateGamepassGUI()
 end
 
-function AutoHeavenButtonService:CreateAutoHeavenButtonGUI()
-    if not autoHeavenButtonPart then return end
-    
-    -- Find the best part to attach GUI to
-    local targetPart = nil
-    if autoHeavenButtonPart:IsA("Model") then
-        -- Look for a part with "Platform" or similar in the name, or just use the first BasePart
-        for _, part in pairs(autoHeavenButtonPart:GetDescendants()) do
-            if part:IsA("BasePart") then
-                if part.Name:lower():find("platform") or part.Name:lower():find("base") or part.Name:lower():find("top") then
-                    targetPart = part
-                    break
-                end
-            end
-        end
-        -- Fallback to first BasePart if no specific part found
-        if not targetPart then
-            for _, part in pairs(autoHeavenButtonPart:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    targetPart = part
-                    break
-                end
-            end
-        end
-    else
-        targetPart = autoHeavenButtonPart
-    end
-    
-    if not targetPart then
-        warn("AutoHeavenButtonService: No suitable part found for GUI attachment")
+function AutoHeavenButtonService:UpdateGamepassGUI()
+    -- GUI already exists from AreaTemplate, just update ownership status
+    local existingBillboard = autoHeavenButtonPart:FindFirstChild("GamepassBillboard", true)
+    if not existingBillboard then
+        warn("AutoHeavenButtonService: GamepassBillboard not found - should exist from template")
         return
     end
     
-    -- Clean up existing GUIs
-    local existingBillboard = autoHeavenButtonPart:FindFirstChild("AutoHeavenBillboard", true)
-    if existingBillboard then
-        existingBillboard:Destroy()
-    end
-    
+    -- Check ownership and update visibility
+    self:CheckOwnershipAndUpdateGUI(existingBillboard)
+end
+
+function AutoHeavenButtonService:CheckOwnershipAndUpdateGUI(billboard)
     -- Get player data to check ownership
     local playerData = DataSyncService:GetPlayerData()
-    local ownsAutoHeaven = self:PlayerOwnsAutoHeaven(playerData)
     
-    -- Create BillboardGui for gamepass info (floating above button)
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "AutoHeavenBillboard"
-    billboardGui.Size = UDim2.new(0, 150, 0, 80)
-    billboardGui.StudsOffset = Vector3.new(0, 5, 0) -- Float 5 studs above the part
-    billboardGui.MaxDistance = 80 -- Much further visibility for camera angles
-    billboardGui.Parent = targetPart
-    
-    if ownsAutoHeaven then
-        -- Show simple "OWNED" text when player owns it
-        local ownedLabel = Instance.new("TextLabel")
-        ownedLabel.Name = "OwnedText"
-        ownedLabel.Size = UDim2.new(1, 0, 1, 0)
-        ownedLabel.BackgroundTransparency = 1
-        ownedLabel.Font = Enum.Font.GothamBold
-        ownedLabel.Text = "Auto Heaven\nOWNED"
-        ownedLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green
-        ownedLabel.TextSize = 20
-        ownedLabel.TextStrokeTransparency = 0
-        ownedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        ownedLabel.Parent = billboardGui
-    else
-        -- Show title and description when not owned
-        local autoHeavenLabel = Instance.new("TextLabel")
-        autoHeavenLabel.Name = "AutoHeavenText"
-        autoHeavenLabel.Size = UDim2.new(1, 0, 0, 30)
-        autoHeavenLabel.Position = UDim2.new(0, 0, 0, 0)
-        autoHeavenLabel.BackgroundTransparency = 1
-        autoHeavenLabel.Font = Enum.Font.GothamBold
-        autoHeavenLabel.Text = "Auto Heaven!"
-        autoHeavenLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold auto heaven color
-        autoHeavenLabel.TextSize = 18
-        autoHeavenLabel.TextStrokeTransparency = 0
-        autoHeavenLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        autoHeavenLabel.Parent = billboardGui
-        
-        -- Add description
-        local descriptionLabel = Instance.new("TextLabel")
-        descriptionLabel.Name = "DescriptionText"
-        descriptionLabel.Size = UDim2.new(1, 0, 0, 50)
-        descriptionLabel.Position = UDim2.new(0, 0, 0, 30)
-        descriptionLabel.BackgroundTransparency = 1
-        descriptionLabel.Font = Enum.Font.Gotham
-        descriptionLabel.Text = "Auto-send pets every 30s\nwith countdown timer!"
-        descriptionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        descriptionLabel.TextSize = 12
-        descriptionLabel.TextWrapped = true
-        descriptionLabel.TextStrokeTransparency = 0
-        descriptionLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        descriptionLabel.Parent = billboardGui
+    local ownsGamepass = false
+    if playerData and playerData.OwnedGamepasses then
+        for _, gamepassName in pairs(playerData.OwnedGamepasses) do
+            if gamepassName == "AutoHeaven" then
+                ownsGamepass = true
+                break
+            end
+        end
     end
+    
+    -- Get template labels
+    local titleLabel = billboard:FindFirstChild("TitleLabel")
+    local descriptionLabel = billboard:FindFirstChild("DescriptionLabel")
+    local ownedLabel = billboard:FindFirstChild("OwnedLabel")
+    
+    if ownsGamepass then
+        -- Show owned state: hide title+description, show owned label
+        if titleLabel then titleLabel.Visible = false end
+        if descriptionLabel then descriptionLabel.Visible = false end
+        if ownedLabel then ownedLabel.Visible = true end
+    else
+        -- Show purchase state: show title+description, hide owned label
+        if titleLabel then titleLabel.Visible = true end
+        if descriptionLabel then descriptionLabel.Visible = true end
+        if ownedLabel then ownedLabel.Visible = false end
+    end
+    
+    print("AutoHeavenButtonService: Player owns gamepass:", ownsGamepass)
 end
 
 -- Set up subscription to player data changes for visibility updates
@@ -192,8 +142,8 @@ function AutoHeavenButtonService:UpdateButtonVisibility()
     -- Update the tracked state
     lastKnownOwnership = ownsAutoHeaven
     
-    -- Recreate the GUI to reflect the new ownership status
-    self:CreateAutoHeavenButtonGUI()
+    -- Update the GUI to reflect the new ownership status
+    self:UpdateGamepassGUI()
     
     print("AutoHeavenButtonService: Player owns gamepass:", ownsAutoHeaven)
 end

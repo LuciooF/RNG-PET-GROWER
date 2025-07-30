@@ -142,8 +142,8 @@ function PetMagnetButtonService:UpdateButtonVisibility()
     -- Update the tracked state
     lastKnownOwnership = ownsPetMagnet
     
-    -- Recreate the GUI to reflect the new ownership status
-    self:CreatePetMagnetButtonGUI()
+    -- Update the GUI to reflect the new ownership status
+    self:UpdateGamepassGUI()
     
     print("PetMagnetButtonService: Player owns gamepass:", ownsPetMagnet)
 end
