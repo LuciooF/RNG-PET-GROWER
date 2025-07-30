@@ -33,6 +33,7 @@ end
 
 function AreaTemplateSetupService:CreateDoorGUIs(areaTemplate)
     -- Create door label GUIs for all levels and doors
+    local totalDoors = 0
     for level = 1, 6 do
         local levelFolder = areaTemplate:FindFirstChild("Level" .. level)
         if levelFolder then
@@ -42,11 +43,13 @@ function AreaTemplateSetupService:CreateDoorGUIs(areaTemplate)
                     local doorNumber = tonumber(door.Name:match("Door(%d+)"))
                     if doorNumber then
                         self:CreateDoorSurfaceGui(door, level, doorNumber)
+                        totalDoors = totalDoors + 1
                     end
                 end
             end
         end
     end
+    print("AreaTemplateSetupService: Created door GUIs for", totalDoors, "doors")
 end
 
 function AreaTemplateSetupService:CreateDoorSurfaceGui(door, level, doorNumber)
@@ -57,36 +60,54 @@ function AreaTemplateSetupService:CreateDoorSurfaceGui(door, level, doorNumber)
     end
     
     -- Skip if GUI already exists
-    if targetPart:FindFirstChild("DoorLabelGui") then
+    if targetPart:FindFirstChild("DoorLabelGui_Front") then
         return
     end
     
-    -- Create SurfaceGui (front face)
-    local surfaceGui = Instance.new("SurfaceGui")
-    surfaceGui.Name = "DoorLabelGui"
-    surfaceGui.Face = Enum.NormalId.Front
-    surfaceGui.LightInfluence = 0
-    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    surfaceGui.PixelsPerStud = 50
-    surfaceGui.Parent = targetPart
+    -- Create SurfaceGui for all faces
+    local faces = {
+        Enum.NormalId.Front,
+        Enum.NormalId.Back,
+        Enum.NormalId.Left,
+        Enum.NormalId.Right,
+        Enum.NormalId.Top,
+        Enum.NormalId.Bottom
+    }
     
-    -- Create text label
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "DoorLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Level " .. level .. "\n\nDoor " .. doorNumber
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    textLabel.Parent = surfaceGui
-    
-    -- Also create one for the back face
-    local backGui = surfaceGui:Clone()
-    backGui.Face = Enum.NormalId.Back
-    backGui.Parent = targetPart
+    for _, face in pairs(faces) do
+        local surfaceGui = Instance.new("SurfaceGui")
+        surfaceGui.Name = "DoorLabelGui_" .. tostring(face)
+        surfaceGui.Face = face
+        surfaceGui.LightInfluence = 0
+        surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        surfaceGui.PixelsPerStud = 50
+        surfaceGui.Parent = targetPart
+        
+        -- Create background frame for better visibility
+        local bgFrame = Instance.new("Frame")
+        bgFrame.Name = "Background"
+        bgFrame.Size = UDim2.new(0.8, 0, 0.6, 0)
+        bgFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
+        bgFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        bgFrame.BackgroundTransparency = 0.3
+        bgFrame.BorderSizePixel = 0
+        bgFrame.Parent = surfaceGui
+        
+        -- Create text label
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Name = "DoorLabel"
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = "Level " .. level .. "\n\nDoor " .. doorNumber
+        textLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange - visible on both red and green
+        textLabel.TextSize = 72 -- Larger text size
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.TextStrokeTransparency = 0
+        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.Parent = bgFrame
+    end
 end
 
 function AreaTemplateSetupService:FindDoorTargetPart(door)
