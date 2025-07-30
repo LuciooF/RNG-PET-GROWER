@@ -124,6 +124,12 @@ function SendHeavenButtonService:CreateSendHeavenButtonGUI()
     print("SendHeavenButtonService: Created instruction GUI over SendHeaven button")
 end
 
+-- Cleanup method (minimal - this service doesn't track much state)
+function SendHeavenButtonService:Cleanup()
+    -- Nothing to clean up for this simple service
+    sendHeavenButton = nil
+end
+
 -- Handle character respawn
 Players.LocalPlayer.CharacterAdded:Connect(function()
     -- Re-initialize after character respawn
