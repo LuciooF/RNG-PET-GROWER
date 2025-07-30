@@ -1,0 +1,787 @@
+-- PetMixerAnimationService - Handles visual animations for pet mixer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+
+local DataSyncService = require(script.Parent.DataSyncService)
+local PetUtils = require(ReplicatedStorage.utils.PetUtils)
+local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+
+local PetMixerAnimationService = {}
+PetMixerAnimationService.__index = PetMixerAnimationService
+
+local player = Players.LocalPlayer
+local activeMixerAnimations = {} -- Track active animations by mixer ID
+local mixerParts = {} -- Cache mixer parts by area
+local connections = {}
+
+-- Animation settings
+local BOUNCE_HEIGHT = 5 -- Studs to bounce up (increased from 3)
+local BOUNCE_DURATION = 0.8 -- Time for one bounce cycle
+local SHINE_DURATION = 2 -- Duration of shine effect
+local PET_BALL_SIZE = Vector3.new(1, 1, 1) -- Size of animated pet balls
+
+function PetMixerAnimationService:Initialize()
+    print("PetMixerAnimationService: Initialized")
+    
+    -- Find mixer parts in player's area
+    self:FindMixerParts()
+    
+    -- Subscribe to player data changes to detect mixer state changes
+    self:SetupDataSubscription()
+    
+    -- Handle character respawn
+    player.CharacterAdded:Connect(function()
+        self:Cleanup()
+        -- Wait for area assignment handled by PlayerAreaFinder
+        self:FindMixerParts()
+        self:SetupDataSubscription()
+    end)
+end
+
+function PetMixerAnimationService:FindMixerParts()
+    -- Wait for character and area assignment
+    if not player.Character then
+        player.CharacterAdded:Wait()
+    end
+    
+    task.wait(2) -- Wait for area assignment
+    
+    -- Find player's area
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        warn("PetMixerAnimationService: PlayerAreas not found")
+        return
+    end
+    
+    -- Find the player's assigned area
+    local playerArea = nil
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") then
+            local nameplate = area:FindFirstChild("AreaNameplate")
+            if nameplate then
+                local billboard = nameplate:FindFirstChild("NameplateBillboard")
+                if billboard then
+                    local textLabel = billboard:FindFirstChild("TextLabel")
+                    if textLabel and textLabel.Text == (player.Name .. "'s Area") then
+                        playerArea = area
+                        print("PetMixerAnimationService: Found player's area:", area.Name)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    
+    if not playerArea then
+        warn("PetMixerAnimationService: Player area not found")
+        return
+    end
+    
+    -- Find Tubes folder and PetMixer parts
+    local tubesFolder = playerArea:FindFirstChild("Tubes")
+    if not tubesFolder then
+        warn("PetMixerAnimationService: Tubes folder not found")
+        return
+    end
+    
+    -- Cache all PetMixer parts
+    mixerParts = {}
+    for _, child in pairs(tubesFolder:GetChildren()) do
+        if child.Name:match("^PetMixer") then -- Matches PetMixer, PetMixer1, PetMixer2, etc.
+            local cube006 = child:FindFirstChild("Cube.006")
+            if cube006 and cube006:IsA("BasePart") then
+                local mixerNumber = child.Name:match("PetMixer(%d*)") or "1"
+                if mixerNumber == "" then mixerNumber = "1" end
+                mixerParts[tonumber(mixerNumber)] = {
+                    mixerModel = child,
+                    anchorPart = cube006
+                }
+                print("PetMixerAnimationService: Found", child.Name, "with Cube.006 anchor")
+            else
+                warn("PetMixerAnimationService: Cube.006 not found in", child.Name)
+            end
+        end
+    end
+end
+
+function PetMixerAnimationService:SetupDataSubscription()
+    -- Clean up existing connection
+    if connections.dataSync then
+        connections.dataSync:Disconnect()
+    end
+    
+    local lastMixerStates = {}
+    
+    connections.dataSync = DataSyncService:Subscribe(function(newState)
+        if not newState.player or not newState.player.Mixers then return end
+        
+        local currentMixers = newState.player.Mixers
+        
+        -- Check for new mixers (start animations)
+        for _, mixer in ipairs(currentMixers) do
+            if not lastMixerStates[mixer.id] then
+                -- New mixer started
+                self:StartMixingAnimation(mixer)
+                lastMixerStates[mixer.id] = {
+                    claimed = mixer.claimed,
+                    completionTime = mixer.completionTime
+                }
+            elseif lastMixerStates[mixer.id] and not lastMixerStates[mixer.id].claimed and mixer.claimed then
+                -- Mixer was claimed
+                self:StopMixingAnimation(mixer.id)
+                lastMixerStates[mixer.id] = nil
+            elseif lastMixerStates[mixer.id] and not lastMixerStates[mixer.id].completed and os.time() >= mixer.completionTime then
+                -- Mixer just completed
+                self:ShowCompletionEffect(mixer)
+                lastMixerStates[mixer.id].completed = true
+            end
+        end
+        
+        -- Check for removed mixers (cleanup)
+        local currentMixerIds = {}
+        for _, mixer in ipairs(currentMixers) do
+            currentMixerIds[mixer.id] = true
+        end
+        
+        for mixerId, _ in pairs(lastMixerStates) do
+            if not currentMixerIds[mixerId] then
+                self:StopMixingAnimation(mixerId)
+                lastMixerStates[mixerId] = nil
+            end
+        end
+    end)
+end
+
+function PetMixerAnimationService:StartMixingAnimation(mixer)
+    local mixerNumber = 1 -- Default to mixer 1, could be enhanced to support multiple mixers
+    local mixerData = mixerParts[mixerNumber]
+    
+    if not mixerData or not mixerData.anchorPart then
+        warn("PetMixerAnimationService: Mixer", mixerNumber, "not found for animation")
+        return
+    end
+    
+    print("PetMixerAnimationService: Starting mixing animation for", #mixer.inputPets, "pets")
+    
+    -- Stop any existing animation for this mixer
+    self:StopMixingAnimation(mixer.id)
+    
+    local anchorPart = mixerData.anchorPart
+    local mixerModel = mixerData.mixerModel
+    
+    -- Create folder to hold animated pet balls
+    local animationFolder = Instance.new("Folder")
+    animationFolder.Name = "MixingAnimation_" .. mixer.id
+    animationFolder.Parent = mixerModel
+    
+    -- Create animated pet balls based on input pets
+    local petBalls = {}
+    local petCount = math.min(#mixer.inputPets, 10) -- Limit visual pets to prevent lag
+    
+    for i = 1, petCount do
+        local pet = mixer.inputPets[i]
+        local petBall = self:CreateAnimatedPetBall(pet, anchorPart.Position)
+        petBall.Parent = animationFolder
+        table.insert(petBalls, petBall)
+    end
+    
+    -- Create mixing particle effects
+    local particleEmitters = self:CreateMixingParticles(anchorPart, animationFolder)
+    
+    -- Create mixing timer GUI
+    local timerGUI = self:CreateMixingTimerGUI(mixer, mixerModel)
+    
+    -- Start bouncing animations with different timing for each pet ball
+    local animationData = {
+        petBalls = petBalls,
+        animationFolder = animationFolder,
+        bounceConnections = {},
+        particleEmitters = particleEmitters,
+        timerGUI = timerGUI
+    }
+    
+    for i, petBall in ipairs(petBalls) do
+        -- Create circular positions around the anchor
+        local angle = (i - 1) * (math.pi * 2 / petCount)
+        local radius = 1.5 -- Reduced from 3 to bring pet balls closer together
+        local basePosition = anchorPart.Position + Vector3.new(
+            math.cos(angle) * radius,
+            0,
+            math.sin(angle) * radius
+        )
+        
+        -- Set initial position
+        petBall.Position = basePosition
+        
+        -- Start bouncing animation with offset timing
+        local bounceOffset = (i - 1) * 0.2 -- Stagger bounces
+        animationData.bounceConnections[i] = self:StartBounceAnimation(petBall, basePosition, bounceOffset)
+    end
+    
+    activeMixerAnimations[mixer.id] = animationData
+end
+
+function PetMixerAnimationService:CreateAnimatedPetBall(pet, centerPosition)
+    -- Create a part to represent the pet ball
+    local petBall = Instance.new("Part")
+    petBall.Name = "AnimatedPetBall_" .. (pet.Name or "Unknown")
+    petBall.Size = PET_BALL_SIZE
+    petBall.Shape = Enum.PartType.Ball
+    petBall.Material = Enum.Material.Neon
+    petBall.CanCollide = false
+    petBall.Anchored = true
+    
+    -- Set color based on pet rarity
+    petBall.Color = PetUtils.arrayToColor(pet.Rarity and pet.Rarity.RarityColor)
+    
+    -- Add glowing effect
+    local pointLight = Instance.new("PointLight")
+    pointLight.Brightness = 1
+    pointLight.Range = 5
+    pointLight.Color = petBall.Color
+    pointLight.Parent = petBall
+    
+    return petBall
+end
+
+function PetMixerAnimationService:CreateMixingParticles(anchorPart, parentFolder)
+    local particleEmitters = {}
+    
+    -- Create multiple particle emitters for a rich mixing effect
+    for i = 1, 3 do
+        local particlePart = Instance.new("Part")
+        particlePart.Name = "ParticleEmitter" .. i
+        particlePart.Size = Vector3.new(0.1, 0.1, 0.1)
+        particlePart.Transparency = 1
+        particlePart.CanCollide = false
+        particlePart.Anchored = true
+        
+        -- Position particles around the anchor in a triangle
+        local angle = (i - 1) * (math.pi * 2 / 3)
+        local radius = 1
+        particlePart.Position = anchorPart.Position + Vector3.new(
+            math.cos(angle) * radius,
+            1, -- Slightly above the anchor
+            math.sin(angle) * radius
+        )
+        particlePart.Parent = parentFolder
+        
+        -- Create sparkle/magic particles
+        local attachment = Instance.new("Attachment")
+        attachment.Parent = particlePart
+        
+        -- Main swirling particles
+        local particles1 = Instance.new("ParticleEmitter")
+        particles1.Parent = attachment
+        particles1.Enabled = true
+        particles1.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        particles1.Lifetime = NumberRange.new(0.8, 1.2)
+        particles1.Rate = 50
+        particles1.SpreadAngle = Vector2.new(45, 45)
+        particles1.Speed = NumberRange.new(3, 6)
+        particles1.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 255)), -- Purple
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 0)), -- Gold
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 255, 255))  -- Cyan
+        }
+        particles1.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.5),
+            NumberSequenceKeypoint.new(0.5, 1.2),
+            NumberSequenceKeypoint.new(1, 0.2)
+        }
+        particles1.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(1, 1)
+        }
+        
+        -- Secondary glowing dust particles
+        local particles2 = Instance.new("ParticleEmitter")
+        particles2.Parent = attachment
+        particles2.Enabled = true
+        particles2.Texture = "rbxasset://textures/particles/fire_main.dds"
+        particles2.Lifetime = NumberRange.new(1.5, 2.0)
+        particles2.Rate = 25
+        particles2.SpreadAngle = Vector2.new(180, 180)
+        particles2.Speed = NumberRange.new(1, 3)
+        particles2.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 100)), -- Light yellow
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 255))  -- Purple
+        }
+        particles2.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(1, 0.8)
+        }
+        particles2.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.5),
+            NumberSequenceKeypoint.new(1, 1)
+        }
+        
+        table.insert(particleEmitters, {particlePart, particles1, particles2})
+    end
+    
+    return particleEmitters
+end
+
+function PetMixerAnimationService:CreateMixingTimerGUI(mixer, mixerModel)
+    local mixerNumber = 1 -- Default to mixer 1
+    local mixerData = mixerParts[mixerNumber]
+    
+    if not mixerData or not mixerData.anchorPart then
+        return nil
+    end
+    
+    local anchorPart = mixerData.anchorPart
+    
+    -- Create BillboardGui centered on anchor part
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "MixingTimer"
+    billboardGui.Size = UDim2.new(0, 280, 0, 100) -- Slightly wider for timer text
+    billboardGui.StudsOffset = Vector3.new(0, 18, 0) -- Higher above mixer
+    billboardGui.MaxDistance = 100 -- Much further visibility for camera angles
+    billboardGui.Parent = anchorPart
+    
+    -- Create timer label
+    local timerLabel = Instance.new("TextLabel")
+    timerLabel.Name = "TimerText"
+    timerLabel.Size = UDim2.new(1, 0, 1, 0)
+    timerLabel.BackgroundTransparency = 1
+    timerLabel.Font = Enum.Font.GothamBold
+    timerLabel.Text = "Mixing..."
+    timerLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
+    timerLabel.TextSize = 36
+    timerLabel.TextStrokeTransparency = 0
+    timerLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    timerLabel.Parent = billboardGui
+    
+    -- Update timer continuously
+    local startTime = tick()
+    local completionTime = mixer.completionTime
+    
+    local updateConnection = RunService.Heartbeat:Connect(function()
+        local currentTime = os.time()
+        local timeLeft = completionTime - currentTime
+        
+        if timeLeft <= 0 then
+            timerLabel.Text = "Done!"
+            timerLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green when done
+        else
+            -- Format time as MM:SS
+            local minutes = math.floor(timeLeft / 60)
+            local seconds = timeLeft % 60
+            
+            if minutes > 0 then
+                timerLabel.Text = string.format("Mixing... %dm %ds", minutes, seconds)
+            else
+                timerLabel.Text = string.format("Mixing... %ds", seconds)
+            end
+        end
+    end)
+    
+    -- Return GUI and connection for cleanup
+    return {
+        gui = billboardGui,
+        connection = updateConnection
+    }
+end
+
+function PetMixerAnimationService:StartBounceAnimation(petBall, basePosition, timeOffset)
+    local startTime = tick() + timeOffset
+    
+    local connection = RunService.Heartbeat:Connect(function()
+        local elapsed = tick() - startTime
+        if elapsed < 0 then return end -- Wait for offset
+        
+        -- Calculate bounce using sine wave
+        local bouncePhase = (elapsed % BOUNCE_DURATION) / BOUNCE_DURATION
+        local bounceHeight = math.sin(bouncePhase * math.pi) * BOUNCE_HEIGHT
+        
+        -- Update position
+        petBall.Position = basePosition + Vector3.new(0, bounceHeight, 0)
+        
+        -- Add subtle rotation
+        petBall.CFrame = CFrame.new(petBall.Position) * CFrame.Angles(0, elapsed * 2, 0)
+    end)
+    
+    return connection
+end
+
+function PetMixerAnimationService:ShowCompletionEffect(mixer)
+    local mixerNumber = 1 -- Default to mixer 1
+    local mixerData = mixerParts[mixerNumber]
+    
+    if not mixerData or not mixerData.mixerModel then
+        return
+    end
+    
+    print("PetMixerAnimationService: Showing completion effect for mixer")
+    
+    local mixerModel = mixerData.mixerModel
+    local anchorPart = mixerData.anchorPart
+    
+    -- Stop just the mixing animation parts (balls and particles) but keep mixer tracked
+    self:StopMixingAnimationOnly(mixer.id)
+    
+    -- Clean up any existing mixing timer GUI to prevent overlap
+    local existingTimer = mixerModel:FindFirstChild("MixingTimer", true)
+    if existingTimer then
+        existingTimer:Destroy()
+    end
+    
+    -- Create shine effect
+    self:CreateShineEffect(mixerModel)
+    
+    -- Create completion particle burst
+    self:CreateCompletionParticles(anchorPart, mixerModel)
+    
+    -- Create bouncing crafted pet ball
+    self:CreateCraftedPetBall(mixer, anchorPart, mixerModel)
+    
+    -- Create "Done!" GUI (higher and bigger)
+    self:CreateDoneGUI(mixerModel)
+end
+
+function PetMixerAnimationService:CreateShineEffect(mixerModel)
+    -- Create a glowing part that expands and fades
+    local shinePart = Instance.new("Part")
+    shinePart.Name = "ShineEffect"
+    shinePart.Size = Vector3.new(1, 1, 1)
+    shinePart.Shape = Enum.PartType.Ball
+    shinePart.Material = Enum.Material.ForceField
+    shinePart.Color = Color3.fromRGB(255, 255, 0) -- Bright yellow
+    shinePart.CanCollide = false
+    shinePart.Anchored = true
+    shinePart.Transparency = 0.3
+    
+    -- Position at mixer center
+    local cframe, size = mixerModel:GetBoundingBox()
+    shinePart.Position = cframe.Position
+    shinePart.Parent = mixerModel
+    
+    -- Create expanding and fading tween
+    local expandInfo = TweenInfo.new(
+        SHINE_DURATION,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out,
+        0,
+        false,
+        0
+    )
+    
+    local expandTween = TweenService:Create(shinePart, expandInfo, {
+        Size = Vector3.new(8, 8, 8),
+        Transparency = 1
+    })
+    
+    expandTween:Play()
+    
+    -- Clean up after animation
+    expandTween.Completed:Connect(function()
+        shinePart:Destroy()
+    end)
+end
+
+function PetMixerAnimationService:CreateCompletionParticles(anchorPart, mixerModel)
+    -- Create a burst of celebration particles
+    local particlePart = Instance.new("Part")
+    particlePart.Name = "CompletionParticles"
+    particlePart.Size = Vector3.new(0.1, 0.1, 0.1)
+    particlePart.Transparency = 1
+    particlePart.CanCollide = false
+    particlePart.Anchored = true
+    particlePart.Position = anchorPart.Position + Vector3.new(0, 2, 0) -- Above the anchor
+    particlePart.Parent = mixerModel
+    
+    local attachment = Instance.new("Attachment")
+    attachment.Parent = particlePart
+    
+    -- Celebration burst particles
+    local burstParticles = Instance.new("ParticleEmitter")
+    burstParticles.Parent = attachment
+    burstParticles.Enabled = false -- We'll burst manually
+    burstParticles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    burstParticles.Lifetime = NumberRange.new(1.5, 2.5)
+    burstParticles.Rate = 200
+    burstParticles.SpreadAngle = Vector2.new(180, 180)
+    burstParticles.Speed = NumberRange.new(8, 15)
+    burstParticles.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)), -- Gold
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 100, 255)), -- Purple
+        ColorSequenceKeypoint.new(0.7, Color3.fromRGB(100, 255, 100)), -- Green
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))  -- White
+    }
+    burstParticles.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 1.0),
+        NumberSequenceKeypoint.new(0.5, 1.8),
+        NumberSequenceKeypoint.new(1, 0.5)
+    }
+    burstParticles.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(1, 1)
+    }
+    
+    -- Confetti particles
+    local confettiParticles = Instance.new("ParticleEmitter")
+    confettiParticles.Parent = attachment
+    confettiParticles.Enabled = false
+    confettiParticles.Texture = "rbxasset://textures/particles/fire_main.dds"
+    confettiParticles.Lifetime = NumberRange.new(2.0, 3.0)
+    confettiParticles.Rate = 100
+    confettiParticles.SpreadAngle = Vector2.new(45, 45)
+    confettiParticles.Speed = NumberRange.new(5, 12)
+    confettiParticles.Acceleration = Vector3.new(0, -20, 0) -- Gravity effect
+    confettiParticles.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)), -- Red
+        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(100, 255, 100)), -- Green
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 100, 255)), -- Blue
+        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 255, 100)), -- Yellow
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 255))  -- Magenta
+    }
+    confettiParticles.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 0.8),
+        NumberSequenceKeypoint.new(1, 1.2)
+    }
+    
+    -- Trigger the burst
+    burstParticles:Emit(150)
+    confettiParticles:Emit(100)
+    
+    -- Clean up after particles finish
+    Debris:AddItem(particlePart, 5)
+end
+
+function PetMixerAnimationService:CreateCraftedPetBall(mixer, anchorPart, mixerModel)
+    -- Create a bouncing pet ball representing the crafted pet
+    local craftedPet = mixer.outputPet
+    if not craftedPet then return end
+    
+    local craftedBall = self:CreateAnimatedPetBall(craftedPet, anchorPart.Position)
+    craftedBall.Name = "CraftedPetBall"
+    craftedBall.Parent = mixerModel
+    
+    -- Position the ball at the anchor point
+    local basePosition = anchorPart.Position + Vector3.new(0, 1, 0) -- Slightly above anchor
+    craftedBall.Position = basePosition
+    
+    -- Make it slightly bigger to show it's special
+    craftedBall.Size = PET_BALL_SIZE * 1.3
+    
+    -- Add extra glow effect for the crafted pet
+    local extraGlow = Instance.new("PointLight")
+    extraGlow.Brightness = 2
+    extraGlow.Range = 8
+    extraGlow.Color = craftedBall.Color
+    extraGlow.Parent = craftedBall
+    
+    -- Create pulsing glow effect
+    local pulseInfo = TweenInfo.new(
+        1.0,
+        Enum.EasingStyle.Sine,
+        Enum.EasingDirection.InOut,
+        -1, -- Infinite
+        true, -- Reverse
+        0
+    )
+    
+    local pulseTween = TweenService:Create(extraGlow, pulseInfo, {
+        Brightness = 3,
+        Range = 12
+    })
+    pulseTween:Play()
+    
+    -- Start bouncing animation (continuous until claimed)
+    local startTime = tick()
+    local bounceConnection = RunService.Heartbeat:Connect(function()
+        local elapsed = tick() - startTime
+        
+        -- Calculate bounce using sine wave (same as mixing animation but continuous)
+        local bouncePhase = (elapsed % BOUNCE_DURATION) / BOUNCE_DURATION
+        local bounceHeight = math.sin(bouncePhase * math.pi) * BOUNCE_HEIGHT
+        
+        -- Update position
+        craftedBall.Position = basePosition + Vector3.new(0, bounceHeight, 0)
+        
+        -- Add gentle rotation
+        craftedBall.CFrame = CFrame.new(craftedBall.Position) * CFrame.Angles(0, elapsed * 0.5, 0)
+    end)
+    
+    -- Clean up after 10 seconds or when mixer is claimed
+    local function cleanup()
+        if bounceConnection then
+            bounceConnection:Disconnect()
+        end
+        if pulseTween then
+            pulseTween:Cancel()
+        end
+        if craftedBall then
+            craftedBall:Destroy()
+        end
+    end
+    
+    -- Store cleanup function in animation data so it can be called when mixer is claimed
+    -- Don't auto-cleanup - will be cleaned up when mixer is claimed
+    if not activeMixerAnimations[mixer.id] then
+        activeMixerAnimations[mixer.id] = {}
+    end
+    activeMixerAnimations[mixer.id].craftedBallCleanup = cleanup
+end
+
+function PetMixerAnimationService:CreateDoneGUI(mixerModel)
+    local mixerNumber = 1 -- Default to mixer 1
+    local mixerData = mixerParts[mixerNumber]
+    
+    if not mixerData or not mixerData.anchorPart then
+        return
+    end
+    
+    local anchorPart = mixerData.anchorPart
+    
+    -- Create BillboardGui centered on anchor part
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "DoneEffect"
+    billboardGui.Size = UDim2.new(0, 250, 0, 120) -- Slightly bigger (was 200x100)
+    billboardGui.StudsOffset = Vector3.new(0, 18, 0) -- Higher above mixer (same as timer)
+    billboardGui.MaxDistance = 100 -- Much further visibility for camera angles
+    billboardGui.Parent = anchorPart
+    
+    -- Create "Done!" label
+    local doneLabel = Instance.new("TextLabel")
+    doneLabel.Name = "DoneText"
+    doneLabel.Size = UDim2.new(1, 0, 1, 0)
+    doneLabel.BackgroundTransparency = 1
+    doneLabel.Font = Enum.Font.GothamBold
+    doneLabel.Text = "Done!"
+    doneLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    doneLabel.TextSize = 42 -- Slightly bigger (was 36)
+    doneLabel.TextStrokeTransparency = 0
+    doneLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    doneLabel.Parent = billboardGui
+    
+    -- Create pulsing animation
+    local pulseInfo = TweenInfo.new(
+        0.5,
+        Enum.EasingStyle.Sine,
+        Enum.EasingDirection.InOut,
+        4, -- Repeat 4 times
+        true, -- Reverse
+        0
+    )
+    
+    local pulseTween = TweenService:Create(doneLabel, pulseInfo, {
+        TextSize = 56 -- Slightly bigger pulse (was 48)
+    })
+    
+    pulseTween:Play()
+    
+    -- Don't auto-cleanup - GUI will be removed when mixer is claimed
+end
+
+-- Stop only the mixing animation (balls and particles) but keep mixer tracked for completion
+function PetMixerAnimationService:StopMixingAnimationOnly(mixerId)
+    local animationData = activeMixerAnimations[mixerId]
+    if not animationData then return end
+    
+    print("PetMixerAnimationService: Stopping mixing animation parts only for mixer", mixerId)
+    
+    -- Disconnect bounce connections
+    for _, connection in pairs(animationData.bounceConnections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            pcall(function()
+                connection:Disconnect()
+            end)
+        end
+    end
+    
+    -- Stop particle emitters
+    if animationData.particleEmitters then
+        for _, emitterData in pairs(animationData.particleEmitters) do
+            local particlePart, particles1, particles2 = emitterData[1], emitterData[2], emitterData[3]
+            if particles1 then particles1.Enabled = false end
+            if particles2 then particles2.Enabled = false end
+        end
+    end
+    
+    -- Clean up animation folder and pet balls (this will also clean up particles)
+    if animationData.animationFolder then
+        animationData.animationFolder:Destroy()
+    end
+    
+    -- Clear the animation parts but keep the mixer tracked
+    animationData.petBalls = nil
+    animationData.animationFolder = nil
+    animationData.bounceConnections = {}
+    animationData.particleEmitters = nil
+end
+
+function PetMixerAnimationService:StopMixingAnimation(mixerId)
+    local animationData = activeMixerAnimations[mixerId]
+    if not animationData then return end
+    
+    print("PetMixerAnimationService: Stopping mixing animation for mixer", mixerId)
+    
+    -- Stop the mixing animation parts
+    self:StopMixingAnimationOnly(mixerId)
+    
+    -- Clean up timer GUI
+    if animationData.timerGUI then
+        if animationData.timerGUI.connection then
+            pcall(function()
+                animationData.timerGUI.connection:Disconnect()
+            end)
+        end
+        if animationData.timerGUI.gui then
+            pcall(function()
+                animationData.timerGUI.gui:Destroy()
+            end)
+        end
+    end
+    
+    -- Clean up crafted ball if it exists
+    if animationData.craftedBallCleanup then
+        pcall(function()
+            animationData.craftedBallCleanup()
+        end)
+    end
+    
+    -- Clean up "Done!" GUI from mixer model
+    local mixerNumber = 1 -- Default to mixer 1
+    local mixerData = mixerParts[mixerNumber]
+    if mixerData and mixerData.mixerModel then
+        local doneGUI = mixerData.mixerModel:FindFirstChild("DoneEffect", true)
+        if doneGUI then
+            pcall(function()
+                doneGUI:Destroy()
+            end)
+        end
+    end
+    
+    -- Fully remove from tracking
+    activeMixerAnimations[mixerId] = nil
+end
+
+function PetMixerAnimationService:Cleanup()
+    print("PetMixerAnimationService: Cleaning up")
+    
+    -- Stop all active animations
+    for mixerId, _ in pairs(activeMixerAnimations) do
+        self:StopMixingAnimation(mixerId)
+    end
+    
+    -- Disconnect all connections
+    for key, connection in pairs(connections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            pcall(function()
+                connection:Disconnect()
+            end)
+        end
+    end
+    connections = {}
+    
+    -- Clear cached data
+    mixerParts = {}
+    activeMixerAnimations = {}
+end
+
+return PetMixerAnimationService

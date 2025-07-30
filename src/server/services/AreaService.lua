@@ -30,6 +30,10 @@ function AreaService:Initialize()
     -- Create 6 areas in circular formation
     self:CreateCircularAreas(areaTemplate, areasContainer)
     
+    -- Remove the template after creating all areas to clean up workspace
+    areaTemplate:Destroy()
+    print("AreaService: Removed AreaTemplate after creating 6 player areas")
+    
     -- Set up player assignment system
     self:SetupPlayerAssignment()
 end
@@ -122,8 +126,11 @@ function AreaService:AssignPlayerToArea(player)
             -- Initialize doors for this area based on player's owned plots
             local PlotService = require(script.Parent.PlotService)
             task.spawn(function()
-                -- Small delay to ensure data is loaded
-                wait(0.5)
+                -- Wait for player data to be ready instead of arbitrary delay
+                local DataService = require(script.Parent.DataService)
+                while not DataService:GetPlayerData(player) do
+                    task.wait(0.1) -- Check every 100ms
+                end
                 PlotService:InitializeAreaDoors(areaData.model)
             end)
             
@@ -216,6 +223,7 @@ function AreaService:CreateAreaNameplate(assignedPlayer, areaNumber)
     billboard.Name = "NameplateBillboard"
     billboard.Size = UDim2.new(0, 200, 0, 50)
     billboard.StudsOffset = Vector3.new(0, 0, 0)
+    billboard.MaxDistance = 120 -- Much further visibility for camera angles
     billboard.Parent = namePart
     
     -- Create text label

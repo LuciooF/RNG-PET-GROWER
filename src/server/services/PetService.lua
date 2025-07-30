@@ -385,7 +385,10 @@ function PetService:StartHeavenProcessingLoop(player)
             if not success then
                 break -- No more pets to process
             end
-            wait(3) -- Process one pet per tube every 3 seconds
+            -- Apply speed multiplier from gamepasses
+            local speedMultiplier = self:GetProcessingSpeedMultiplier(player)
+            local waitTime = 3 / speedMultiplier -- 2x speed = 1.5 seconds, normal = 3 seconds
+            wait(waitTime)
         end
         
         -- Clean up when done
@@ -416,8 +419,11 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
         -- Calculate pet value (BaseValue * VariationMultiplier)
         local petValue = self:CalculatePetValue(pet)
         
+        -- Apply gamepass multipliers
+        local finalValue = self:ApplyGamepassMultipliers(player, petValue, "Money")
+        
         -- Add money to player
-        DataService:UpdatePlayerResources(player, "Money", petValue)
+        DataService:UpdatePlayerResources(player, "Money", finalValue)
         
         -- Create visual heaven effect
         self:CreateHeavenEffect(player, pet, tubeNumber)
@@ -503,13 +509,19 @@ function PetService:CreateHeavenEffect(player, pet, tubeNumber)
     
     local tube = innerTubesFolder:FindFirstChild("Tube" .. tubeNumber)
     if not tube then
+        print("PetService: Tube" .. tubeNumber .. " not found in", innerTubesFolder.Name)
         return
     end
     
+    print("PetService: Found tube:", tube.Name, "at position:", tube:GetPivot().Position)
+    
     local tubeBase = tube:FindFirstChild("TubeBase")
     if not tubeBase then
+        print("PetService: TubeBase not found in", tube.Name)
         return
     end
+    
+    print("PetService: Creating heaven effect at tube base position:", tubeBase.Position)
     
     -- Create floating pet ball
     local petBall = Instance.new("Part")
@@ -596,6 +608,74 @@ function PetService:UpdateProcessingCounter(player)
     local PlotService = require(script.Parent.PlotService)
     local areaName = "PlayerArea" .. assignedAreaNumber
     PlotService:UpdateProcessingCounter(areaName, processingCount)
+end
+
+-- Apply gamepass multipliers to a value
+function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData or not playerData.OwnedGamepasses then
+        return baseValue
+    end
+    
+    local multiplier = 1
+    local gamepasses = {}
+    
+    -- Convert OwnedGamepasses array to lookup table
+    for _, gamepassName in pairs(playerData.OwnedGamepasses or {}) do
+        gamepasses[gamepassName] = true
+    end
+    
+    -- Apply multipliers based on reward type
+    if rewardType == "Money" then
+        -- Check for 2x Money gamepass
+        if gamepasses.TwoXMoney then
+            multiplier = multiplier * 2
+        end
+        
+        -- Check for VIP gamepass (includes all benefits)
+        if gamepasses.VIP then
+            multiplier = multiplier * 2
+        end
+    elseif rewardType == "Diamonds" then
+        -- Check for 2x Diamonds gamepass
+        if gamepasses.TwoXDiamonds then
+            multiplier = multiplier * 2
+        end
+        
+        -- Check for VIP gamepass (includes all benefits)
+        if gamepasses.VIP then
+            multiplier = multiplier * 2
+        end
+    end
+    
+    return math.floor(baseValue * multiplier)
+end
+
+-- Get processing speed multiplier from gamepasses
+function PetService:GetProcessingSpeedMultiplier(player)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData or not playerData.OwnedGamepasses then
+        return 1
+    end
+    
+    local gamepasses = {}
+    
+    -- Convert OwnedGamepasses array to lookup table
+    for _, gamepassName in pairs(playerData.OwnedGamepasses or {}) do
+        gamepasses[gamepassName] = true
+    end
+    
+    -- Check for 2x Heaven Speed gamepass
+    if gamepasses.TwoXHeavenSpeed then
+        return 2 -- 2x faster processing
+    end
+    
+    -- Check for VIP gamepass (includes all benefits)
+    if gamepasses.VIP then
+        return 2 -- 2x faster processing
+    end
+    
+    return 1 -- Normal speed
 end
 
 -- Clean up when player leaves

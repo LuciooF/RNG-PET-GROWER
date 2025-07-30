@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local ProfileService = require(game.ServerStorage.Packages:WaitForChild("profilestore"))
+local PetUtils = require(ReplicatedStorage.utils.PetUtils)
 
 local DataService = {}
 DataService.__index = DataService
@@ -19,7 +20,14 @@ local PROFILE_TEMPLATE = {
     EquippedPets = {}, -- Array of equipped pets
     ProcessingPets = {}, -- Array of pets being processed (sent to heaven)
     OwnedTubes = {}, -- Array of tube numbers
-    OwnedPlots = {} -- Array of plot numbers
+    OwnedPlots = {}, -- Array of plot numbers
+    OwnedGamepasses = {}, -- Array of owned gamepass names (e.g., {"PetMagnet"})
+    GamepassSettings = { -- Settings for gamepass features
+        AutoHeavenEnabled = true, -- Whether Auto Heaven is enabled (when owned)
+        PetMagnetEnabled = true -- Whether Pet Magnet is enabled (when owned)
+    },
+    Mixers = {}, -- Array of active pet mixers with offline timer support
+    CollectedPets = {} -- Dictionary of all pets ever collected: {["MouseNormal"] = {count = 5, firstCollected = tick(), lastCollected = tick()}}
 }
 
 local DATASTORE_NAME = "PlayerData"
@@ -128,7 +136,9 @@ end
 function DataService:AddPet(player, petData)
     local profile = Profiles[player]
     if profile then
-        table.insert(profile.Data.Pets, petData)
+        -- Sanitize pet data for DataStore compatibility
+        local sanitizedPet = PetUtils.sanitizePetForStorage(petData)
+        table.insert(profile.Data.Pets, sanitizedPet)
         return true
     end
     return false
@@ -137,7 +147,9 @@ end
 function DataService:EquipPet(player, petData)
     local profile = Profiles[player]
     if profile then
-        table.insert(profile.Data.EquippedPets, petData)
+        -- Sanitize pet data for DataStore compatibility
+        local sanitizedPet = PetUtils.sanitizePetForStorage(petData)
+        table.insert(profile.Data.EquippedPets, sanitizedPet)
         return true
     end
     return false
@@ -161,6 +173,42 @@ function DataService:AddOwnedPlot(player, plotNumber)
     return false
 end
 
+function DataService:TrackCollectedPet(player, petData)
+    local profile = Profiles[player]
+    if not profile then return end
+    
+    -- Create collection key from pet name and variation
+    local petName = petData.Name or "Unknown"
+    local variationName = "Normal"
+    if petData.Variation and petData.Variation.VariationName then
+        variationName = petData.Variation.VariationName
+    end
+    
+    local collectionKey = petName .. variationName
+    local currentTime = tick()
+    
+    -- Initialize CollectedPets if it doesn't exist (for backwards compatibility)
+    if not profile.Data.CollectedPets then
+        profile.Data.CollectedPets = {}
+    end
+    
+    -- Update or create collection entry
+    if profile.Data.CollectedPets[collectionKey] then
+        -- Update existing entry
+        profile.Data.CollectedPets[collectionKey].count = profile.Data.CollectedPets[collectionKey].count + 1
+        profile.Data.CollectedPets[collectionKey].lastCollected = currentTime
+    else
+        -- Create new entry
+        profile.Data.CollectedPets[collectionKey] = {
+            petName = petName,
+            variationName = variationName,
+            count = 1,
+            firstCollected = currentTime,
+            lastCollected = currentTime
+        }
+    end
+end
+
 function DataService:AddPetToPlayer(player, petData)
     local profile = Profiles[player]
     if profile then
@@ -169,7 +217,12 @@ function DataService:AddPetToPlayer(player, petData)
             petData.ID = game:GetService("HttpService"):GenerateGUID(false)
         end
         
-        table.insert(profile.Data.Pets, petData)
+        -- Track this pet in the collection dictionary
+        self:TrackCollectedPet(player, petData)
+        
+        -- Sanitize pet data for DataStore compatibility
+        local sanitizedPet = PetUtils.sanitizePetForStorage(petData)
+        table.insert(profile.Data.Pets, sanitizedPet)
         return true
     end
     return false

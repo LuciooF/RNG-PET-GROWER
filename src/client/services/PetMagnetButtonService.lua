@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
+local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
 
 local PetMagnetButtonService = {}
 PetMagnetButtonService.__index = PetMagnetButtonService
@@ -42,45 +43,8 @@ function PetMagnetButtonService:FindPetMagnetButton()
         player.CharacterAdded:Wait()
     end
     
-    -- Wait a bit for area assignment to complete
-    task.wait(2)
-    
-    -- Find player's area (similar to how RebirthButtonService does it)
-    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        warn("PetMagnetButtonService: PlayerAreas not found")
-        return
-    end
-    
-    print("PetMagnetButtonService: Found PlayerAreas, looking for player's area...")
-    
-    -- Find the player's assigned area by checking the area nameplate
-    local playerArea = nil
-    for _, area in pairs(playerAreas:GetChildren()) do
-        if area.Name:match("PlayerArea") then
-            print("PetMagnetButtonService: Checking area:", area.Name)
-            -- Check if this area belongs to the current player by looking at the nameplate
-            local nameplate = area:FindFirstChild("AreaNameplate")
-            if nameplate then
-                print("PetMagnetButtonService: Found nameplate in", area.Name)
-                local billboard = nameplate:FindFirstChild("NameplateBillboard")
-                if billboard then
-                    local textLabel = billboard:FindFirstChild("TextLabel")
-                    if textLabel then
-                        print("PetMagnetButtonService: Nameplate text:", textLabel.Text, "Looking for:", player.Name .. "'s Area")
-                        if textLabel.Text == (player.Name .. "'s Area") then
-                            playerArea = area
-                            print("PetMagnetButtonService: Found player's area:", area.Name)
-                            break
-                        end
-                    end
-                end
-            else
-                print("PetMagnetButtonService: No nameplate found in", area.Name)
-            end
-        end
-    end
-    
+    -- Use shared utility to find player's area
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(5)
     if not playerArea then
         warn("PetMagnetButtonService: Player area not found")
         return

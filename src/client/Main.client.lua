@@ -8,9 +8,19 @@ local Players = game:GetService("Players")
 local React = require(ReplicatedStorage.Packages.react)
 local ReactRoblox = require(ReplicatedStorage.Packages["react-roblox"])
 
--- Initialize data sync service
-local DataSyncService = require(script.Parent.services.DataSyncService)
-DataSyncService:Initialize()
+-- Wait a moment for server to process player, then initialize data sync
+task.spawn(function()
+    -- Small delay to ensure server has started processing this player
+    local attempts = 0
+    while not game.Workspace:FindFirstChild("PlayerAreas") and attempts < 50 do
+        task.wait(0.1)
+        attempts = attempts + 1
+    end
+    
+    -- Initialize data sync service
+    local DataSyncService = require(script.Parent.services.DataSyncService)
+    DataSyncService:Initialize()
+end)
 
 -- Initialize pet collection service
 local PetCollectionService = require(script.Parent.services.PetCollectionService)

@@ -96,19 +96,20 @@ local function PlotVisual()
         local Players = game:GetService("Players")
         local player = Players.LocalPlayer
         
-        -- Try to find the player's assigned area by checking for their pets or other indicators
-        -- Look for the area that has the player's name in a GUI or other indicator
+        -- Find the player's assigned area by checking the area nameplate
         local playerArea = nil
         for _, area in pairs(playerAreas:GetChildren()) do
             if area.Name:match("PlayerArea") then
-                -- Check if this area belongs to the current player
-                -- We can identify by checking if there are any player-specific objects
-                local playerNameGui = area:FindFirstChild("PlayerNameGui", true)
-                if playerNameGui and playerNameGui:FindFirstChild("PlayerName") then
-                    local textLabel = playerNameGui.PlayerName
-                    if textLabel.Text == player.Name then
-                        playerArea = area
-                        break
+                -- Check if this area belongs to the current player by looking at the nameplate
+                local nameplate = area:FindFirstChild("AreaNameplate")
+                if nameplate then
+                    local billboard = nameplate:FindFirstChild("NameplateBillboard")
+                    if billboard then
+                        local textLabel = billboard:FindFirstChild("TextLabel")
+                        if textLabel and textLabel.Text == (player.Name .. "'s Area") then
+                            playerArea = area
+                            break
+                        end
                     end
                 end
             end

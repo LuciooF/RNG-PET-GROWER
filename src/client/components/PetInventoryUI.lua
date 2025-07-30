@@ -29,7 +29,11 @@ local function PetInventoryUI()
             end
         end)
         
-        return unsubscribe
+        return function()
+            if unsubscribe and type(unsubscribe) == "function" then
+                unsubscribe()
+            end
+        end
     end, {})
 
     -- Keyboard shortcut (P key)
@@ -43,35 +47,74 @@ local function PetInventoryUI()
         end)
         
         return function()
-            connection:Disconnect()
+            if connection and typeof(connection) == "RBXScriptConnection" then
+                pcall(function()
+                    connection:Disconnect()
+                end)
+            end
         end
     end, {})
 
     local pets = playerData and playerData.Pets or {}
     local equippedPets = playerData and playerData.EquippedPets or {}
     
-    -- Create equipped pets set for quick lookup
-    local equippedPetsSet = {}
+    -- Create a set of equipped pet IDs for quick lookup
+    local equippedPetIds = {}
     for _, pet in ipairs(equippedPets) do
-        local key = string.format("%s_%s_%s", pet.Name or "Unknown", pet.Rarity or "Common", pet.Variation or "Bronze")
-        equippedPetsSet[key] = (equippedPetsSet[key] or 0) + 1
+        equippedPetIds[pet.ID] = true
     end
     
-    -- Group pets by name, rarity, and variation
-    local groupedPets = {}
-    for _, pet in ipairs(pets) do
-        local key = string.format("%s_%s_%s", pet.Name or "Unknown", pet.Rarity or "Common", pet.Variation or "Bronze")
-        if not groupedPets[key] then
-            groupedPets[key] = {
+    -- Separate pets into equipped and non-equipped groups
+    local groupedEquippedPets = {}
+    local groupedInventoryPets = {}
+    
+    -- First, group equipped pets
+    for _, pet in ipairs(equippedPets) do
+        local rarityName = (pet.Rarity and pet.Rarity.RarityName) or "Common"
+        local variationName = (pet.Variation and pet.Variation.VariationName) or "Bronze"
+        local key = string.format("%s_%s_%s_equipped", pet.Name or "Unknown", rarityName, variationName)
+        
+        if not groupedEquippedPets[key] then
+            groupedEquippedPets[key] = {
                 Name = pet.Name or "Unknown",
-                Rarity = pet.Rarity or "Common", 
-                Variation = pet.Variation or "Bronze",
+                Rarity = pet.Rarity or {RarityName = "Common", RarityColor = {200, 200, 200}}, 
+                Variation = pet.Variation or {VariationName = "Bronze", VariationColor = {205, 127, 50}},
                 Quantity = 0,
-                EquippedCount = equippedPetsSet[key] or 0,
-                SamplePet = pet -- Store sample pet for equip/unequip
+                IsEquipped = true,
+                SamplePet = pet -- Store sample pet for unequip
             }
         end
-        groupedPets[key].Quantity = groupedPets[key].Quantity + 1
+        groupedEquippedPets[key].Quantity = groupedEquippedPets[key].Quantity + 1
+    end
+    
+    -- Then, group non-equipped pets from inventory
+    for _, pet in ipairs(pets) do
+        if not equippedPetIds[pet.ID] then -- Only include if not equipped
+            local rarityName = (pet.Rarity and pet.Rarity.RarityName) or "Common"
+            local variationName = (pet.Variation and pet.Variation.VariationName) or "Bronze"
+            local key = string.format("%s_%s_%s", pet.Name or "Unknown", rarityName, variationName)
+            
+            if not groupedInventoryPets[key] then
+                groupedInventoryPets[key] = {
+                    Name = pet.Name or "Unknown",
+                    Rarity = pet.Rarity or {RarityName = "Common", RarityColor = {200, 200, 200}}, 
+                    Variation = pet.Variation or {VariationName = "Bronze", VariationColor = {205, 127, 50}},
+                    Quantity = 0,
+                    IsEquipped = false,
+                    SamplePet = pet -- Store sample pet for equip
+                }
+            end
+            groupedInventoryPets[key].Quantity = groupedInventoryPets[key].Quantity + 1
+        end
+    end
+    
+    -- Combine both groups (equipped first, then inventory)
+    local groupedPets = {}
+    for key, group in pairs(groupedEquippedPets) do
+        groupedPets[key] = group
+    end
+    for key, group in pairs(groupedInventoryPets) do
+        groupedPets[key] = group
     end
     
     -- Convert to array and sort (equipped pets first)
@@ -82,9 +125,9 @@ local function PetInventoryUI()
     
     -- Sort: equipped pets first, then by rarity/name
     table.sort(petGroups, function(a, b)
-        if a.EquippedCount > 0 and b.EquippedCount == 0 then
+        if a.IsEquipped and not b.IsEquipped then
             return true
-        elseif a.EquippedCount == 0 and b.EquippedCount > 0 then
+        elseif not a.IsEquipped and b.IsEquipped then
             return false
         else
             -- Both equipped or both not equipped, sort by name
@@ -311,7 +354,7 @@ local function PetInventoryUI()
                         Size = UDim2.new(1, -10, 0, 14),
                         Position = UDim2.new(0, 5, 0, 42),
                         BackgroundTransparency = 1,
-                        Text = petGroup.Rarity,
+                        Text = (petGroup.Rarity and petGroup.Rarity.RarityName) or "Common",
                         TextColor3 = Color3.fromRGB(150, 200, 255),
                         TextScaled = true,
                         Font = Enum.Font.Gotham,
@@ -324,7 +367,7 @@ local function PetInventoryUI()
                         Size = UDim2.new(1, -10, 0, 14),
                         Position = UDim2.new(0, 5, 0, 58),
                         BackgroundTransparency = 1,
-                        Text = petGroup.Variation,
+                        Text = (petGroup.Variation and petGroup.Variation.VariationName) or "Bronze",
                         TextColor3 = Color3.fromRGB(255, 215, 100),
                         TextScaled = true,
                         Font = Enum.Font.Gotham,
@@ -334,7 +377,7 @@ local function PetInventoryUI()
                     }),
                     
                     -- Equipped indicator
-                    EquippedIndicator = petGroup.EquippedCount > 0 and React.createElement("TextLabel", {
+                    EquippedIndicator = petGroup.IsEquipped and React.createElement("TextLabel", {
                         Size = UDim2.new(0, 60, 0, 12),
                         Position = UDim2.new(1, -65, 0, 5),
                         BackgroundColor3 = Color3.fromRGB(100, 255, 100),
@@ -355,9 +398,9 @@ local function PetInventoryUI()
                     EquipButton = React.createElement("TextButton", {
                         Size = UDim2.new(1, -10, 0, 18),
                         Position = UDim2.new(0, 5, 1, -23),
-                        BackgroundColor3 = petGroup.EquippedCount > 0 and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100),
+                        BackgroundColor3 = petGroup.IsEquipped and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100),
                         BorderSizePixel = 0,
-                        Text = petGroup.EquippedCount > 0 and "Unequip" or "Equip",
+                        Text = petGroup.IsEquipped and "Unequip" or "Equip",
                         TextColor3 = Color3.fromRGB(0, 0, 0),
                         TextScaled = true,
                         Font = Enum.Font.GothamBold,
@@ -366,7 +409,7 @@ local function PetInventoryUI()
                             local equipRemote = ReplicatedStorage:FindFirstChild("EquipPet")
                             local unequipRemote = ReplicatedStorage:FindFirstChild("UnequipPet")
                             
-                            if petGroup.EquippedCount > 0 then
+                            if petGroup.IsEquipped then
                                 -- Unequip pet
                                 if unequipRemote and petGroup.SamplePet then
                                     unequipRemote:FireServer(petGroup.SamplePet.ID)

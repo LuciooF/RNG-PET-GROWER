@@ -69,6 +69,21 @@ function StateService:SyncPlayerDataToClient(player)
     local playerData = DataService:GetPlayerData(player)
     if playerData then
         remoteEvents.SyncPlayerData:FireClient(player, playerData)
+    else
+        -- Data not ready yet, wait and retry
+        task.spawn(function()
+            local attempts = 0
+            while not playerData and attempts < 50 do -- 5 second max wait
+                task.wait(0.1)
+                playerData = DataService:GetPlayerData(player)
+                attempts = attempts + 1
+            end
+            if playerData then
+                remoteEvents.SyncPlayerData:FireClient(player, playerData)
+            else
+                warn("StateService: Player data not available after 5 seconds for", player.Name)
+            end
+        end)
     end
 end
 

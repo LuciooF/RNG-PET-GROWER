@@ -34,7 +34,7 @@ local spawningDoors = {}
 
 -- Store pet ball count per area
 local areaPetBallCounts = {}
-local MAX_PET_BALLS_PER_AREA = 50
+local MAX_PET_BALLS_PER_AREA = 100
 
 
 -- Helper functions for rebirth requirements
@@ -95,7 +95,91 @@ local function getPlotRebirthRequirement(plotNumber)
     end
 end
 
+function PlotService:SetupCollisionGroups()
+    local PhysicsService = game:GetService("PhysicsService")
+    local CollectionService = game:GetService("CollectionService")
+    local Players = game:GetService("Players")
+    
+    -- Create collision groups if they don't exist
+    pcall(function()
+        PhysicsService:RegisterCollisionGroup("PetBalls")
+        PhysicsService:RegisterCollisionGroup("PetBallBoundaries") 
+        PhysicsService:RegisterCollisionGroup("Players")
+    end)
+    
+    -- Configure collision rules
+    PhysicsService:CollisionGroupSetCollidable("PetBalls", "PetBallBoundaries", true)  -- Pet balls collide with boundaries
+    PhysicsService:CollisionGroupSetCollidable("Players", "PetBallBoundaries", false) -- Players pass through boundaries
+    
+    -- Set up all existing boundary parts with the tag
+    local boundaryParts = CollectionService:GetTagged("PetBallBoundary") 
+    
+    for _, boundaryPart in pairs(boundaryParts) do
+        boundaryPart.CanCollide = true      -- Must be true for collision groups to work
+        boundaryPart.Transparency = 1       -- Invisible
+        boundaryPart.CanTouch = true        -- Enable touch detection
+        boundaryPart.CollisionGroup = "PetBallBoundaries"
+    end
+    
+    -- Listen for new boundary parts being tagged
+    CollectionService:GetInstanceAddedSignal("PetBallBoundary"):Connect(function(part)
+        part.CanCollide = true
+        part.Transparency = 1
+        part.CanTouch = true
+        part.CollisionGroup = "PetBallBoundaries"
+    end)
+    
+    -- Set up player collision groups for existing players
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            self:SetPlayerCollisionGroup(player.Character)
+        end
+    end
+    
+    -- Set up collision groups for new players
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            self:SetPlayerCollisionGroup(character)
+        end)
+    end)
+    
+    -- Handle existing players who get new characters
+    for _, player in pairs(Players:GetPlayers()) do
+        player.CharacterAdded:Connect(function(character)
+            self:SetPlayerCollisionGroup(character)
+        end)
+    end
+end
+
+function PlotService:SetPlayerCollisionGroup(character)
+    -- Wait for character to fully load, then set collision groups
+    task.spawn(function()
+        -- Wait for HumanoidRootPart to ensure character is fully loaded
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+        if not humanoidRootPart then
+            return
+        end
+        
+        -- Set all character parts to Players collision group
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CollisionGroup = "Players"
+            end
+        end
+        
+        -- Handle new parts added to character
+        character.ChildAdded:Connect(function(child)
+            if child:IsA("BasePart") then
+                child.CollisionGroup = "Players"
+            end
+        end)
+    end)
+end
+
 function PlotService:Initialize()
+    -- Set up collision groups for pet ball boundaries
+    self:SetupCollisionGroups()
+    
     -- Set up plot purchasing for all existing areas
     local playerAreas = Workspace:WaitForChild("PlayerAreas", 10)
     if playerAreas then
@@ -119,6 +203,9 @@ function PlotService:SetupAreaPlots(area)
         warn("PlotService: No Buttons folder found in " .. area.Name)
         return
     end
+    
+    -- Skip Surface GUI creation during initialization - will be created when player is assigned
+    -- self:AddDoorSurfaceGuis(area) -- DEFERRED FOR PERFORMANCE
     
     -- Set up touch detection for each plot
     for i = 1, TOTAL_PLOTS do
@@ -375,6 +462,7 @@ function PlotService:CreatePlotUI(area, plot, plotNumber)
     billboard.Name = "PlotBillboard"
     billboard.Size = UDim2.new(0, 150, 0, 50)
     billboard.StudsOffset = Vector3.new(0, 0, 0)
+    billboard.MaxDistance = 100 -- Much further visibility for camera angles
     billboard.Parent = uiPart
     
     -- Create cost label
@@ -420,6 +508,7 @@ function PlotService:CreateTubePlotUI(area, tubePlot, tubePlotNumber)
     billboard.Name = "TubePlotBillboard"
     billboard.Size = UDim2.new(0, 150, 0, 50)
     billboard.StudsOffset = Vector3.new(0, 0, 0)
+    billboard.MaxDistance = 100 -- Much further visibility for camera angles
     billboard.Parent = uiPart
     
     -- Create cost label
@@ -729,9 +818,14 @@ function PlotService:RemoveLevelDoorSurfaceGui(plot)
 end
 
 function PlotService:AddTubeNumberSurfaceGui(tubePlot, tubePlotNumber)
-    -- Check if it already has a tube number GUI
-    if tubePlot:FindFirstChild("TubeNumberSurfaceGui") then
-        return
+    -- Check if it already has a tube number GUI (should exist from AreaTemplate)
+    if tubePlot:IsA("Model") then
+        local cube = tubePlot:FindFirstChild("Cube.009")
+        if cube and cube:FindFirstChild("TubeNumberSurfaceGui") then
+            return -- GUI already exists from template
+        end
+    elseif tubePlot:IsA("BasePart") and tubePlot:FindFirstChild("TubeNumberSurfaceGui") then
+        return -- GUI already exists from template
     end
     
     -- Create SurfaceGui on the tube plot itself
@@ -1088,32 +1182,15 @@ end
 
 -- Unlock a tube (move it back to template position)
 function PlotService:UnlockTube(tube)
+    -- Unlock tube and restore position if needed
     local currentPosition = tube:GetPivot()
     
-    -- Check if tube is underground (hidden)
+    -- Check if tube is underground (hidden) and restore to surface
     if currentPosition.Position.Y < -500 then
-        -- Find the template tube to get original Y position
-        local templateArea = Workspace:FindFirstChild("AreaTemplate")
-        if templateArea then
-            local templateTubesFolder = templateArea:FindFirstChild("Tubes")
-            if templateTubesFolder then
-                local templateInnerTubesFolder = templateTubesFolder:FindFirstChild("Tubes")
-                if templateInnerTubesFolder then
-                    local templateTube = templateInnerTubesFolder:FindFirstChild(tube.Name)
-                    if templateTube then
-                        local templatePosition = templateTube:GetPivot()
-                        local newPosition = Vector3.new(currentPosition.Position.X, templatePosition.Position.Y, currentPosition.Position.Z)
-                        local restoredPosition = CFrame.new(newPosition) * currentPosition.Rotation
-                        tube:PivotTo(restoredPosition)
-                    else
-                        -- Fallback: move up 1000 studs
-                        local newPosition = currentPosition.Position + Vector3.new(0, 1000, 0)
-                        local restoredPosition = CFrame.new(newPosition) * currentPosition.Rotation
-                        tube:PivotTo(restoredPosition)
-                    end
-                end
-            end
-        end
+        local correctY = currentPosition.Position.Y + 1000 -- Move up 1000 studs from underground position
+        local newPosition = Vector3.new(currentPosition.Position.X, correctY, currentPosition.Position.Z)
+        local restoredPosition = CFrame.new(newPosition) * currentPosition.Rotation
+        tube:PivotTo(restoredPosition)
     end
     
     -- Tubes don't spawn pets, they are for processing
@@ -1250,12 +1327,25 @@ function PlotService:HideAllTubesInArea(area)
 end
 
 -- Initialize doors for an area based on assigned player's owned plots
+function PlotService:AddDoorSurfaceGuis(area)
+    -- Door GUIs are now pre-created in AreaTemplate and copied automatically
+    -- This function is kept for backward compatibility but does nothing
+    -- Static door level/number GUIs already exist from template copying
+end
+
+function PlotService:CreateDoorSurfaceGui(door, level, doorNumber)
+    -- DEPRECATED: Door GUIs are now pre-created in AreaTemplate
+    -- This function is kept for backward compatibility but should not be called
+    return
+end
+
 function PlotService:InitializeAreaDoors(area)
     local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
     if not areaNumber then
         return
     end
     
+    -- Door Surface GUIs already exist from AreaTemplate (no need to create them)
     
     -- Get the assigned player for this area
     local AreaService = require(script.Parent.AreaService)
@@ -1375,13 +1465,13 @@ function PlotService:UnlockDoorForPlotInArea(player, plotNumber, areaNumber)
             if door then
                 self:UnlockDoor(door)
             else
-                print(string.format("PlotService: Door%d not found in %s", doorNumber, doorsFolder.Name))
+                -- Door not found in folder
             end
         else
-            print(string.format("PlotService: Level%dDoors folder not found in %s", level, levelFolder.Name))
+            -- Level doors folder not found
         end
     else
-        print(string.format("PlotService: Level%d folder not found in %s", level, targetArea.Name))
+        -- Level folder not found
     end
 end
 
@@ -1417,13 +1507,13 @@ function PlotService:UnlockTubeForTubePlot(player, tubePlotNumber)
                     if tube then
                         self:UnlockTube(tube)
                     else
-                        print(string.format("PlotService: Tube%d not found in %s", tubePlotNumber, innerTubesFolder.Name))
+                        -- Tube not found in folder
                     end
                 else
-                    print(string.format("PlotService: Inner Tubes folder not found in %s", tubesFolder.Name))
+                    -- Inner Tubes folder not found
                 end
             else
-                print(string.format("PlotService: Tubes folder not found in %s", area.Name))
+                -- Tubes folder not found
             end
             break
         end
@@ -1456,18 +1546,80 @@ function PlotService:UnlockTubeForTubePlotInArea(player, tubeNumber, areaNumber)
             if tube then
                 self:UnlockTube(tube)
             else
-                print(string.format("PlotService: Tube%d not found in %s", tubeNumber, innerTubesFolder.Name))
+                -- Tube not found
             end
         else
-            print(string.format("PlotService: Inner Tubes folder not found in %s", tubesFolder.Name))
+            -- Inner Tubes folder not found
         end
     else
-        print(string.format("PlotService: Tubes folder not found in %s", targetArea.Name))
+        -- Tubes folder not found
     end
 end
 
+-- Check if a door is unlocked (green color)
+function PlotService:IsDoorUnlocked(door)
+    local greenColor = Color3.fromRGB(85, 170, 85)
+    
+    local function checkPart(part)
+        if part:IsA("BasePart") then
+            -- Check if part color matches green (unlocked state)
+            local partColor = part.Color
+            return math.abs(partColor.R - greenColor.R) < 0.01 and 
+                   math.abs(partColor.G - greenColor.G) < 0.01 and 
+                   math.abs(partColor.B - greenColor.B) < 0.01
+        end
+        return false
+    end
+    
+    if door:IsA("Model") then
+        -- Check if any part of the door model is green
+        for _, descendant in pairs(door:GetDescendants()) do
+            if checkPart(descendant) then
+                return true
+            end
+        end
+        return false
+    elseif door:IsA("BasePart") then
+        return checkPart(door)
+    end
+    
+    return false
+end
+
 -- Spawn a purple pet ball near a door
+function PlotService:GetLevelFromDoor(door)
+    -- Traverse up the parent hierarchy to find which level folder this door belongs to
+    local current = door
+    while current and current.Parent do
+        local parent = current.Parent
+        -- Look for level folder pattern (e.g., "Level1", "Level2", etc.)
+        if parent.Name:match("Level(%d+)") then
+            local levelNumber = tonumber(parent.Name:match("Level(%d+)"))
+            if levelNumber then
+                return levelNumber
+            end
+        end
+        -- Also check if current is a level folder
+        if current.Name:match("Level(%d+)") then
+            local levelNumber = tonumber(current.Name:match("Level(%d+)"))
+            if levelNumber then
+                return levelNumber
+            end
+        end
+        current = parent
+    end
+    
+    -- Fallback to level 1 if we can't determine the level
+    warn("PlotService: Could not determine level for door", door.Name, "- defaulting to level 1")
+    return 1
+end
+
 function PlotService:SpawnPetBall(door)
+    -- Only spawn pets if door is unlocked (green)
+    if not self:IsDoorUnlocked(door) then
+        return
+    end
+    
     -- Find which area this door belongs to
     local areaName = self:GetAreaNameFromDoor(door)
     if not areaName then
@@ -1480,14 +1632,28 @@ function PlotService:SpawnPetBall(door)
         return
     end
     
-    -- Generate random pet data at creation time
-    local PetConfig = require(ReplicatedStorage.config.PetConfig)
-    local randomPetData = PetConfig.createRandomPet()
+    -- Get door number from door name (e.g., "Door1" -> 1)
+    local doorNumber = tonumber(door.Name:match("Door(%d+)")) or 1
+    
+    -- Determine level based on door's location in folder structure
+    local level = self:GetLevelFromDoor(door)
+    -- Spawning pet ball at door
+    
+    -- Generate random pet data using new spawn system
+    local PetSpawnConfig = require(ReplicatedStorage.config.PetSpawnConfig)
+    local randomPetData = PetSpawnConfig:GetRandomPet(level, doorNumber)
     
     if not randomPetData then
         warn("PlotService: Failed to generate random pet data")
         return
     end
+    
+    -- Add variation to the pet using the new variation system
+    local VariationConfig = require(ReplicatedStorage.config.VariationConfig)
+    local variation = VariationConfig:GetRandomVariation()
+    
+    -- Apply variation to pet data
+    randomPetData.Variation = variation
     
     -- Get door position
     local doorPosition
@@ -1527,6 +1693,9 @@ function PlotService:SpawnPetBall(door)
         1      -- ElasticityWeight
     )
     petBall.CustomPhysicalProperties = physProperties
+    
+    -- Set pet ball to PetBalls collision group (collision groups set up during initialization)
+    petBall.CollisionGroup = "PetBalls"
     
     -- Store pet data in the ball
     local petDataValue = Instance.new("StringValue")
@@ -1584,7 +1753,7 @@ function PlotService:CollectPet(player, petBall)
         return
     end
     
-    print(string.format("PlotService: Player %s collected pet: %s (%s %s)", player.Name, petData.Name, petData.Rarity, petData.Variation))
+    -- Pet collected by player
     
     -- Add pet to player's inventory
     local DataService = require(script.Parent.DataService)
@@ -2321,7 +2490,7 @@ end
 
 -- Debug function to manually update plot colors for all players
 function PlotService:DebugUpdateAllPlotColors()
-    print("PlotService: DEBUG - Manually updating plot colors for all players")
+    -- Manually updating plot colors for all players
     
     local Players = game:GetService("Players")
     local AreaService = require(script.Parent.AreaService)
@@ -2333,7 +2502,7 @@ function PlotService:DebugUpdateAllPlotColors()
             if playerAreas then
                 local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
                 if area then
-                    print("PlotService: DEBUG - Updating GUIs and visibility for", player.Name, "in area", assignedAreaNumber)
+                    -- Updating GUIs and visibility for player
                     self:UpdatePlotGUIs(area, player)
                     self:UpdatePlotColors(area, player)
                     self:UpdatePlotVisibility(area, player)
