@@ -13,7 +13,9 @@ local rebirthButtonPart = nil
 
 -- Configuration
 local INTERACTION_DISTANCE = 10 -- Distance in studs to trigger interaction
-local REBIRTH_COST = 1000 -- Cost to rebirth
+
+-- Use shared rebirth cost calculation
+local RebirthUtils = require(ReplicatedStorage.utils.RebirthUtils)
 
 -- Callback functions
 local onRebirthButtonOpen = nil
@@ -50,31 +52,25 @@ function RebirthButtonService:FindRebirthButton()
         return
     end
     
-    print("RebirthButtonService: Found PlayerAreas, looking for player's area...")
     
     -- Find the player's assigned area by checking the area nameplate
     local playerArea = nil
     for _, area in pairs(playerAreas:GetChildren()) do
         if area.Name:match("PlayerArea") then
-            print("RebirthButtonService: Checking area:", area.Name)
             -- Check if this area belongs to the current player by looking at the nameplate
             local nameplate = area:FindFirstChild("AreaNameplate")
             if nameplate then
-                print("RebirthButtonService: Found nameplate in", area.Name)
                 local billboard = nameplate:FindFirstChild("NameplateBillboard")
                 if billboard then
                     local textLabel = billboard:FindFirstChild("TextLabel")
                     if textLabel then
-                        print("RebirthButtonService: Nameplate text:", textLabel.Text, "Looking for:", player.Name .. "'s Area")
                         if textLabel.Text == (player.Name .. "'s Area") then
                             playerArea = area
-                            print("RebirthButtonService: Found player's area:", area.Name)
                             break
                         end
                     end
                 end
             else
-                print("RebirthButtonService: No nameplate found in", area.Name)
             end
         end
     end
@@ -144,25 +140,23 @@ function RebirthButtonService:CreateRebirthButtonGUI()
         existingSurface:Destroy()
     end
     
-    -- Create BillboardGui for "Rebirth!" text (floating above button)
+    -- Create BillboardGui for rebirth icon (floating above button)
     local billboardGui = Instance.new("BillboardGui")
     billboardGui.Name = "RebirthBillboard"
-    billboardGui.Size = UDim2.new(0, 150, 0, 80)
+    billboardGui.Size = UDim2.new(0, 40, 0, 40) -- Much smaller, square size for icon
     billboardGui.StudsOffset = Vector3.new(0, 5, 0) -- Float 5 studs above the part
+    billboardGui.MaxDistance = 50 -- Limit visibility distance to prevent scaling issues
     billboardGui.Parent = targetPart
     
-    -- Create "Rebirth!" text label
-    local rebirthLabel = Instance.new("TextLabel")
-    rebirthLabel.Name = "RebirthText"
-    rebirthLabel.Size = UDim2.new(1, 0, 1, 0)
-    rebirthLabel.BackgroundTransparency = 1
-    rebirthLabel.Font = Enum.Font.GothamBold
-    rebirthLabel.Text = "Rebirth!"
-    rebirthLabel.TextColor3 = Color3.fromRGB(138, 43, 226) -- Purple rebirth color
-    rebirthLabel.TextSize = 20
-    rebirthLabel.TextStrokeTransparency = 0
-    rebirthLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    rebirthLabel.Parent = billboardGui
+    -- Create rebirth icon (no text)
+    local IconAssets = require(game.ReplicatedStorage.utils.IconAssets)
+    local rebirthIcon = Instance.new("ImageLabel")
+    rebirthIcon.Name = "RebirthIcon"
+    rebirthIcon.Size = UDim2.new(1, 0, 1, 0)
+    rebirthIcon.BackgroundTransparency = 1
+    rebirthIcon.Image = IconAssets.getIcon("UI", "REBIRTH")
+    rebirthIcon.ScaleType = Enum.ScaleType.Fit
+    rebirthIcon.Parent = billboardGui
     
     -- Create SurfaceGui for progress bar (on top of the part) - similar to processing counter
     local surfaceGui = Instance.new("SurfaceGui")
@@ -179,7 +173,7 @@ function RebirthButtonService:CreateRebirthButtonGUI()
     progressLabel.Position = UDim2.new(0, 0, 0, 0)
     progressLabel.BackgroundTransparency = 1 -- No background like processing counter
     progressLabel.Font = Enum.Font.GothamBold
-    progressLabel.Text = "$0 / $1000" -- Will be updated dynamically
+    progressLabel.Text = "$0 / $500" -- Will be updated dynamically with correct cost
     progressLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     progressLabel.TextSize = 24 -- Smaller than billboard, similar to processing counter
     progressLabel.TextStrokeTransparency = 0
@@ -220,11 +214,13 @@ function RebirthButtonService:UpdateProgressDisplay()
     
     if playerData and playerData.Resources then
         local currentMoney = playerData.Resources.Money or 0
-        local progressText = "$" .. currentMoney .. " / $" .. REBIRTH_COST
+        local currentRebirths = playerData.Resources.Rebirths or 0
+        local rebirthCost = RebirthUtils.getRebirthCost(currentRebirths)
+        local progressText = "$" .. currentMoney .. " / $" .. rebirthCost
         self.progressLabel.Text = progressText
         
         -- Change color based on progress
-        if currentMoney >= REBIRTH_COST then
+        if currentMoney >= rebirthCost then
             self.progressLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green if can rebirth
         else
             self.progressLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White if not ready

@@ -61,129 +61,222 @@ function TwoXHeavenSpeedButtonService:FindTwoXHeavenSpeedButton()
     -- Find the 2xHeavenSpeedButton
     twoXHeavenSpeedButtonPart = buttonsFolder:FindFirstChild("2xHeavenSpeedButton")
     if twoXHeavenSpeedButtonPart then
-        print("TwoXHeavenSpeedButtonService: Found 2xHeavenSpeedButton")
-        self:CreateGamepassGUI()
+        self:UpdateGamepassGUI()
     else
         warn("TwoXHeavenSpeedButtonService: 2xHeavenSpeedButton not found")
     end
 end
 
-function TwoXHeavenSpeedButtonService:CreateGamepassGUI()
-    -- Find the best part to attach GUI to
-    local targetPart = nil
-    if twoXHeavenSpeedButtonPart:IsA("Model") then
-        -- Look for a suitable part in the model
-        for _, part in pairs(twoXHeavenSpeedButtonPart:GetDescendants()) do
-            if part:IsA("BasePart") then
-                targetPart = part
+function TwoXHeavenSpeedButtonService:UpdateGamepassGUI()
+    -- GUI already exists from AreaTemplate, just update ownership status
+    local existingBillboard = twoXHeavenSpeedButtonPart:FindFirstChild("GamepassBillboard", true)
+    if not existingBillboard then
+        warn("TwoXHeavenSpeedButtonService: GamepassBillboard not found - should exist from template")
+        return
+    end
+    
+    -- Check ownership and update visibility
+    self:CheckOwnershipAndUpdateGUI(existingBillboard)
+end
+
+function TwoXHeavenSpeedButtonService:CheckOwnershipAndUpdateGUI(billboard)
+    -- Get player data to check ownership
+    local playerData = DataSyncService:GetPlayerData()
+    
+    local ownsGamepass = false
+    if playerData and playerData.OwnedGamepasses then
+        for _, gamepassName in pairs(playerData.OwnedGamepasses) do
+            if gamepassName == "TwoXHeavenSpeed" then
+                ownsGamepass = true
                 break
             end
         end
-    else
-        targetPart = twoXHeavenSpeedButtonPart
     end
     
-    if not targetPart then
-        warn("TwoXHeavenSpeedButtonService: No suitable part found for GUI attachment")
-        return
-    end
-    
-    -- Clean up existing GUIs
-    local existingBillboard = twoXHeavenSpeedButtonPart:FindFirstChild("GamepassBillboard", true)
-    if existingBillboard then
-        existingBillboard:Destroy()
-    end
-    
-    -- Create BillboardGui for gamepass information
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "GamepassBillboard"
-    billboardGui.Size = UDim2.new(0, 150, 0, 80) -- Smaller size
-    billboardGui.StudsOffset = Vector3.new(0, 4, 0) -- Float 4 studs above the part
-    billboardGui.MaxDistance = 80 -- Much further visibility for camera angles
-    billboardGui.Parent = targetPart
-    
-    -- Create gamepass icon
-    local iconLabel = Instance.new("ImageLabel")
-    iconLabel.Name = "GamepassIcon"
-    iconLabel.Size = UDim2.new(0, 40, 0, 40)
-    iconLabel.Position = UDim2.new(0.5, -20, 0, 5)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png" -- Default, will be updated
-    iconLabel.Parent = billboardGui
-    
-    -- Create gamepass label
-    local gamepassLabel = Instance.new("TextLabel")
-    gamepassLabel.Name = "GamepassText"
-    gamepassLabel.Size = UDim2.new(1, 0, 0, 20)
-    gamepassLabel.Position = UDim2.new(0, 0, 0, 48)
-    gamepassLabel.BackgroundTransparency = 1
-    gamepassLabel.Font = Enum.Font.GothamBold
-    gamepassLabel.Text = "2x Speed"
-    gamepassLabel.TextColor3 = Color3.fromRGB(255, 100, 255) -- Purple color for heaven
-    gamepassLabel.TextSize = 18
-    gamepassLabel.TextStrokeTransparency = 0
-    gamepassLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    gamepassLabel.Parent = billboardGui
-    
-    -- Create status label (will show "Owned" or price)
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusText"
-    statusLabel.Size = UDim2.new(1, 0, 0, 14)
-    statusLabel.Position = UDim2.new(0, 0, 1, -16)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Loading..."
-    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    statusLabel.TextSize = 14
-    statusLabel.TextStrokeTransparency = 0
-    statusLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    statusLabel.Parent = billboardGui
-    
-    -- Update status and icon based on ownership
-    self:UpdateGamepassStatus(statusLabel, iconLabel)
-    
-    -- Also try to update immediately in case data is already loaded
+    -- Update billboard GUI with icon and price (async to avoid yielding in Redux)
     task.spawn(function()
-        task.wait(0.5) -- Small delay to ensure MarketplaceService is ready
-        self:UpdateGamepassStatus(statusLabel, iconLabel)
+        self:UpdateBillboardInfo(billboard)
     end)
+    
+    -- Show/hide OWNED surface GUI based on ownership
+    if ownsGamepass then
+        self:ShowOwnedSurfaceGUI()
+    else
+        self:HideOwnedSurfaceGUI()
+    end
+    
 end
 
-function TwoXHeavenSpeedButtonService:UpdateGamepassStatus(statusLabel, iconLabel)
-    if not statusLabel then return end
+-- Update billboard GUI with gamepass icon, name, and robux price
+function TwoXHeavenSpeedButtonService:UpdateBillboardInfo(billboard)
+    if not billboard then return end
     
-    local playerData = DataSyncService:GetPlayerData()
-    local owns2xHeavenSpeed = playerData and playerData.OwnedGamepasses and table.find(playerData.OwnedGamepasses, "TwoXHeavenSpeed")
+    -- Clean existing elements and create new layout
+    billboard:ClearAllChildren()
     
-    -- Check if we need to update (ownership changed or still showing Loading...)
-    local needsUpdate = lastKnownOwnership ~= owns2xHeavenSpeed or statusLabel.Text == "Loading..."
+    -- Create container frame for vertical layout
+    local container = Instance.new("Frame")
+    container.Name = "Container"
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = billboard
     
-    if not needsUpdate then
-        return
-    end
-    lastKnownOwnership = owns2xHeavenSpeed
+    -- Get gamepass info from MarketplaceService
+    local gamepassName = "2X Heaven Speed"
+    local price = "25" -- fallback price
+    local iconId = nil
     
-    -- Get gamepass info for icon and price
     local success, info = pcall(function()
         return MarketplaceService:GetProductInfo(GAMEPASS_ID, Enum.InfoType.GamePass)
     end)
     
-    -- Update icon if we have it
-    if iconLabel and success and info and info.IconImageAssetId then
-        iconLabel.Image = "rbxassetid://" .. tostring(info.IconImageAssetId)
+    if success and info then
+        gamepassName = info.Name
+        price = info.PriceInRobux
+        iconId = info.IconImageAssetId
     end
     
-    if owns2xHeavenSpeed then
-        statusLabel.Text = "OWNED"
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green
-    else
-        if success and info then
-            statusLabel.Text = info.PriceInRobux .. " R$"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow
+    -- Create gamepass icon (top)
+    local gamepassIcon = Instance.new("ImageLabel")
+    gamepassIcon.Name = "GamepassIcon"
+    gamepassIcon.Size = UDim2.new(0, 40, 0, 40)
+    gamepassIcon.Position = UDim2.new(0.5, -20, 0, 5)
+    gamepassIcon.BackgroundTransparency = 1
+    gamepassIcon.Image = iconId and ("rbxassetid://" .. tostring(iconId)) or ""
+    gamepassIcon.ScaleType = Enum.ScaleType.Fit
+    gamepassIcon.Parent = container
+    
+    -- Create gamepass name label (middle)
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 0, 0, 50)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Text = gamepassName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 14
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+    nameLabel.Parent = container
+    
+    -- Create price container with robux icon (bottom)
+    local priceContainer = Instance.new("Frame")
+    priceContainer.Name = "PriceContainer"
+    priceContainer.Size = UDim2.new(1, 0, 0, 20)
+    priceContainer.Position = UDim2.new(0, 0, 0, 75)
+    priceContainer.BackgroundTransparency = 1
+    priceContainer.Parent = container
+    
+    -- Create robux icon
+    local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+    local robuxIcon = Instance.new("ImageLabel")
+    robuxIcon.Name = "RobuxIcon"
+    robuxIcon.Size = UDim2.new(0, 16, 0, 16)
+    robuxIcon.Position = UDim2.new(0.5, -25, 0.5, -8)
+    robuxIcon.BackgroundTransparency = 1
+    robuxIcon.Image = IconAssets.getIcon("CURRENCY", "ROBUX")
+    robuxIcon.ScaleType = Enum.ScaleType.Fit
+    robuxIcon.Parent = priceContainer
+    
+    -- Create price label
+    local priceLabel = Instance.new("TextLabel")
+    priceLabel.Name = "PriceLabel"
+    priceLabel.Size = UDim2.new(0, 50, 1, 0)
+    priceLabel.Position = UDim2.new(0.5, -5, 0, 0)
+    priceLabel.BackgroundTransparency = 1
+    priceLabel.Font = Enum.Font.GothamBold
+    priceLabel.Text = tostring(price)
+    priceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    priceLabel.TextSize = 14
+    priceLabel.TextStrokeTransparency = 0
+    priceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    priceLabel.TextYAlignment = Enum.TextYAlignment.Center
+    priceLabel.Parent = priceContainer
+    
+    -- Adjust billboard size to fit new layout
+    billboard.Size = UDim2.new(0, 120, 0, 100)
+end
+
+-- Add "Owned" surface GUI to the button part
+function TwoXHeavenSpeedButtonService:AddOwnedSurfaceGUI()
+    if not twoXHeavenSpeedButtonPart then 
+        return 
+    end
+    
+    -- Check if already exists
+    local existingGui = twoXHeavenSpeedButtonPart:FindFirstChild("OwnedSurfaceGui")
+    if existingGui then
+        if existingGui.Parent then
+            return
         else
-            statusLabel.Text = "Buy Now"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow
+            existingGui:Destroy()
         end
+    end
+    
+    -- Find the main part to attach GUI to - must be a BasePart, not Model
+    local targetPart = nil
+    if twoXHeavenSpeedButtonPart:IsA("Model") then
+        -- Find the first available BasePart
+        for _, part in pairs(twoXHeavenSpeedButtonPart:GetDescendants()) do
+            if part:IsA("BasePart") then
+                if not targetPart then
+                    targetPart = part
+                end
+            end
+        end
+    elseif twoXHeavenSpeedButtonPart:IsA("BasePart") then
+        targetPart = twoXHeavenSpeedButtonPart
+    end
+    
+    if not targetPart then
+        warn("TwoXHeavenSpeedButtonService: No valid BasePart found for SurfaceGui attachment")
+        return
+    end
+    
+    -- Create surface GUI on Top face to be visible
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "OwnedSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 100 -- Standardized across all gamepass buttons
+    surfaceGui.Parent = targetPart
+    
+    -- Create "Owned" text label
+    local ownedLabel = Instance.new("TextLabel")
+    ownedLabel.Name = "OwnedText"
+    ownedLabel.Size = UDim2.new(1, 0, 1, 0)
+    ownedLabel.BackgroundTransparency = 1
+    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Text = "OWNED"
+    ownedLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow for visibility
+    ownedLabel.TextSize = 32 -- Standardized text size
+    ownedLabel.TextStrokeTransparency = 0
+    ownedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    ownedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ownedLabel.TextYAlignment = Enum.TextYAlignment.Center
+    ownedLabel.Rotation = 180 -- Rotate 180 degrees to fix upside-down text
+    ownedLabel.Parent = surfaceGui
+end
+
+function TwoXHeavenSpeedButtonService:ShowOwnedSurfaceGUI()
+    if not twoXHeavenSpeedButtonPart then return end
+    
+    local ownedGui = twoXHeavenSpeedButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = true
+    end
+end
+
+function TwoXHeavenSpeedButtonService:HideOwnedSurfaceGUI()
+    if not twoXHeavenSpeedButtonPart then return end
+    
+    local ownedGui = twoXHeavenSpeedButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = false
     end
 end
 
@@ -243,30 +336,33 @@ function TwoXHeavenSpeedButtonService:HandleGamepassPurchase()
     
     print("TwoXHeavenSpeedButtonService: Prompting 2x Heaven Speed gamepass purchase")
     
-    -- Prompt the purchase
-    local success, error = pcall(function()
-        MarketplaceService:PromptGamePassPurchase(player, GAMEPASS_ID)
-    end)
-    
-    if not success then
-        warn("TwoXHeavenSpeedButtonService: Failed to prompt gamepass purchase:", error)
+    -- Send purchase request to server (same as the GamepassUI does)
+    local purchaseGamepassRemote = ReplicatedStorage:FindFirstChild("PurchaseGamepass")
+    if purchaseGamepassRemote then
+        purchaseGamepassRemote:FireServer("TwoXHeavenSpeed")
+        print("TwoXHeavenSpeedButtonService: Triggered TwoXHeavenSpeed gamepass purchase")
+    else
+        warn("TwoXHeavenSpeedButtonService: PurchaseGamepass remote not found")
     end
 end
 
 function TwoXHeavenSpeedButtonService:SetupDataSubscription()
-    -- Subscribe to data changes to update GUI
-    DataSyncService:Subscribe(function(newState)
-        if newState and newState.player then
-            local billboard = twoXHeavenSpeedButtonPart and twoXHeavenSpeedButtonPart:FindFirstChild("GamepassBillboard", true)
-            if billboard then
-                local statusLabel = billboard:FindFirstChild("StatusText")
-                local iconLabel = billboard:FindFirstChild("GamepassIcon")
-                if statusLabel then
-                    self:UpdateGamepassStatus(statusLabel, iconLabel)
-                end
+    -- Subscribe to data changes to update GUI - BUT ONLY when gamepass data changes
+    local lastGamepassData = nil
+    
+    local unsubscribe = DataSyncService:Subscribe(function(newState)
+        if newState and newState.player and newState.player.OwnedGamepasses then
+            -- Only update if gamepass data actually changed
+            local currentGamepassData = game:GetService("HttpService"):JSONEncode(newState.player.OwnedGamepasses)
+            if currentGamepassData ~= lastGamepassData then
+                lastGamepassData = currentGamepassData
+                self:UpdateGamepassGUI()
             end
         end
     end)
+    
+    -- Store unsubscribe function for cleanup
+    self.dataSubscription = unsubscribe
 end
 
 function TwoXHeavenSpeedButtonService:Cleanup()
@@ -275,16 +371,12 @@ function TwoXHeavenSpeedButtonService:Cleanup()
         proximityConnection = nil
     end
     
+    if self.dataSubscription then
+        self.dataSubscription()
+        self.dataSubscription = nil
+    end
+    
     lastKnownOwnership = nil
-    print("TwoXHeavenSpeedButtonService: Cleaned up")
 end
-
--- Handle character respawn
-Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Re-initialize after character respawn
-    TwoXHeavenSpeedButtonService:Cleanup()
-    task.wait(1) -- Wait for character to fully load
-    TwoXHeavenSpeedButtonService:Initialize()
-end)
 
 return TwoXHeavenSpeedButtonService

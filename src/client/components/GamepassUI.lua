@@ -1,4 +1,4 @@
--- GamepassUI - Dynamic UI for purchasing gamepasses with real prices and icons
+-- Modern GamepassUI - Dynamic UI for purchasing gamepasses with real prices and icons
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -6,15 +6,23 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
+local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local player = Players.LocalPlayer
 
-local function GamepassUI()
+local function GamepassUI(props)
     local playerData, setPlayerData = React.useState({
         OwnedGamepasses = {}
     })
-    local isVisible, setIsVisible = React.useState(false)
+    local isVisible, setIsVisible = React.useState(props.visible or false)
     local gamepassData, setGamepassData = React.useState({}) -- Dynamic gamepass data with real prices/icons
+    
+    -- Update visibility when props change
+    React.useEffect(function()
+        setIsVisible(props.visible or false)
+    end, {props.visible})
     
     -- Subscribe to data changes
     React.useEffect(function()
@@ -40,50 +48,43 @@ local function GamepassUI()
             local dynamicData = {}
             
             for gamepassName, config in pairs(allGamepasses) do
-                -- Start with config data
+                -- Initialize with config data
                 dynamicData[gamepassName] = {
                     name = config.name,
                     description = config.description,
-                    price = config.price, -- Fallback price
-                    icon = config.icon,   -- Fallback icon
-                    id = config.id
+                    price = "Loading...",
+                    icon = config.icon,
+                    gamepassId = config.gamepassId
                 }
                 
-                -- Fetch real data from Roblox MarketplaceService
-                task.spawn(function()
-                    local success, info = pcall(function()
-                        return MarketplaceService:GetProductInfo(config.id, Enum.InfoType.GamePass)
-                    end)
-                    
-                    if success and info then
-                        -- Update with real data
-                        dynamicData[gamepassName].price = info.PriceInRobux or config.price
-                        if info.IconImageAssetId then
-                            dynamicData[gamepassName].icon = "rbxassetid://" .. tostring(info.IconImageAssetId)
-                        end
+                -- Fetch real price from MarketplaceService
+                if config.gamepassId then
+                    task.spawn(function()
+                        local success, result = pcall(function()
+                            return MarketplaceService:GetProductInfo(config.gamepassId, Enum.InfoType.GamePass)
+                        end)
                         
-                        -- Update state with new data
-                        setGamepassData(function(prevData)
-                            local newData = {}
-                            for k, v in pairs(prevData) do
-                                newData[k] = v
-                            end
-                            newData[gamepassName] = dynamicData[gamepassName]
-                            return newData
-                        end)
-                    else
-                        -- Use fallback data if API call fails
-                        setGamepassData(function(prevData)
-                            local newData = {}
-                            for k, v in pairs(prevData) do
-                                newData[k] = v
-                            end
-                            newData[gamepassName] = dynamicData[gamepassName]
-                            return newData
-                        end)
-                    end
-                end)
+                        if success and result then
+                            dynamicData[gamepassName].price = result.PriceInRobux and (tostring(result.PriceInRobux) .. " R$") or "Free"
+                            dynamicData[gamepassName].icon = result.IconImageAssetId and ("rbxassetid://" .. result.IconImageAssetId) or config.icon
+                            
+                            -- Update state
+                            setGamepassData(function(currentData)
+                                local newData = {}
+                                for key, value in pairs(currentData) do
+                                    newData[key] = value
+                                end
+                                newData[gamepassName] = dynamicData[gamepassName]
+                                return newData
+                            end)
+                        else
+                            dynamicData[gamepassName].price = "N/A"
+                        end
+                    end)
+                end
             end
+            
+            setGamepassData(dynamicData)
         end
         
         fetchGamepassData()
@@ -103,22 +104,9 @@ local function GamepassUI()
     
     -- Handle gamepass purchase
     local function handleGamepassPurchase(gamepassName)
-        -- Send purchase request to server
         local purchaseGamepassRemote = ReplicatedStorage:FindFirstChild("PurchaseGamepass")
         if purchaseGamepassRemote then
             purchaseGamepassRemote:FireServer(gamepassName)
-        else
-            warn("GamepassUI: PurchaseGamepass remote not found")
-        end
-    end
-    
-    -- Handle debug grant (for testing)
-    local function handleDebugGrant(gamepassName)
-        local debugGrantGamepassRemote = ReplicatedStorage:FindFirstChild("DebugGrantGamepass")
-        if debugGrantGamepassRemote then
-            debugGrantGamepassRemote:FireServer(gamepassName)
-        else
-            warn("GamepassUI: DebugGrantGamepass remote not found")
         end
     end
     
@@ -127,8 +115,6 @@ local function GamepassUI()
         local toggleGamepassSettingRemote = ReplicatedStorage:FindFirstChild("ToggleGamepassSetting")
         if toggleGamepassSettingRemote then
             toggleGamepassSettingRemote:FireServer(settingName)
-        else
-            warn("GamepassUI: ToggleGamepassSetting remote not found")
         end
     end
     
@@ -138,280 +124,313 @@ local function GamepassUI()
         return playerData.GamepassSettings[settingName] or false
     end
     
-    -- Toggle panel visibility
-    local function togglePanel()
-        setIsVisible(not isVisible)
+    if not isVisible then
+        return nil
     end
     
-    -- Create gamepass card with dynamic data
-    local function createGamepassCard(gamepassName)
+    -- Create modern gamepass cards
+    local gamepassCards = {}
+    local allGamepasses = GamepassConfig.getAllGamepasses()
+    local cardIndex = 0
+    
+    for gamepassName, config in pairs(allGamepasses) do
+        cardIndex = cardIndex + 1
         local isOwned = playerOwnsGamepass(gamepassName)
         local dynamicConfig = gamepassData[gamepassName]
+        local displayConfig = dynamicConfig or config
         
-        -- Use dynamic data if available, otherwise fall back to static config
-        local config = dynamicConfig or GamepassConfig.getGamepassByName(gamepassName)
-        if not config then return nil end
-        
-        return React.createElement("Frame", {
+        gamepassCards[cardIndex] = React.createElement("Frame", {
             Name = gamepassName .. "Card",
-            Size = UDim2.new(1, -20, 0, 150), -- Reduced height since description is conditional
-            Position = UDim2.new(0, 10, 0, 0),
-            BackgroundColor3 = Color3.fromRGB(60, 60, 60),
+            Size = ScreenUtils.udim2(0, 350, 0, 120), -- Modern card size
+            BackgroundColor3 = isOwned and Color3.fromRGB(220, 255, 220) or Color3.fromRGB(255, 255, 255), -- Light green if owned, white if not
             BorderSizePixel = 0,
-            ZIndex = 102
+            LayoutOrder = cardIndex,
+            ZIndex = 103,
         }, {
-            UICorner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 8)
+            Corner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 12),
+            }),
+            
+            Outline = React.createElement("UIStroke", {
+                Thickness = isOwned and 3 or 2,
+                Color = isOwned and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(0, 0, 0), -- Green if owned, black if not
+                Transparency = 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
             }),
             
             -- Icon
             Icon = React.createElement("ImageLabel", {
-                Name = "Icon",
-                Size = UDim2.new(0, 40, 0, 40),
-                Position = UDim2.new(0, 10, 0, 10),
+                Size = ScreenUtils.udim2(0, 50, 0, 50),
+                Position = ScreenUtils.udim2(0, 10, 0, 10),
                 BackgroundTransparency = 1,
-                Image = config.icon or "rbxasset://textures/ui/GuiImagePlaceholder.png",
-                ZIndex = 103
+                Image = displayConfig.icon or IconAssets.getIcon("UI", "GAMEPASS"),
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 104,
             }, {
-                UICorner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 6)
-                })
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 8),
+                }),
             }),
             
             -- Title
             Title = React.createElement("TextLabel", {
-                Name = "Title",
-                Size = UDim2.new(1, -70, 0, 30),
-                Position = UDim2.new(0, 60, 0, 10),
+                Size = ScreenUtils.udim2(1, -150, 0, 25),
+                Position = ScreenUtils.udim2(0, 70, 0, 10),
                 BackgroundTransparency = 1,
+                Text = displayConfig.name,
+                TextColor3 = isOwned and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(50, 50, 50), -- Green if owned, dark if not
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
                 Font = Enum.Font.GothamBold,
-                Text = config.name,
-                TextColor3 = isOwned and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 255, 255),
-                TextSize = 18,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 103
+                ZIndex = 104,
             }),
             
-            -- Description (only show when not owned)
-            Description = not isOwned and React.createElement("TextLabel", {
-                Name = "Description",
-                Size = UDim2.new(1, -70, 0, 70), -- Large area for text wrapping
-                Position = UDim2.new(0, 60, 0, 45),
+            -- Description
+            Description = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -150, 0, 40),
+                Position = ScreenUtils.udim2(0, 70, 0, 35),
                 BackgroundTransparency = 1,
+                Text = displayConfig.description,
+                TextColor3 = Color3.fromRGB(80, 80, 80),
+                TextSize = ScreenUtils.TEXT_SIZES.SMALL(),
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
                 Font = Enum.Font.Gotham,
-                Text = config.description,
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 12,
-                TextWrapped = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Top,
-                ZIndex = 103
-            }) or nil,
+                TextWrapped = true,
+                ZIndex = 104,
+            }),
             
             -- Price/Status
             PriceLabel = React.createElement("TextLabel", {
-                Name = "PriceLabel",
-                Size = UDim2.new(0, 80, 0, 25),
-                Position = isOwned and UDim2.new(0, 60, 0, 60) or UDim2.new(0, 60, 0, 120), -- Higher when owned, lower when not owned
+                Size = ScreenUtils.udim2(0, 80, 0, 20),
+                Position = ScreenUtils.udim2(1, -90, 0, 10),
                 BackgroundTransparency = 1,
+                Text = isOwned and "OWNED" or (dynamicConfig and dynamicConfig.price or "Loading..."),
+                TextColor3 = isOwned and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(0, 162, 255), -- Green if owned, blue for price
+                TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 1,
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
                 Font = Enum.Font.GothamBold,
-                Text = isOwned and "OWNED" or (config.price .. " R$"),
-                TextColor3 = isOwned and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 215, 0),
-                TextSize = 14,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 103
+                TextXAlignment = Enum.TextXAlignment.Center,
+                ZIndex = 104,
             }),
             
-            -- Purchase Button (when not owned)
-            PurchaseButton = not isOwned and React.createElement("TextButton", {
-                Name = "PurchaseButton",
-                Size = UDim2.new(0, 80, 0, 25),
-                Position = UDim2.new(1, -90, 0, 120), -- Positioned with price when not owned
-                BackgroundColor3 = Color3.fromRGB(0, 162, 255),
+            -- Action Button
+            ActionButton = React.createElement("TextButton", {
+                Size = ScreenUtils.udim2(0, 80, 0, 30),
+                Position = ScreenUtils.udim2(1, -90, 1, -40),
+                BackgroundColor3 = isOwned and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(0, 162, 255), -- Orange for toggle, blue for buy
                 BorderSizePixel = 0,
+                Text = isOwned and "Toggle" or "Buy",
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 1,
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 Font = Enum.Font.GothamBold,
-                Text = "Buy",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                ZIndex = 103,
-                [React.Event.Activated] = function()
-                    handleGamepassPurchase(gamepassName)
-                end
+                ZIndex = 104,
+                [React.Event.MouseButton1Click] = function()
+                    if isOwned then
+                        -- Handle toggle for owned gamepasses
+                        handleToggleSetting(gamepassName)
+                    else
+                        -- Handle purchase for unowned gamepasses
+                        handleGamepassPurchase(gamepassName)
+                    end
+                end,
             }, {
-                UICorner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
-            }) or nil,
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 8),
+                }),
+                
+                Outline = React.createElement("UIStroke", {
+                    Thickness = 2,
+                    Color = Color3.fromRGB(0, 0, 0),
+                    Transparency = 0,
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                }),
+            }),
             
-            -- Toggle Button (only for gamepasses with settings)
-            ToggleButton = isOwned and (gamepassName == "AutoHeaven" or gamepassName == "PetMagnet") and React.createElement("TextButton", {
-                Name = "ToggleButton",
-                Size = UDim2.new(0, 80, 0, 25),
-                Position = UDim2.new(1, -90, 0, 60), -- Positioned with OWNED text when owned
-                BackgroundColor3 = (function()
-                    if gamepassName == "AutoHeaven" then
-                        return isSettingEnabled("AutoHeavenEnabled") and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 100, 100)
-                    elseif gamepassName == "PetMagnet" then
-                        return isSettingEnabled("PetMagnetEnabled") and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 100, 100)
-                    end
-                    return Color3.fromRGB(100, 100, 100)
-                end)(),
+            -- Status indicator for toggleable features (if owned)
+            StatusIndicator = isOwned and React.createElement("Frame", {
+                Size = ScreenUtils.udim2(0, 12, 0, 12),
+                Position = ScreenUtils.udim2(1, -15, 0, 50),
+                BackgroundColor3 = isSettingEnabled(gamepassName) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 100, 100), -- Green if enabled, red if disabled
                 BorderSizePixel = 0,
-                Font = Enum.Font.GothamBold,
-                Text = (function()
-                    if gamepassName == "AutoHeaven" then
-                        return isSettingEnabled("AutoHeavenEnabled") and "ON" or "OFF"
-                    elseif gamepassName == "PetMagnet" then
-                        return isSettingEnabled("PetMagnetEnabled") and "ON" or "OFF"
-                    end
-                    return "OFF"
-                end)(),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                ZIndex = 103,
-                [React.Event.Activated] = function()
-                    if gamepassName == "AutoHeaven" then
-                        handleToggleSetting("AutoHeavenEnabled")
-                    elseif gamepassName == "PetMagnet" then
-                        handleToggleSetting("PetMagnetEnabled")
-                    end
-                end
+                ZIndex = 104,
             }, {
-                UICorner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
-            }) or nil,
-            
-            -- Debug Grant Button (for testing)
-            DebugButton = not isOwned and React.createElement("TextButton", {
-                Name = "DebugButton",
-                Size = UDim2.new(0, 60, 0, 20),
-                Position = UDim2.new(1, -70, 0, 10),
-                BackgroundColor3 = Color3.fromRGB(255, 100, 100),
-                BorderSizePixel = 0,
-                Font = Enum.Font.Gotham,
-                Text = "DEBUG",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 10,
-                ZIndex = 103,
-                [React.Event.Activated] = function()
-                    handleDebugGrant(gamepassName)
-                end
-            }, {
-                UICorner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 6), -- Circular
+                }),
+                
+                Outline = React.createElement("UIStroke", {
+                    Thickness = 1,
+                    Color = Color3.fromRGB(0, 0, 0),
+                    Transparency = 0,
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                }),
             }) or nil
         })
     end
     
-    return React.createElement("ScreenGui", {
-        Name = "GamepassUI",
-        ResetOnSpawn = false
+    -- Create click-outside-to-close overlay
+    return React.createElement("TextButton", {
+        Name = "GamepassOverlay",
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1, -- Invisible overlay
+        Text = "",
+        ZIndex = 100,
+        [React.Event.MouseButton1Click] = function()
+            setIsVisible(false) -- Click outside to close
+            if props.onVisibilityChange then
+                props.onVisibilityChange(false)
+            end
+        end,
     }, {
-        -- Toggle Button
-        ToggleButton = React.createElement("TextButton", {
-            Name = "GamepassToggle",
-            Size = UDim2.new(0, 100, 0, 40),
-            Position = UDim2.new(0, 10, 0, 100),
-            BackgroundColor3 = Color3.fromRGB(138, 43, 226),
-            BorderSizePixel = 0,
-            Font = Enum.Font.GothamBold,
-            Text = "Gamepasses",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 14,
-            [React.Event.Activated] = togglePanel
+        -- Modern modal container
+        GamepassModal = React.createElement("Frame", {
+            Name = "GamepassModal",
+            Size = ScreenUtils.udim2(0, 800, 0, 600), -- Large modal
+            Position = ScreenUtils.udim2(0.5, -400, 0.5, -300), -- Center on screen
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
+            BackgroundTransparency = 0,
+            ZIndex = 101,
         }, {
-            UICorner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 8)
-            })
-        }),
-        
-        -- Main Panel
-        MainPanel = isVisible and React.createElement("Frame", {
-            Name = "GamepassPanel",
-            Size = UDim2.new(0, 400, 0, 300),
-            Position = UDim2.new(0.5, -200, 0.5, -150),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0,
-            ZIndex = 100 -- Much higher Z-index
-        }, {
-            UICorner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 12)
+            Corner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 15), -- Rounded corners
             }),
             
-            -- Title
-            Title = React.createElement("TextLabel", {
-                Name = "Title",
-                Size = UDim2.new(1, -40, 0, 40),
-                Position = UDim2.new(0, 20, 0, 10),
+            ModalOutline = React.createElement("UIStroke", {
+                Thickness = 4,
+                Color = Color3.fromRGB(0, 0, 0), -- Black outline
+                Transparency = 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            }),
+            
+            -- Background pattern like Pets UI
+            BackgroundPattern = React.createElement("ImageLabel", {
+                Name = "BackgroundPattern",
+                Size = UDim2.new(1, 0, 1, 0),
+                Position = UDim2.new(0, 0, 0, 0),
                 BackgroundTransparency = 1,
-                Font = Enum.Font.GothamBold,
-                Text = "Gamepasses",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 24,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 101
-            }),
-            
-            -- Close button
-            CloseButton = React.createElement("TextButton", {
-                Name = "CloseButton",
-                Size = UDim2.new(0, 30, 0, 30),
-                Position = UDim2.new(1, -40, 0, 10),
-                BackgroundColor3 = Color3.fromRGB(200, 50, 50),
-                BorderSizePixel = 0,
-                Font = Enum.Font.GothamBold,
-                Text = "×",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 18,
-                ZIndex = 101,
-                [React.Event.Activated] = function()
-                    setIsVisible(false)
-                end
+                Image = "rbxassetid://116367512866072",
+                ImageTransparency = 0.95, -- Very faint background
+                ScaleType = Enum.ScaleType.Tile,
+                TileSize = UDim2.new(0, 50, 0, 50),
+                ZIndex = 101, -- Behind content
             }, {
-                UICorner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 6)
-                })
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 15),
+                }),
             }),
             
-            -- Scrolling Frame for gamepasses
-            ScrollingFrame = React.createElement("ScrollingFrame", {
-                Name = "GamepassList",
-                Size = UDim2.new(1, -40, 1, -70),
-                Position = UDim2.new(0, 20, 0, 60),
+            -- Header section
+            Header = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, 0, 0, 60),
                 BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-                CanvasSize = UDim2.new(0, 0, 0, 960), -- 6 cards * 150px + 6 * 10px padding
-                ScrollBarThickness = 8,
-                ZIndex = 101
+                ZIndex = 103,
             }, {
-                UIListLayout = React.createElement("UIListLayout", {
-                    FillDirection = Enum.FillDirection.Vertical,
-                    HorizontalAlignment = Enum.HorizontalAlignment.Center,
-                    VerticalAlignment = Enum.VerticalAlignment.Top,
-                    Padding = UDim.new(0, 10)
+                -- Title Container (centered)
+                TitleContainer = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(0, 220, 1, 0),
+                    Position = ScreenUtils.udim2(0.5, -110, 0, 0),
+                    BackgroundTransparency = 1,
+                    ZIndex = 104,
+                }, {
+                    -- Gamepass Icon
+                    GamepassIcon = React.createElement("ImageLabel", {
+                        Size = ScreenUtils.udim2(0, 40, 0, 40),
+                        Position = ScreenUtils.udim2(0, 0, 0.5, -20),
+                        BackgroundTransparency = 1,
+                        Image = IconAssets.getIcon("UI", "GAMEPASS"),
+                        ScaleType = Enum.ScaleType.Fit,
+                        ZIndex = 105,
+                    }),
+                    
+                    -- Title Text
+                    Title = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(0, 170, 1, 0),
+                        Position = ScreenUtils.udim2(0, 50, 0, 0),
+                        BackgroundTransparency = 1,
+                        Text = "Gamepasses",
+                        TextColor3 = Color3.fromRGB(50, 50, 50), -- Dark text
+                        TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4,
+                        TextStrokeTransparency = 0,
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.GothamBold,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextYAlignment = Enum.TextYAlignment.Center,
+                        ZIndex = 105,
+                    }),
                 }),
                 
-                -- PetMagnet Gamepass Card
-                PetMagnetCard = createGamepassCard("PetMagnet"),
-                
-                -- AutoHeaven Gamepass Card  
-                AutoHeavenCard = createGamepassCard("AutoHeaven"),
-                
-                -- 2x Money Gamepass Card
-                TwoXMoneyCard = createGamepassCard("TwoXMoney"),
-                
-                -- 2x Diamonds Gamepass Card
-                TwoXDiamondsCard = createGamepassCard("TwoXDiamonds"),
-                
-                -- 2x Heaven Speed Gamepass Card
-                TwoXHeavenSpeedCard = createGamepassCard("TwoXHeavenSpeed"),
-                
-                -- VIP Gamepass Card
-                VIPCard = createGamepassCard("VIP")
+                -- Close button (right side)
+                CloseButton = React.createElement("ImageButton", {
+                    Size = ScreenUtils.udim2(0, 30, 0, 30),
+                    Position = ScreenUtils.udim2(1, -40, 0.5, -15),
+                    BackgroundColor3 = Color3.fromRGB(255, 100, 100), -- Light red
+                    Image = IconAssets.getIcon("UI", "X_BUTTON"),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 105,
+                    [React.Event.MouseButton1Click] = function()
+                        setIsVisible(false)
+                        if props.onVisibilityChange then
+                            props.onVisibilityChange(false)
+                        end
+                    end,
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8),
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
+            }),
+            
+            -- Gamepasses grid (main content area)
+            GamepassGridContainer = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -40, 1, -80),
+                Position = ScreenUtils.udim2(0, 20, 0, 70),
+                BackgroundTransparency = 1,
+                ZIndex = 102,
+            }, {
+                -- Scrolling frame for gamepass cards
+                GamepassScrollFrame = React.createElement("ScrollingFrame", {
+                    Size = UDim2.new(1, 0, 1, 0),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    ScrollBarThickness = 8,
+                    ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
+                    CanvasSize = UDim2.new(0, 0, 0, math.ceil(cardIndex / 2) * 140), -- 2 cards per row, 140px height each
+                    ZIndex = 103,
+                }, {
+                    -- Grid layout
+                    GridLayout = React.createElement("UIGridLayout", {
+                        CellSize = ScreenUtils.udim2(0, 360, 0, 130),
+                        CellPadding = ScreenUtils.udim2(0, 15, 0, 10),
+                        FillDirection = Enum.FillDirection.Horizontal,
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                        VerticalAlignment = Enum.VerticalAlignment.Top,
+                        SortOrder = Enum.SortOrder.LayoutOrder,
+                    }),
+                    
+                    -- Gamepass cards container
+                    GamepassCards = React.createElement("Frame", {
+                        Size = UDim2.new(1, 0, 1, 0),
+                        BackgroundTransparency = 1,
+                        ZIndex = 103,
+                    }, gamepassCards)
+                })
             })
-        }) or nil
+        })
     })
 end
 

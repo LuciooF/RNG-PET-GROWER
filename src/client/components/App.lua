@@ -14,7 +14,9 @@ local RebirthUI = require(script.Parent.RebirthUI)
 local GamepassUI = require(script.Parent.GamepassUI)
 local PetMixerUI = require(script.Parent.PetMixerUI)
 local PetIndexUI = require(script.Parent.PetIndexUI)
-local PetIndexButton = require(script.Parent.PetIndexButton)
+local SideBar = require(script.Parent.SideBar)
+local BoostButton = require(script.Parent.BoostButton)
+local BoostPanel = require(script.Parent.BoostPanel)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
 local TeleportService = require(script.Parent.Parent.services.TeleportService)
@@ -30,10 +32,13 @@ local VIPButtonService = require(script.Parent.Parent.services.VIPButtonService)
 local SendHeavenButtonService = require(script.Parent.Parent.services.SendHeavenButtonService)
 
 local function App()
-    -- State for rebirth UI visibility
+    -- State for UI visibility
     local rebirthUIVisible, setRebirthUIVisible = React.useState(false)
-    -- State for pet index visibility
     local petIndexVisible, setPetIndexVisible = React.useState(false)
+    local debugVisible, setDebugVisible = React.useState(false)
+    local petInventoryVisible, setPetInventoryVisible = React.useState(false)
+    local gamepassVisible, setGamepassVisible = React.useState(false)
+    local boostPanelVisible, setBoostPanelVisible = React.useState(false)
     local playerData, setPlayerData = React.useState({
         Resources = { Money = 0, Rebirths = 0 }
     })
@@ -52,7 +57,11 @@ local function App()
             end
         end)
         
-        return unsubscribe
+        return function()
+            if unsubscribe and type(unsubscribe) == "function" then
+                unsubscribe()
+            end
+        end
     end, {})
     
     -- Set up rebirth button service
@@ -100,23 +109,8 @@ local function App()
         end
     end, {})
     
-    -- Set up pet magnet button service
-    React.useEffect(function()
-        PetMagnetButtonService:Initialize()
-        
-        return function()
-            PetMagnetButtonService:Cleanup()
-        end
-    end, {})
-    
-    -- Set up auto heaven button service
-    React.useEffect(function()
-        AutoHeavenButtonService:Initialize()
-        
-        return function()
-            AutoHeavenButtonService:Cleanup()
-        end
-    end, {})
+    -- Gamepass button services are initialized by Main.client.lua
+    -- (Removed duplicate initialization to prevent conflicts)
     
     -- Set up pet mixer animation service
     React.useEffect(function()
@@ -127,41 +121,11 @@ local function App()
         end
     end, {})
     
-    -- Set up 2x Money button service
-    React.useEffect(function()
-        TwoXMoneyButtonService:Initialize()
-        
-        return function()
-            TwoXMoneyButtonService:Cleanup()
-        end
-    end, {})
+    -- 2X gamepass button services are initialized by Main.client.lua
+    -- (Removed duplicate initialization to prevent conflicts)
     
-    -- Set up 2x Diamonds button service
-    React.useEffect(function()
-        TwoXDiamondsButtonService:Initialize()
-        
-        return function()
-            TwoXDiamondsButtonService:Cleanup()
-        end
-    end, {})
-    
-    -- Set up 2x Heaven Speed button service
-    React.useEffect(function()
-        TwoXHeavenSpeedButtonService:Initialize()
-        
-        return function()
-            TwoXHeavenSpeedButtonService:Cleanup()
-        end
-    end, {})
-    
-    -- Set up VIP button service
-    React.useEffect(function()
-        VIPButtonService:Initialize()
-        
-        return function()
-            VIPButtonService:Cleanup()
-        end
-    end, {})
+    -- VIP button service is initialized by Main.client.lua
+    -- (Removed duplicate initialization to prevent conflicts)
     
     -- Set up SendHeaven button service
     React.useEffect(function()
@@ -179,38 +143,92 @@ local function App()
     
     -- Handle rebirth action
     local function handleRebirth()
-        -- TODO: Implement actual rebirth logic
-        warn("Rebirth functionality not yet implemented")
-        setRebirthUIVisible(false)
+        -- Fire rebirth remote to server
+        local rebirthRemote = ReplicatedStorage:FindFirstChild("RebirthPlayer")
+        if rebirthRemote then
+            rebirthRemote:FireServer()
+            setRebirthUIVisible(false)
+        else
+            warn("RebirthPlayer remote event not found")
+        end
     end
     
-    -- Check if player can rebirth (needs 1000 money)
-    local canRebirth = (playerData.Resources.Money or 0) >= 1000
+    -- Use shared rebirth cost calculation
+    local RebirthUtils = require(ReplicatedStorage.utils.RebirthUtils)
+    
+    local currentRebirths = playerData.Resources.Rebirths or 0
+    local rebirthCost = RebirthUtils.getRebirthCost(currentRebirths)
+    local canRebirth = (playerData.Resources.Money or 0) >= rebirthCost
     
     return React.createElement("ScreenGui", {
         Name = "PetGrowerApp",
-        ResetOnSpawn = false
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true -- Back to ignoring inset for true mathematical center
     }, {
+        -- Unified SideBar with all navigation buttons
+        SideBar = React.createElement(SideBar, {
+            onGamepassClick = function()
+                setGamepassVisible(function(prev) return not prev end)
+            end,
+            onPetsClick = function()
+                setPetInventoryVisible(function(prev) return not prev end)
+            end,
+            onIndexClick = function()
+                setPetIndexVisible(function(prev) return not prev end)
+            end,
+            onRebirthClick = function()
+                setRebirthUIVisible(true)
+            end,
+            onDebugClick = function()
+                setDebugVisible(function(prev) return not prev end)
+            end
+        }),
+        
+        -- UI Components
         TopStats = React.createElement(TopStatsUI),
-        PetInventory = React.createElement(PetInventoryUI),
-        DebugPanel = React.createElement(DebugPanel),
+        PetInventory = React.createElement(PetInventoryUI, {
+            visible = petInventoryVisible,
+            onClose = function()
+                setPetInventoryVisible(false)
+            end,
+            onOpenRebirth = function()
+                setRebirthUIVisible(true)
+            end
+        }),
+        DebugPanel = React.createElement(DebugPanel, {
+            visible = debugVisible,
+            onVisibilityChange = setDebugVisible
+        }),
         ErrorMessage = React.createElement(ErrorMessage),
         PlotVisual = React.createElement(PlotVisual), -- Reactive plot color management
-        GamepassUI = React.createElement(GamepassUI), -- Gamepass shop
+        GamepassUI = React.createElement(GamepassUI, {
+            visible = gamepassVisible,
+            onClose = function()
+                setGamepassVisible(false)
+            end
+        }), -- Gamepass shop
         PetMixerUI = React.createElement(PetMixerUI), -- Pet mixer system
         PetIndexUI = React.createElement(PetIndexUI, {
             visible = petIndexVisible,
             setVisible = setPetIndexVisible
         }), -- Pet collection index
-        PetIndexButton = React.createElement(PetIndexButton, {
+        BoostButton = React.createElement(BoostButton, {
             onClick = function()
-                setPetIndexVisible(function(prev) return not prev end)
+                -- Toggle boost display panel using React state
+                setBoostPanelVisible(not boostPanelVisible)
             end
-        }), -- Button to open Pet Index
+        }), -- Boost display button
+        BoostPanel = React.createElement(BoostPanel, {
+            visible = boostPanelVisible,
+            onClose = function()
+                setBoostPanelVisible(false)
+            end
+        }), -- Boost info panel
         RebirthUI = rebirthUIVisible and React.createElement(RebirthUI.new, {
             visible = rebirthUIVisible,
             playerMoney = playerData.Resources.Money or 0,
             playerRebirths = playerData.Resources.Rebirths or 0,
+            rebirthCost = rebirthCost,
             canRebirth = canRebirth,
             onClose = handleRebirthClose,
             onRebirth = handleRebirth

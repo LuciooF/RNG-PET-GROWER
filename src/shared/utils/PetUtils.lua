@@ -128,7 +128,8 @@ end
 
 -- Get best pets from a collection (for auto-equip)
 function PetUtils.getBestPets(pets, maxCount)
-    local sortedPets = PetUtils.sortPetsByValue(pets)
+    -- Sort by BOOST not value for auto-equip!
+    local sortedPets = PetUtils.sortPetsByBoost(pets)
     local bestPets = {}
     
     for i = 1, math.min(maxCount, #sortedPets) do

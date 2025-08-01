@@ -18,7 +18,7 @@ function GamepassService:SetupMarketplaceEvents()
     -- Handle successful gamepass purchases
     MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
         if wasPurchased then
-            print("GamepassService: Player", player.Name, "purchased gamepass", gamePassId)
+            -- Player purchased gamepass
             self:OnGamepassPurchased(player, gamePassId)
         end
     end)
@@ -33,7 +33,7 @@ function GamepassService:OnGamepassPurchased(player, gamePassId)
         -- Add to player's owned gamepasses
         local success = self:AddGamepassToPlayer(player, gamepassName)
         if success then
-            print("GamepassService: Added", gamepassName, "to", player.Name)
+            -- Added gamepass to player
             
             -- Sync data to client
             local StateService = require(script.Parent.StateService)
@@ -58,7 +58,7 @@ function GamepassService:AddGamepassToPlayer(player, gamepassName)
     
     -- Check if player already owns this gamepass
     if self:PlayerOwnsGamepass(player, gamepassName) then
-        print("GamepassService: Player already owns", gamepassName)
+        -- Player already owns gamepass
         return true
     end
     
@@ -78,12 +78,12 @@ function GamepassService:RemoveGamepassFromPlayer(player, gamepassName)
     for i, ownedGamepass in pairs(profile.Data.OwnedGamepasses) do
         if ownedGamepass == gamepassName then
             table.remove(profile.Data.OwnedGamepasses, i)
-            print("GamepassService: Removed", gamepassName, "from", player.Name)
+            -- Removed gamepass from player
             return true
         end
     end
     
-    print("GamepassService: Player didn't have", gamepassName, "in data")
+    -- Player didn't have gamepass
     return false
 end
 
@@ -142,7 +142,7 @@ function GamepassService:DebugGrantGamepass(player, gamepassName)
     
     local success = self:AddGamepassToPlayer(player, gamepassName)
     if success then
-        print("GamepassService: DEBUG - Granted", gamepassName, "to", player.Name)
+        -- DEBUG: Granted gamepass
         
         -- Sync data to client
         local StateService = require(script.Parent.StateService)
@@ -187,7 +187,7 @@ function GamepassService:ToggleGamepassSetting(player, settingName)
         profile.Data.GamepassSettings.AutoHeavenEnabled = not currentValue
         
         local newValue = profile.Data.GamepassSettings.AutoHeavenEnabled
-        print("GamepassService: Toggled", settingName, "for", player.Name, "to", newValue)
+        -- Toggled gamepass setting
         
         -- Sync data to client
         local StateService = require(script.Parent.StateService)
@@ -203,7 +203,7 @@ function GamepassService:ToggleGamepassSetting(player, settingName)
         profile.Data.GamepassSettings.PetMagnetEnabled = not currentValue
         
         local newValue = profile.Data.GamepassSettings.PetMagnetEnabled
-        print("GamepassService: Toggled", settingName, "for", player.Name, "to", newValue)
+        -- Toggled gamepass setting
         
         -- Sync data to client
         local StateService = require(script.Parent.StateService)
@@ -240,13 +240,13 @@ function GamepassService:ValidatePlayerGamepasses(player)
             
             if ownsGamepass and not playerHasInData then
                 -- Player owns this gamepass on Roblox but not in data - add it
-                print("GamepassService: Player", player.Name, "owns", gamepassName, "on Roblox but not in data - adding")
+                -- Player owns on Roblox but not in data - adding
                 self:AddGamepassToPlayer(player, gamepassName)
                 gamepassesChanged = true
                 
             elseif not ownsGamepass and playerHasInData then
                 -- Player doesn't own this gamepass on Roblox but has it in data - remove it
-                print("GamepassService: Player", player.Name, "doesn't own", gamepassName, "on Roblox but has it in data - removing")
+                -- Player doesn't own on Roblox but has in data - removing
                 self:RemoveGamepassFromPlayer(player, gamepassName)
                 gamepassesChanged = true
             end
@@ -262,7 +262,7 @@ function GamepassService:ValidatePlayerGamepasses(player)
     end
     
     local ownedGamepasses = self:GetPlayerGamepasses(player)
-    print("GamepassService: Player", player.Name, "validated gamepasses:", table.concat(ownedGamepasses, ", "))
+    -- Validated player gamepasses
 end
 
 return GamepassService

@@ -1,12 +1,19 @@
--- DebugPanel - Developer tools for testing
+-- Modern DebugPanel - Developer tools for testing with modern theme
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 
-local function DebugPanel()
-    local isVisible, setIsVisible = React.useState(false)
+local function DebugPanel(props)
+    local isVisible, setIsVisible = React.useState(props.visible or false)
+    
+    -- Update visibility when props change
+    React.useEffect(function()
+        setIsVisible(props.visible or false)
+    end, {props.visible})
     
     -- Toggle with F1 key
     React.useEffect(function()
@@ -14,7 +21,11 @@ local function DebugPanel()
             if gameProcessed then return end
             
             if input.KeyCode == Enum.KeyCode.F1 then
-                setIsVisible(function(prev) return not prev end)
+                local newVisible = not isVisible
+                setIsVisible(newVisible)
+                if props.onVisibilityChange then
+                    props.onVisibilityChange(newVisible)
+                end
             end
         end)
         
@@ -37,198 +48,276 @@ local function DebugPanel()
     end
     
     if not isVisible then
-        return React.createElement("Frame", {
-            Size = UDim2.new(0, 120, 0, 30),
-            Position = UDim2.new(1, -130, 0, 10),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0,
-            ZIndex = 200
-        }, {
-            Corner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 8)
-            }),
-            
-            OpenButton = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = "Debug (F1)",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.Gotham,
-                ZIndex = 201,
-                [React.Event.Activated] = function()
-                    setIsVisible(true)
-                end
-            })
-        })
+        return nil -- Don't show anything when not visible - controlled by side button now
     end
     
-    return React.createElement("Frame", {
-        Size = UDim2.new(0, 300, 0, 250),
-        Position = UDim2.new(1, -310, 0, 10),
-        BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-        BorderSizePixel = 2,
-        BorderColor3 = Color3.fromRGB(255, 100, 100),
-        ZIndex = 200
+    -- Create click-outside-to-close overlay
+    return React.createElement("TextButton", {
+        Name = "DebugOverlay",
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1, -- Invisible overlay
+        Text = "",
+        ZIndex = 200,
+        [React.Event.MouseButton1Click] = function()
+            setIsVisible(false) -- Click outside to close
+            if props.onVisibilityChange then
+                props.onVisibilityChange(false)
+            end
+        end,
     }, {
-        Corner = React.createElement("UICorner", {
-            CornerRadius = UDim.new(0, 8)
-        }),
-        
-        -- Header
-        Header = React.createElement("Frame", {
-            Size = UDim2.new(1, 0, 0, 40),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0,
-            ZIndex = 201
+        -- Modern modal container
+        DebugModal = React.createElement("Frame", {
+            Name = "DebugModal",
+            Size = ScreenUtils.udim2(0, 400, 0, 400), -- Bigger modern modal
+            Position = ScreenUtils.udim2(0.5, -200, 0.5, -200), -- Center on screen
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
+            BackgroundTransparency = 0,
+            ZIndex = 201,
         }, {
             Corner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 8)
+                CornerRadius = ScreenUtils.udim(0, 15), -- Rounded corners
             }),
             
-            Title = React.createElement("TextLabel", {
-                Size = UDim2.new(1, -40, 1, 0),
-                Position = UDim2.new(0, 10, 0, 0),
+            ModalOutline = React.createElement("UIStroke", {
+                Thickness = 4,
+                Color = Color3.fromRGB(0, 0, 0), -- Black outline
+                Transparency = 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            }),
+            
+            -- Background pattern like other modern UIs
+            BackgroundPattern = React.createElement("ImageLabel", {
+                Name = "BackgroundPattern",
+                Size = UDim2.new(1, 0, 1, 0),
+                Position = UDim2.new(0, 0, 0, 0),
                 BackgroundTransparency = 1,
-                Text = "🛠️ Debug Panel",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 202
-            }),
-            
-            CloseButton = React.createElement("TextButton", {
-                Size = UDim2.new(0, 30, 0, 30),
-                Position = UDim2.new(1, -35, 0.5, -15),
-                BackgroundColor3 = Color3.fromRGB(200, 50, 50),
-                BorderSizePixel = 0,
-                Text = "✕",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                ZIndex = 202,
-                [React.Event.Activated] = function()
-                    setIsVisible(false)
-                end
+                Image = "rbxassetid://116367512866072",
+                ImageTransparency = 0.95, -- Very faint background
+                ScaleType = Enum.ScaleType.Tile,
+                TileSize = UDim2.new(0, 50, 0, 50),
+                ZIndex = 201, -- Behind content
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
-            })
-        }),
+                    CornerRadius = ScreenUtils.udim(0, 15),
+                }),
+            }),
         
-        -- Content
-        Content = React.createElement("Frame", {
-            Size = UDim2.new(1, -20, 1, -60),
-            Position = UDim2.new(0, 10, 0, 50),
-            BackgroundTransparency = 1,
-            ZIndex = 201
-        }, {
-            Layout = React.createElement("UIListLayout", {
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 10)
-            }),
-            
-            -- Money buttons
-            MoneyLabel = React.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 0, 25),
+            -- Header section
+            Header = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, 0, 0, 60),
                 BackgroundTransparency = 1,
-                Text = "💰 Money Controls",
-                TextColor3 = Color3.fromRGB(255, 215, 0),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                LayoutOrder = 1,
-                ZIndex = 202
-            }),
-            
-            Money100Button = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = Color3.fromRGB(0, 150, 0),
-                BorderSizePixel = 0,
-                Text = "+100 Money",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.Gotham,
-                LayoutOrder = 2,
-                ZIndex = 202,
-                [React.Event.Activated] = function()
-                    addMoney(100)
-                end
+                ZIndex = 203,
             }, {
-                Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
+                -- Title Container (centered)
+                TitleContainer = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(0, 200, 1, 0),
+                    Position = ScreenUtils.udim2(0.5, -100, 0, 0),
+                    BackgroundTransparency = 1,
+                    ZIndex = 204,
+                }, {
+                    -- Debug Icon
+                    DebugIcon = React.createElement("ImageLabel", {
+                        Size = ScreenUtils.udim2(0, 40, 0, 40),
+                        Position = ScreenUtils.udim2(0, 0, 0.5, -20),
+                        BackgroundTransparency = 1,
+                        Image = IconAssets.getIcon("UI", "SETTINGS"),
+                        ScaleType = Enum.ScaleType.Fit,
+                        ZIndex = 205,
+                    }),
+                    
+                    -- Title Text
+                    Title = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(0, 150, 1, 0),
+                        Position = ScreenUtils.udim2(0, 50, 0, 0),
+                        BackgroundTransparency = 1,
+                        Text = "Debug Panel",
+                        TextColor3 = Color3.fromRGB(50, 50, 50), -- Dark text
+                        TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4,
+                        TextStrokeTransparency = 0,
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.GothamBold,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextYAlignment = Enum.TextYAlignment.Center,
+                        ZIndex = 205,
+                    }),
+                }),
+                
+                -- Close button (right side)
+                CloseButton = React.createElement("ImageButton", {
+                    Size = ScreenUtils.udim2(0, 30, 0, 30),
+                    Position = ScreenUtils.udim2(1, -40, 0.5, -15),
+                    BackgroundColor3 = Color3.fromRGB(255, 100, 100), -- Light red
+                    Image = IconAssets.getIcon("UI", "X_BUTTON"),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 205,
+                    [React.Event.MouseButton1Click] = function()
+                        setIsVisible(false)
+                        if props.onVisibilityChange then
+                            props.onVisibilityChange(false)
+                        end
+                    end,
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8),
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
             }),
-            
-            Money1kButton = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = Color3.fromRGB(0, 120, 0),
-                BorderSizePixel = 0,
-                Text = "+1,000 Money",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.Gotham,
-                LayoutOrder = 3,
-                ZIndex = 202,
-                [React.Event.Activated] = function()
-                    addMoney(1000)
-                end
-            }, {
-                Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
-            }),
-            
-            Money10kButton = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = Color3.fromRGB(0, 100, 0),
-                BorderSizePixel = 0,
-                Text = "+10,000 Money",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.Gotham,
-                LayoutOrder = 4,
-                ZIndex = 202,
-                [React.Event.Activated] = function()
-                    addMoney(10000)
-                end
-            }, {
-                Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
-            }),
-            
-            -- Data controls
-            DataLabel = React.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 0, 25),
+        
+            -- Content area
+            Content = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -40, 1, -80),
+                Position = ScreenUtils.udim2(0, 20, 0, 70),
                 BackgroundTransparency = 1,
-                Text = "🗃️ Data Controls",
-                TextColor3 = Color3.fromRGB(255, 100, 100),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                LayoutOrder = 5,
                 ZIndex = 202
-            }),
-            
-            ResetDataButton = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = Color3.fromRGB(150, 0, 0),
-                BorderSizePixel = 0,
-                Text = "⚠️ Reset All Data",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                LayoutOrder = 6,
-                ZIndex = 202,
-                [React.Event.Activated] = function()
-                    resetPlayerData()
-                end
             }, {
-                Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
+                Layout = React.createElement("UIListLayout", {
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = ScreenUtils.udim(0, 12)
+                }),
+                
+                -- Money section header
+                MoneyLabel = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 30),
+                    BackgroundTransparency = 1,
+                    Text = "Money Controls",
+                    TextColor3 = Color3.fromRGB(0, 162, 255), -- Blue theme
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    LayoutOrder = 1,
+                    ZIndex = 203
+                }),
+            
+                Money100Button = React.createElement("TextButton", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 35),
+                    BackgroundColor3 = Color3.fromRGB(0, 200, 100), -- Modern green
+                    BorderSizePixel = 0,
+                    Text = "+100 Money",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    LayoutOrder = 2,
+                    ZIndex = 203,
+                    [React.Event.Activated] = function()
+                        addMoney(100)
+                    end
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
+            
+                Money1kButton = React.createElement("TextButton", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 35),
+                    BackgroundColor3 = Color3.fromRGB(0, 180, 100), -- Slightly darker green
+                    BorderSizePixel = 0,
+                    Text = "+1,000 Money",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    LayoutOrder = 3,
+                    ZIndex = 203,
+                    [React.Event.Activated] = function()
+                        addMoney(1000)
+                    end
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
+            
+                Money10kButton = React.createElement("TextButton", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 35),
+                    BackgroundColor3 = Color3.fromRGB(0, 160, 100), -- Darker green
+                    BorderSizePixel = 0,
+                    Text = "+10,000 Money",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    LayoutOrder = 4,
+                    ZIndex = 203,
+                    [React.Event.Activated] = function()
+                        addMoney(10000)
+                    end
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
+            
+                -- Data section header
+                DataLabel = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 30),
+                    BackgroundTransparency = 1,
+                    Text = "Data Controls",
+                    TextColor3 = Color3.fromRGB(255, 100, 100), -- Red theme for dangerous operations
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    LayoutOrder = 5,
+                    ZIndex = 203
+                }),
+            
+                ResetDataButton = React.createElement("TextButton", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 40), -- Bigger for dangerous action
+                    BackgroundColor3 = Color3.fromRGB(220, 50, 50), -- Modern red
+                    BorderSizePixel = 0,
+                    Text = "⚠️ Reset All Data",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 1,
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    LayoutOrder = 6,
+                    ZIndex = 203,
+                    [React.Event.Activated] = function()
+                        resetPlayerData()
+                    end
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 3, -- Thicker outline for danger
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
                 })
             })
         })

@@ -93,32 +93,192 @@ function PetMagnetButtonService:CheckOwnershipAndUpdateGUI(billboard)
         end
     end
     
-    -- Get template labels
-    local titleLabel = billboard:FindFirstChild("TitleLabel")
-    local descriptionLabel = billboard:FindFirstChild("DescriptionLabel")
-    local ownedLabel = billboard:FindFirstChild("OwnedLabel")
+    -- Update billboard GUI with icon and price
+    self:UpdateBillboardInfo(billboard)
     
+    -- Show/hide OWNED surface GUI based on ownership
     if ownsGamepass then
-        -- Show owned state: hide title+description, show owned label
-        if titleLabel then titleLabel.Visible = false end
-        if descriptionLabel then descriptionLabel.Visible = false end
-        if ownedLabel then ownedLabel.Visible = true end
+        self:ShowOwnedSurfaceGUI()
     else
-        -- Show purchase state: show title+description, hide owned label
-        if titleLabel then titleLabel.Visible = true end
-        if descriptionLabel then descriptionLabel.Visible = true end
-        if ownedLabel then ownedLabel.Visible = false end
+        self:HideOwnedSurfaceGUI()
     end
     
-    print("PetMagnetButtonService: Player owns gamepass:", ownsGamepass)
+end
+
+-- Update billboard GUI with gamepass icon, name, and robux price
+function PetMagnetButtonService:UpdateBillboardInfo(billboard)
+    if not billboard then return end
+    
+    -- Clean existing elements and create new layout
+    billboard:ClearAllChildren()
+    
+    -- Create container frame for vertical layout
+    local container = Instance.new("Frame")
+    container.Name = "Container"
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = billboard
+    
+    -- Get gamepass info from MarketplaceService
+    local MarketplaceService = game:GetService("MarketplaceService")
+    local gamepassId = GamepassConfig.GAMEPASSES.PetMagnet.id
+    local gamepassName = "Pet Magnet"
+    local price = GamepassConfig.GAMEPASSES.PetMagnet.price
+    local iconId = nil
+    
+    -- Wrap yielding call in task.spawn to prevent yielding in changed event
+    task.spawn(function()
+        local success, info = pcall(function()
+            return MarketplaceService:GetProductInfo(gamepassId, Enum.InfoType.GamePass)
+        end)
+        
+        if success and info then
+            gamepassName = info.Name
+            price = info.PriceInRobux
+            iconId = info.IconImageAssetId
+        end
+        
+        -- Create gamepass icon (top)
+        local gamepassIcon = Instance.new("ImageLabel")
+        gamepassIcon.Name = "GamepassIcon"
+        gamepassIcon.Size = UDim2.new(0, 40, 0, 40)
+        gamepassIcon.Position = UDim2.new(0.5, -20, 0, 5)
+        gamepassIcon.BackgroundTransparency = 1
+        gamepassIcon.Image = iconId and ("rbxassetid://" .. tostring(iconId)) or ""
+        gamepassIcon.ScaleType = Enum.ScaleType.Fit
+        gamepassIcon.Parent = container
+        
+        -- Create gamepass name label (middle)
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, 0, 0, 20)
+        nameLabel.Position = UDim2.new(0, 0, 0, 50)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.Text = gamepassName
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextSize = 14
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+        nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+        nameLabel.Parent = container
+        
+        -- Create price container with robux icon (bottom)
+        local priceContainer = Instance.new("Frame")
+        priceContainer.Name = "PriceContainer"
+        priceContainer.Size = UDim2.new(1, 0, 0, 20)
+        priceContainer.Position = UDim2.new(0, 0, 0, 75)
+        priceContainer.BackgroundTransparency = 1
+        priceContainer.Parent = container
+        
+        -- Create robux icon
+        local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+        local robuxIcon = Instance.new("ImageLabel")
+        robuxIcon.Name = "RobuxIcon"
+        robuxIcon.Size = UDim2.new(0, 16, 0, 16)
+        robuxIcon.Position = UDim2.new(0.5, -25, 0.5, -8)
+        robuxIcon.BackgroundTransparency = 1
+        robuxIcon.Image = IconAssets.getIcon("CURRENCY", "ROBUX")
+        robuxIcon.ScaleType = Enum.ScaleType.Fit
+        robuxIcon.Parent = priceContainer
+        
+        -- Create price label
+        local priceLabel = Instance.new("TextLabel")
+        priceLabel.Name = "PriceLabel"
+        priceLabel.Size = UDim2.new(0, 50, 1, 0)
+        priceLabel.Position = UDim2.new(0.5, -5, 0, 0)
+        priceLabel.BackgroundTransparency = 1
+        priceLabel.Font = Enum.Font.GothamBold
+        priceLabel.Text = tostring(price)
+        priceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        priceLabel.TextSize = 14
+        priceLabel.TextStrokeTransparency = 0
+        priceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+        priceLabel.TextYAlignment = Enum.TextYAlignment.Center
+        priceLabel.Parent = priceContainer
+        
+        -- Adjust billboard size to fit new layout
+        billboard.Size = UDim2.new(0, 120, 0, 100)
+    end)
+end
+
+-- Add "Owned" surface GUI to the button part
+function PetMagnetButtonService:AddOwnedSurfaceGUI()
+    if not petMagnetButtonPart then return end
+    
+    -- Check if already exists
+    local existingGui = petMagnetButtonPart:FindFirstChild("OwnedSurfaceGui")
+    if existingGui then return end
+    
+    -- Find first BasePart in the button model
+    local targetPart = petMagnetButtonPart
+    if petMagnetButtonPart:IsA("Model") then
+        for _, part in pairs(petMagnetButtonPart:GetDescendants()) do
+            if part:IsA("BasePart") then
+                targetPart = part
+                break
+            end
+        end
+    end
+    
+    -- Create surface GUI
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "OwnedSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 100
+    surfaceGui.Parent = targetPart
+    
+    -- Create "OWNED" text label
+    local ownedLabel = Instance.new("TextLabel")
+    ownedLabel.Name = "OwnedText"
+    ownedLabel.Size = UDim2.new(1, 0, 1, 0)
+    ownedLabel.BackgroundTransparency = 1
+    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Text = "OWNED"
+    ownedLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    ownedLabel.TextSize = 32
+    ownedLabel.TextStrokeTransparency = 0
+    ownedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    ownedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ownedLabel.TextYAlignment = Enum.TextYAlignment.Center
+    ownedLabel.Rotation = 180
+    ownedLabel.Parent = surfaceGui
+end
+
+function PetMagnetButtonService:ShowOwnedSurfaceGUI()
+    if not petMagnetButtonPart then return end
+    
+    local ownedGui = petMagnetButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = true
+    end
+end
+
+function PetMagnetButtonService:HideOwnedSurfaceGUI()
+    if not petMagnetButtonPart then return end
+    
+    local ownedGui = petMagnetButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = false
+    end
 end
 
 -- Set up subscription to player data changes for visibility updates
 function PetMagnetButtonService:SetupDataSubscription()
-    -- Subscribe to data changes to check gamepass ownership
+    -- Subscribe to data changes to check gamepass ownership - BUT ONLY when gamepass data changes
+    local lastGamepassData = nil
+    
     local unsubscribe = DataSyncService:Subscribe(function(newState)
-        if newState.player then
-            self:UpdateButtonVisibility()
+        if newState.player and newState.player.OwnedGamepasses then
+            -- Only update if gamepass data actually changed
+            local currentGamepassData = game:GetService("HttpService"):JSONEncode(newState.player.OwnedGamepasses)
+            if currentGamepassData ~= lastGamepassData then
+                lastGamepassData = currentGamepassData
+                self:UpdateButtonVisibility()
+            end
         end
     end)
     
@@ -145,7 +305,6 @@ function PetMagnetButtonService:UpdateButtonVisibility()
     -- Update the GUI to reflect the new ownership status
     self:UpdateGamepassGUI()
     
-    print("PetMagnetButtonService: Player owns gamepass:", ownsPetMagnet)
 end
 
 
@@ -193,7 +352,6 @@ function PetMagnetButtonService:SetupProximityDetection()
                     local currentTime = tick()
                     if currentTime - lastPurchaseAttempt < PURCHASE_COOLDOWN then
                         local timeLeft = PURCHASE_COOLDOWN - (currentTime - lastPurchaseAttempt)
-                        print("PetMagnetButtonService: Purchase cooldown active, wait", math.ceil(timeLeft), "seconds")
                         return -- Still in cooldown, ignore touch
                     end
                     
@@ -228,7 +386,6 @@ function PetMagnetButtonService:OpenGamepassPurchasePopup()
     local purchaseGamepassRemote = ReplicatedStorage:FindFirstChild("PurchaseGamepass")
     if purchaseGamepassRemote then
         purchaseGamepassRemote:FireServer("PetMagnet")
-        print("PetMagnetButtonService: Triggered PetMagnet gamepass purchase")
     else
         warn("PetMagnetButtonService: PurchaseGamepass remote not found")
     end
@@ -248,13 +405,5 @@ function PetMagnetButtonService:Cleanup()
     lastPurchaseAttempt = 0
     lastKnownOwnership = nil
 end
-
--- Handle character respawn
-Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Re-initialize after character respawn
-    PetMagnetButtonService:Cleanup()
-    task.wait(1) -- Wait for character to fully load
-    PetMagnetButtonService:Initialize()
-end)
 
 return PetMagnetButtonService

@@ -24,7 +24,7 @@ local SHINE_DURATION = 2 -- Duration of shine effect
 local PET_BALL_SIZE = Vector3.new(1, 1, 1) -- Size of animated pet balls
 
 function PetMixerAnimationService:Initialize()
-    print("PetMixerAnimationService: Initialized")
+    -- Animation service initialized
     
     -- Find mixer parts in player's area
     self:FindMixerParts()
@@ -67,7 +67,7 @@ function PetMixerAnimationService:FindMixerParts()
                     local textLabel = billboard:FindFirstChild("TextLabel")
                     if textLabel and textLabel.Text == (player.Name .. "'s Area") then
                         playerArea = area
-                        print("PetMixerAnimationService: Found player's area:", area.Name)
+                        -- Found player's area
                         break
                     end
                 end
@@ -99,7 +99,7 @@ function PetMixerAnimationService:FindMixerParts()
                     mixerModel = child,
                     anchorPart = cube006
                 }
-                print("PetMixerAnimationService: Found", child.Name, "with Cube.006 anchor")
+                -- Found mixer with anchor
             else
                 warn("PetMixerAnimationService: Cube.006 not found in", child.Name)
             end
@@ -164,7 +164,7 @@ function PetMixerAnimationService:StartMixingAnimation(mixer)
         return
     end
     
-    print("PetMixerAnimationService: Starting mixing animation for", #mixer.inputPets, "pets")
+    -- Start mixing animation
     
     -- Stop any existing animation for this mixer
     self:StopMixingAnimation(mixer.id)
@@ -416,7 +416,7 @@ function PetMixerAnimationService:ShowCompletionEffect(mixer)
         return
     end
     
-    print("PetMixerAnimationService: Showing completion effect for mixer")
+    -- Show completion effect
     
     local mixerModel = mixerData.mixerModel
     local anchorPart = mixerData.anchorPart
@@ -683,7 +683,7 @@ function PetMixerAnimationService:StopMixingAnimationOnly(mixerId)
     local animationData = activeMixerAnimations[mixerId]
     if not animationData then return end
     
-    print("PetMixerAnimationService: Stopping mixing animation parts only for mixer", mixerId)
+    -- Stop animation parts only
     
     -- Disconnect bounce connections
     for _, connection in pairs(animationData.bounceConnections) do
@@ -719,7 +719,7 @@ function PetMixerAnimationService:StopMixingAnimation(mixerId)
     local animationData = activeMixerAnimations[mixerId]
     if not animationData then return end
     
-    print("PetMixerAnimationService: Stopping mixing animation for mixer", mixerId)
+    -- Stop mixing animation
     
     -- Stop the mixing animation parts
     self:StopMixingAnimationOnly(mixerId)
@@ -762,7 +762,7 @@ function PetMixerAnimationService:StopMixingAnimation(mixerId)
 end
 
 function PetMixerAnimationService:Cleanup()
-    print("PetMixerAnimationService: Cleaning up")
+    -- Cleaning up animation service
     
     -- Stop all active animations
     for mixerId, _ in pairs(activeMixerAnimations) do

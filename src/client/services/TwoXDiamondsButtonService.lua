@@ -13,6 +13,7 @@ TwoXDiamondsButtonService.__index = TwoXDiamondsButtonService
 local player = Players.LocalPlayer
 local proximityConnection = nil
 local twoXDiamondsButtonPart = nil
+local isInitialized = false -- Prevent double initialization
 
 -- Configuration
 local GAMEPASS_ID = 1351480418
@@ -26,6 +27,13 @@ local lastPurchaseAttempt = 0
 local lastKnownOwnership = nil
 
 function TwoXDiamondsButtonService:Initialize()
+    if isInitialized then
+        warn("TwoXDiamondsButtonService: Already initialized, skipping")
+        return
+    end
+    isInitialized = true
+    
+    
     -- Find the 2x Diamonds button in the player's area
     self:FindTwoXDiamondsButton()
     
@@ -61,7 +69,6 @@ function TwoXDiamondsButtonService:FindTwoXDiamondsButton()
     -- Find the 2xDiamondsButton
     twoXDiamondsButtonPart = buttonsFolder:FindFirstChild("2xDiamondsButton")
     if twoXDiamondsButtonPart then
-        print("TwoXDiamondsButtonService: Found 2xDiamondsButton")
         self:UpdateGamepassGUI()
     else
         warn("TwoXDiamondsButtonService: 2xDiamondsButton not found")
@@ -94,24 +101,178 @@ function TwoXDiamondsButtonService:CheckOwnershipAndUpdateGUI(billboard)
         end
     end
     
-    -- Get template labels
-    local titleLabel = billboard:FindFirstChild("TitleLabel")
-    local descriptionLabel = billboard:FindFirstChild("DescriptionLabel")
-    local ownedLabel = billboard:FindFirstChild("OwnedLabel")
+    -- Update billboard GUI with icon and price (async to avoid yielding in Redux)
+    task.spawn(function()
+        self:UpdateBillboardInfo(billboard)
+    end)
     
+    -- Show/hide OWNED surface GUI based on ownership
     if ownsGamepass then
-        -- Show owned state: hide title+description, show owned label
-        if titleLabel then titleLabel.Visible = false end
-        if descriptionLabel then descriptionLabel.Visible = false end
-        if ownedLabel then ownedLabel.Visible = true end
+        self:ShowOwnedSurfaceGUI()
     else
-        -- Show purchase state: show title+description, hide owned label
-        if titleLabel then titleLabel.Visible = true end
-        if descriptionLabel then descriptionLabel.Visible = true end
-        if ownedLabel then ownedLabel.Visible = false end
+        self:HideOwnedSurfaceGUI()
     end
     
-    print("TwoXDiamondsButtonService: Player owns gamepass:", ownsGamepass)
+end
+
+-- Update billboard GUI with gamepass icon, name, and robux price
+function TwoXDiamondsButtonService:UpdateBillboardInfo(billboard)
+    if not billboard then return end
+    
+    -- Clean existing elements and create new layout
+    billboard:ClearAllChildren()
+    
+    -- Create container frame for vertical layout
+    local container = Instance.new("Frame")
+    container.Name = "Container"
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = billboard
+    
+    -- Get gamepass info from MarketplaceService
+    local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
+    local gamepassId = GamepassConfig.GAMEPASSES.TwoXDiamonds.id
+    local gamepassName = "2X Diamonds"
+    local price = GamepassConfig.GAMEPASSES.TwoXDiamonds.price
+    local iconId = nil
+    
+    local success, info = pcall(function()
+        return MarketplaceService:GetProductInfo(gamepassId, Enum.InfoType.GamePass)
+    end)
+    
+    if success and info then
+        gamepassName = info.Name
+        price = info.PriceInRobux
+        iconId = info.IconImageAssetId
+    end
+    
+    -- Create gamepass icon (top)
+    local gamepassIcon = Instance.new("ImageLabel")
+    gamepassIcon.Name = "GamepassIcon"
+    gamepassIcon.Size = UDim2.new(0, 40, 0, 40)
+    gamepassIcon.Position = UDim2.new(0.5, -20, 0, 5)
+    gamepassIcon.BackgroundTransparency = 1
+    gamepassIcon.Image = iconId and ("rbxassetid://" .. tostring(iconId)) or ""
+    gamepassIcon.ScaleType = Enum.ScaleType.Fit
+    gamepassIcon.Parent = container
+    
+    -- Create gamepass name label (middle)
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 0, 0, 50)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Text = gamepassName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 14
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+    nameLabel.Parent = container
+    
+    -- Create price container with robux icon (bottom)
+    local priceContainer = Instance.new("Frame")
+    priceContainer.Name = "PriceContainer"
+    priceContainer.Size = UDim2.new(1, 0, 0, 20)
+    priceContainer.Position = UDim2.new(0, 0, 0, 75)
+    priceContainer.BackgroundTransparency = 1
+    priceContainer.Parent = container
+    
+    -- Create robux icon
+    local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+    local robuxIcon = Instance.new("ImageLabel")
+    robuxIcon.Name = "RobuxIcon"
+    robuxIcon.Size = UDim2.new(0, 16, 0, 16)
+    robuxIcon.Position = UDim2.new(0.5, -25, 0.5, -8)
+    robuxIcon.BackgroundTransparency = 1
+    robuxIcon.Image = IconAssets.getIcon("CURRENCY", "ROBUX")
+    robuxIcon.ScaleType = Enum.ScaleType.Fit
+    robuxIcon.Parent = priceContainer
+    
+    -- Create price label
+    local priceLabel = Instance.new("TextLabel")
+    priceLabel.Name = "PriceLabel"
+    priceLabel.Size = UDim2.new(0, 50, 1, 0)
+    priceLabel.Position = UDim2.new(0.5, -5, 0, 0)
+    priceLabel.BackgroundTransparency = 1
+    priceLabel.Font = Enum.Font.GothamBold
+    priceLabel.Text = tostring(price)
+    priceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    priceLabel.TextSize = 14
+    priceLabel.TextStrokeTransparency = 0
+    priceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    priceLabel.TextYAlignment = Enum.TextYAlignment.Center
+    priceLabel.Parent = priceContainer
+    
+    -- Adjust billboard size to fit new layout
+    billboard.Size = UDim2.new(0, 120, 0, 100)
+end
+
+-- Add "Owned" surface GUI to the button part
+function TwoXDiamondsButtonService:AddOwnedSurfaceGUI()
+    if not twoXDiamondsButtonPart then 
+        return 
+    end
+    
+    -- Check if already exists
+    if twoXDiamondsButtonPart:FindFirstChild("OwnedSurfaceGui", true) then
+        return
+    end
+    
+    -- Find a BasePart to attach to
+    local targetPart = twoXDiamondsButtonPart
+    if twoXDiamondsButtonPart:IsA("Model") then
+        for _, part in pairs(twoXDiamondsButtonPart:GetDescendants()) do
+            if part:IsA("BasePart") then
+                targetPart = part
+                break
+            end
+        end
+    end
+    
+    -- Create surface GUI
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "OwnedSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 100
+    surfaceGui.Parent = targetPart
+    
+    -- Create "OWNED" text
+    local ownedLabel = Instance.new("TextLabel")
+    ownedLabel.Size = UDim2.new(1, 0, 1, 0)
+    ownedLabel.BackgroundTransparency = 1
+    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Text = "OWNED"
+    ownedLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    ownedLabel.TextSize = 32
+    ownedLabel.TextStrokeTransparency = 0
+    ownedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    ownedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ownedLabel.TextYAlignment = Enum.TextYAlignment.Center
+    ownedLabel.Rotation = 180
+    ownedLabel.Parent = surfaceGui
+end
+
+function TwoXDiamondsButtonService:ShowOwnedSurfaceGUI()
+    if not twoXDiamondsButtonPart then return end
+    
+    local ownedGui = twoXDiamondsButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = true
+    end
+end
+
+function TwoXDiamondsButtonService:HideOwnedSurfaceGUI()
+    if not twoXDiamondsButtonPart then return end
+    
+    local ownedGui = twoXDiamondsButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = false
+    end
 end
 
 function TwoXDiamondsButtonService:UpdateGamepassStatus(statusLabel, iconLabel)
@@ -202,11 +363,9 @@ function TwoXDiamondsButtonService:HandleGamepassPurchase()
     local owns2xDiamonds = playerData and playerData.OwnedGamepasses and table.find(playerData.OwnedGamepasses, "TwoXDiamonds")
     
     if owns2xDiamonds then
-        print("TwoXDiamondsButtonService: Player already owns 2x Diamonds gamepass")
         return
     end
     
-    print("TwoXDiamondsButtonService: Prompting 2x Diamonds gamepass purchase")
     
     -- Prompt the purchase
     local success, error = pcall(function()
@@ -219,10 +378,17 @@ function TwoXDiamondsButtonService:HandleGamepassPurchase()
 end
 
 function TwoXDiamondsButtonService:SetupDataSubscription()
-    -- Subscribe to data changes to update GUI
+    -- Subscribe to data changes to update GUI - BUT ONLY when gamepass data changes
+    local lastGamepassData = nil
+    
     local unsubscribe = DataSyncService:Subscribe(function(newState)
-        if newState and newState.player then
-            self:UpdateGamepassGUI()
+        if newState and newState.player and newState.player.OwnedGamepasses then
+            -- Only update if gamepass data actually changed
+            local currentGamepassData = game:GetService("HttpService"):JSONEncode(newState.player.OwnedGamepasses)
+            if currentGamepassData ~= lastGamepassData then
+                lastGamepassData = currentGamepassData
+                self:UpdateGamepassGUI()
+            end
         end
     end)
     
@@ -242,15 +408,6 @@ function TwoXDiamondsButtonService:Cleanup()
     end
     
     lastKnownOwnership = nil
-    print("TwoXDiamondsButtonService: Cleaned up")
 end
-
--- Handle character respawn
-Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Re-initialize after character respawn
-    TwoXDiamondsButtonService:Cleanup()
-    task.wait(1) -- Wait for character to fully load
-    TwoXDiamondsButtonService:Initialize()
-end)
 
 return TwoXDiamondsButtonService

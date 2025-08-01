@@ -10,10 +10,10 @@ local StateService = require(script.Parent.StateService)
 local PlotService = {}
 PlotService.__index = PlotService
 
--- Configuration
-local PLOT_BASE_COST = 10
-local TOTAL_PLOTS = 35
-local TUBEPLOT_BASE_COST = 20
+-- Configuration - BALANCED: Increased plot costs for better progression
+local PLOT_BASE_COST = 5  -- Increased from 2 for better challenge
+local TOTAL_PLOTS = 49
+local TUBEPLOT_BASE_COST = 10  -- Increased from 5 for better challenge
 local TOTAL_TUBEPLOTS = 10
 local UI_VISIBILITY_DISTANCE = 50 -- Distance to show plot UIs
 
@@ -23,7 +23,9 @@ local LEVEL_CONFIG = {
     [2] = {startPlot = 8, endPlot = 14, doors = 7},  -- Level 2: Plots 8-14, Doors 1-7 (skip 6,7)
     [3] = {startPlot = 15, endPlot = 21, doors = 7}, -- Level 3: Plots 15-21, Doors 1-7
     [4] = {startPlot = 22, endPlot = 28, doors = 7}, -- Level 4: Plots 22-28, Doors 1-7
-    [5] = {startPlot = 29, endPlot = 35, doors = 7}  -- Level 5: Plots 29-35, Doors 1-7
+    [5] = {startPlot = 29, endPlot = 35, doors = 7}, -- Level 5: Plots 29-35, Doors 1-7
+    [6] = {startPlot = 36, endPlot = 42, doors = 7}, -- Level 6: Plots 36-42, Doors 1-7
+    [7] = {startPlot = 43, endPlot = 49, doors = 7}  -- Level 7: Plots 43-49, Doors 1-7
 }
 
 -- Store plot connections for cleanup
@@ -32,9 +34,8 @@ local plotConnections = {}
 -- Store doors that are spawning pets
 local spawningDoors = {}
 
--- Store pet ball count per area
-local areaPetBallCounts = {}
-local MAX_PET_BALLS_PER_AREA = 100
+-- Note: Pet ball counting is now handled client-side
+local MAX_PET_BALLS_PER_AREA = 100 -- Kept for GUI display purposes only
 
 
 -- Helper functions for rebirth requirements
@@ -75,11 +76,13 @@ local function shouldShowTubePlotRebirthText(tubePlotNumber, playerRebirths)
 end
 
 local function getPlotRebirthRequirement(plotNumber)
-    -- Plots 1-5: 0 rebirths
-    -- Plots 8-14: 1 rebirth
-    -- Plots 15-21: 2 rebirths
-    -- Plots 22-28: 3 rebirths
-    -- Plots 29-35: 4 rebirths
+    -- Plots 1-5: 0 rebirths (Level 1)
+    -- Plots 8-14: 1 rebirth (Level 2)
+    -- Plots 15-21: 2 rebirths (Level 3)
+    -- Plots 22-28: 4 rebirths (Level 4) - SKIP rebirth 3 (reserved for mixer)
+    -- Plots 29-35: 5 rebirths (Level 5)
+    -- Plots 36-42: 6 rebirths (Level 6)
+    -- Plots 43-49: 7 rebirths (Level 7)
     if plotNumber >= 1 and plotNumber <= 5 then
         return 0
     elseif plotNumber >= 8 and plotNumber <= 14 then
@@ -87,9 +90,13 @@ local function getPlotRebirthRequirement(plotNumber)
     elseif plotNumber >= 15 and plotNumber <= 21 then
         return 2
     elseif plotNumber >= 22 and plotNumber <= 28 then
-        return 3
+        return 4 -- Skip rebirth 3
     elseif plotNumber >= 29 and plotNumber <= 35 then
-        return 4
+        return 5
+    elseif plotNumber >= 36 and plotNumber <= 42 then
+        return 6
+    elseif plotNumber >= 43 and plotNumber <= 49 then
+        return 7
     else
         return 999 -- Invalid plot numbers (6, 7)
     end
@@ -215,21 +222,7 @@ function PlotService:SetupAreaPlots(area)
         if plot then
             self:SetupPlotPurchasing(area, plot, i)
             
-            -- Only create UI for plots that players can potentially see (rebirth level 0-1 initially)
-            local plotRebirthRequirement = getPlotRebirthRequirement(i)
-            if plotRebirthRequirement <= 1 then -- Show plots for rebirth 0 and 1 initially
-                self:CreatePlotUI(area, plot, i)
-                
-                -- Initially hide UI (proximity will show them)
-                local uiPart = area:FindFirstChild("PlotUI_" .. i)
-                if uiPart then
-                    uiPart.Transparency = 1
-                    local billboard = uiPart:FindFirstChild("PlotBillboard")
-                    if billboard then
-                        billboard.Enabled = false
-                    end
-                end
-            end
+            -- Plot UI creation is now handled client-side by PlotGUIService
         end
     end
     
@@ -241,21 +234,7 @@ function PlotService:SetupAreaPlots(area)
         if tubePlot then
             self:SetupTubePlotPurchasing(area, tubePlot, i)
             
-            -- Only create UI for tubeplots that players can potentially see (rebirth level 0-1 initially)
-            local tubePlotRebirthRequirement = getTubePlotRebirthRequirement(i)
-            if tubePlotRebirthRequirement <= 1 then -- Show tubeplots for rebirth 0 and 1 initially
-                self:CreateTubePlotUI(area, tubePlot, i)
-                
-                -- Initially hide UI (proximity will show them)
-                local uiPart = area:FindFirstChild("TubePlotUI_" .. i)
-                if uiPart then
-                    uiPart.Transparency = 1
-                    local billboard = uiPart:FindFirstChild("TubePlotBillboard")
-                    if billboard then
-                        billboard.Enabled = false
-                    end
-                end
-            end
+            -- TubePlot UI creation is now handled client-side by PlotGUIService
         end
     end
     
@@ -275,6 +254,8 @@ function PlotService:SetupAreaPlots(area)
     self:InitializeAreaDoors(area)
     -- Then show owned tubes
     self:InitializeAreaTubes(area)
+    -- Color pet mixer black (locked state)
+    self:ColorPetMixerInArea(area, Color3.fromRGB(0, 0, 0))
     -- Initialize counter GUI
     self:UpdateCounterGUI(area.Name, 0)
     
@@ -437,97 +418,9 @@ function PlotService:SetupSendHeavenButton(area)
     end
 end
 
-function PlotService:CreatePlotUI(area, plot, plotNumber)
-    -- Create UI part above the plot
-    local uiPart = Instance.new("Part")
-    uiPart.Name = "PlotUI_" .. plotNumber
-    uiPart.Size = Vector3.new(4, 0.1, 4)
-    uiPart.Transparency = 1
-    uiPart.CanCollide = false
-    uiPart.Anchored = true
-    
-    -- Position below the plot
-    local plotPosition
-    if plot:IsA("Model") then
-        local cframe, size = plot:GetBoundingBox()
-        plotPosition = cframe.Position
-    else
-        plotPosition = plot.Position
-    end
-    uiPart.Position = plotPosition + Vector3.new(0, 2, 0)
-    uiPart.Parent = area
-    
-    -- Create BillboardGui
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "PlotBillboard"
-    billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 0, 0)
-    billboard.MaxDistance = 100 -- Much further visibility for camera angles
-    billboard.Parent = uiPart
-    
-    -- Create cost label
-    local costLabel = Instance.new("TextLabel")
-    costLabel.Name = "CostLabel"
-    costLabel.Size = UDim2.new(1, 0, 1, 0)
-    costLabel.BackgroundTransparency = 1
-    costLabel.BorderSizePixel = 0
-    costLabel.Font = Enum.Font.GothamBold
-    costLabel.TextSize = 24
-    costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    costLabel.TextStrokeTransparency = 0
-    costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    costLabel.TextXAlignment = Enum.TextXAlignment.Center
-    costLabel.TextYAlignment = Enum.TextYAlignment.Center
-    local plotCost = self:GetPlotCost(plotNumber)
-    costLabel.Text = plotCost == 0 and "FREE" or ("$" .. plotCost)
-    costLabel.Parent = billboard
-end
+-- CreatePlotUI function removed - GUI creation is now handled client-side by PlotGUIService
 
-function PlotService:CreateTubePlotUI(area, tubePlot, tubePlotNumber)
-    -- Create UI part above the TubePlot
-    local uiPart = Instance.new("Part")
-    uiPart.Name = "TubePlotUI_" .. tubePlotNumber
-    uiPart.Size = Vector3.new(4, 0.1, 4)
-    uiPart.Transparency = 1
-    uiPart.CanCollide = false
-    uiPart.Anchored = true
-    
-    -- Position below the TubePlot
-    local tubePlotPosition
-    if tubePlot:IsA("Model") then
-        local cframe, size = tubePlot:GetBoundingBox()
-        tubePlotPosition = cframe.Position
-    else
-        tubePlotPosition = tubePlot.Position
-    end
-    uiPart.Position = tubePlotPosition + Vector3.new(0, 2, 0)
-    uiPart.Parent = area
-    
-    -- Create BillboardGui
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "TubePlotBillboard"
-    billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 0, 0)
-    billboard.MaxDistance = 100 -- Much further visibility for camera angles
-    billboard.Parent = uiPart
-    
-    -- Create cost label
-    local costLabel = Instance.new("TextLabel")
-    costLabel.Name = "CostLabel"
-    costLabel.Size = UDim2.new(1, 0, 1, 0)
-    costLabel.BackgroundTransparency = 1
-    costLabel.BorderSizePixel = 0
-    costLabel.Font = Enum.Font.GothamBold
-    costLabel.TextSize = 24
-    costLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange text for TubePlots
-    costLabel.TextStrokeTransparency = 0
-    costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    costLabel.TextXAlignment = Enum.TextXAlignment.Center
-    costLabel.TextYAlignment = Enum.TextYAlignment.Center
-    local tubePlotCost = self:GetTubePlotCost(tubePlotNumber)
-    costLabel.Text = tubePlotCost == 0 and "FREE" or ("$" .. tubePlotCost)
-    costLabel.Parent = billboard
-end
+-- CreateTubePlotUI function removed - GUI creation is now handled client-side by PlotGUIService
 
 function PlotService:AttemptPlotPurchase(player, plotNumber)
     local playerData = DataService:GetPlayerData(player)
@@ -717,7 +610,7 @@ function PlotService:AddPurchasedSurfaceGui(area, plot)
     textLabel.Size = UDim2.new(1, 0, 0.4, 0) -- Smaller height to fit in middle
     textLabel.Position = UDim2.new(0, 0, 0.3, 0) -- Position in the middle (30% from top)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Purchased"
+    textLabel.Text = "Owned"
     textLabel.Font = Enum.Font.GothamBold
     textLabel.TextSize = 32 -- Smaller text to fit with level/door text
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1176,6 +1069,9 @@ function PlotService:UnlockDoor(door)
         colorPart(door)
     end
     
+    -- Remove locked emoji when door is unlocked
+    self:UpdateDoorLockedEmoji(door, false)
+    
     -- Start continuous pet spawning for this door
     self:StartPetSpawningForDoor(door)
 end
@@ -1212,8 +1108,8 @@ function PlotService:StartPetSpawningForDoor(door)
         self:SpawnPetBall(door)
         
         while door and door.Parent do
-            -- Wait 5 seconds before next spawn
-            wait(5)
+            -- Wait 7.5 seconds before next spawn (50% slower than 5 seconds)
+            wait(7.5)
             
             -- Check if door still exists
             if door and door.Parent then
@@ -1274,7 +1170,7 @@ end
 -- Color all doors in an area
 function PlotService:ColorAllDoorsInArea(area, color)
     -- Go through all levels and color their doors
-    for level = 1, 5 do
+    for level = 1, 7 do
         local levelFolder = area:FindFirstChild("Level" .. level)
         if levelFolder then
             local doorsFolder = levelFolder:FindFirstChild("Level" .. level .. "Doors")
@@ -1295,9 +1191,238 @@ function PlotService:ColorAllDoorsInArea(area, color)
                         elseif door:IsA("BasePart") then
                             colorPart(door)
                         end
+                        
+                        -- Update locked emoji based on color
+                        local isLocked = (color.R > 0.8 and color.G < 0.2 and color.B < 0.2) -- Red = locked
+                        self:UpdateDoorLockedEmoji(door, isLocked)
                     end
                 end
             end
+        end
+    end
+end
+
+function PlotService:UpdateDoorLockedEmoji(door, isLocked)
+    -- Find the target part (same logic as AreaTemplateSetupService)
+    local targetPart = nil
+    if door:IsA("Model") then
+        for _, part in pairs(door:GetDescendants()) do
+            if part:IsA("BasePart") and (part.Name:lower():find("door") or part.Name:lower():find("main") or part.Size.Y > 5) then
+                targetPart = part
+                break
+            end
+        end
+        if not targetPart then
+            for _, part in pairs(door:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    targetPart = part
+                    break
+                end
+            end
+        end
+    elseif door:IsA("BasePart") then
+        targetPart = door
+    end
+    
+    if not targetPart then
+        return
+    end
+    
+    -- Clean up old emoji GUI if it exists
+    local oldLockedGui = targetPart:FindFirstChild("DoorLockedGui")
+    if oldLockedGui then
+        oldLockedGui:Destroy()
+    end
+    
+    -- Find or create door status GUI
+    local statusGui = targetPart:FindFirstChild("DoorStatusGui")
+    
+    -- Always create/update the GUI to show appropriate icon
+    if not statusGui then
+        statusGui = Instance.new("SurfaceGui")
+        statusGui.Name = "DoorStatusGui"
+        statusGui.Face = Enum.NormalId.Left -- Same face as door labels
+        statusGui.LightInfluence = 0
+        statusGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        statusGui.PixelsPerStud = 49 -- Slightly different to avoid z-fighting
+        statusGui.CanvasSize = Vector2.new(400, 400)
+        statusGui.Parent = targetPart
+        
+        -- Create status icon
+        local IconAssets = require(game.ReplicatedStorage.utils.IconAssets)
+        local statusIcon = Instance.new("ImageLabel")
+        statusIcon.Name = "StatusIcon"
+        statusIcon.Size = UDim2.new(0.27, 0, 0.27, 0) -- 3x smaller (was 0.8, now ~0.27)
+        statusIcon.Position = UDim2.new(0.365, 0, 0.365, 0) -- Centered for smaller icon
+        statusIcon.BackgroundTransparency = 1
+        statusIcon.ScaleType = Enum.ScaleType.Fit
+        statusIcon.Rotation = 270 -- Same rotation as door labels
+        statusIcon.ZIndex = 1 -- Lower ZIndex to appear behind door labels
+        statusIcon.Parent = statusGui
+    end
+    
+    -- Update the icon based on lock status
+    local statusIcon = statusGui:FindFirstChild("StatusIcon")
+    if statusIcon then
+        local IconAssets = require(game.ReplicatedStorage.utils.IconAssets)
+        if isLocked then
+            -- Show locked icon
+            statusIcon.Image = IconAssets.getIcon("STATUS", "LOCKED")
+            statusIcon.ImageColor3 = Color3.fromRGB(255, 100, 100) -- Red tint for locked
+        else
+            -- Show unlocked icon
+            statusIcon.Image = IconAssets.getIcon("STATUS", "UNLOCKED")
+            statusIcon.ImageColor3 = Color3.fromRGB(100, 255, 100) -- Green tint for unlocked
+        end
+    end
+    
+    -- Always enable the GUI (we always want to show status)
+    statusGui.Enabled = true
+end
+
+-- Color pet mixer and mixer button in an area and manage requirement GUI visibility
+function PlotService:ColorPetMixerInArea(area, color)
+    -- Find the PetMixer model
+    local petMixer = area:FindFirstChild("PetMixer", true)
+    if petMixer then
+        -- Special handling for restoring original colors
+        if color == "RESTORE_ORIGINAL" then
+            -- Store original colors if not already stored
+            if not petMixer:GetAttribute("OriginalColorsStored") then
+                self:StoreOriginalMixerColors(petMixer)
+            end
+            -- Restore original colors
+            self:RestoreOriginalMixerColors(petMixer)
+        else
+            -- Store original colors before changing (if not already stored)
+            if not petMixer:GetAttribute("OriginalColorsStored") then
+                self:StoreOriginalMixerColors(petMixer)
+            end
+            -- Apply new color
+            local function colorPart(part)
+                if part:IsA("BasePart") then
+                    part.Color = color
+                end
+            end
+            
+            if petMixer:IsA("Model") then
+                for _, descendant in pairs(petMixer:GetDescendants()) do
+                    colorPart(descendant)
+                end
+            elseif petMixer:IsA("BasePart") then
+                colorPart(petMixer)
+            end
+        end
+    end
+    
+    -- Find and color the PetMixerButton
+    local mixerButton = area:FindFirstChild("PetMixerButton", true)
+    if mixerButton then
+        -- Special handling for restoring original colors
+        if color == "RESTORE_ORIGINAL" then
+            -- Store original colors if not already stored
+            if not mixerButton:GetAttribute("OriginalColorsStored") then
+                self:StoreOriginalMixerColors(mixerButton)
+            end
+            -- Restore original colors
+            self:RestoreOriginalMixerColors(mixerButton)
+        else
+            -- Store original colors before changing (if not already stored)
+            if not mixerButton:GetAttribute("OriginalColorsStored") then
+                self:StoreOriginalMixerColors(mixerButton)
+            end
+            -- Apply new color
+            local function colorButtonPart(part)
+                if part:IsA("BasePart") then
+                    part.Color = color
+                end
+            end
+            
+            if mixerButton:IsA("Model") then
+                for _, descendant in pairs(mixerButton:GetDescendants()) do
+                    colorButtonPart(descendant)
+                end
+            elseif mixerButton:IsA("BasePart") then
+                colorButtonPart(mixerButton)
+            end
+        end
+        
+        -- Show/hide requirement GUIs based on color/lock status
+        local isLocked = (color ~= "RESTORE_ORIGINAL" and color.R < 0.2 and color.G < 0.2 and color.B < 0.2) -- Black = locked
+        self:UpdateMixerRequirementGUI(mixerButton, isLocked)
+    end
+end
+
+-- Store original colors of mixer parts using attributes
+function PlotService:StoreOriginalMixerColors(mixer)
+    local function storePart(part)
+        if part:IsA("BasePart") then
+            -- Store original color as string attribute
+            local colorString = string.format("%.3f,%.3f,%.3f", part.Color.R, part.Color.G, part.Color.B)
+            part:SetAttribute("OriginalColor", colorString)
+        end
+    end
+    
+    if mixer:IsA("Model") then
+        for _, descendant in pairs(mixer:GetDescendants()) do
+            storePart(descendant)
+        end
+        mixer:SetAttribute("OriginalColorsStored", true)
+    elseif mixer:IsA("BasePart") then
+        storePart(mixer)
+        mixer:SetAttribute("OriginalColorsStored", true)
+    end
+end
+
+-- Restore original colors of mixer parts from attributes
+function PlotService:RestoreOriginalMixerColors(mixer)
+    local function restorePart(part)
+        if part:IsA("BasePart") then
+            local colorString = part:GetAttribute("OriginalColor")
+            if colorString then
+                local r, g, b = string.match(colorString, "([%d%.]+),([%d%.]+),([%d%.]+)")
+                if r and g and b then
+                    part.Color = Color3.fromRGB(tonumber(r) * 255, tonumber(g) * 255, tonumber(b) * 255)
+                end
+            end
+        end
+    end
+    
+    if mixer:IsA("Model") then
+        for _, descendant in pairs(mixer:GetDescendants()) do
+            restorePart(descendant)
+        end
+    elseif mixer:IsA("BasePart") then
+        restorePart(mixer)
+    end
+end
+
+-- Update mixer requirement GUI visibility based on lock status
+function PlotService:UpdateMixerRequirementGUI(mixerButton, isLocked)
+    -- Find the button part that should have the GUI
+    local buttonPart = nil
+    if mixerButton:IsA("Model") then
+        -- Look for the main button part
+        for _, part in pairs(mixerButton:GetDescendants()) do
+            if part:IsA("BasePart") then
+                buttonPart = part
+                break
+            end
+        end
+    elseif mixerButton:IsA("BasePart") then
+        buttonPart = mixerButton
+    end
+    
+    if not buttonPart then
+        return
+    end
+    
+    -- Find requirement GUIs and update visibility
+    local faces = {"Front", "Top", "Back"}
+    for _, face in ipairs(faces) do
+        local gui = buttonPart:FindFirstChild("MixerRequirementGui_" .. face)
+        if gui then
+            gui.Enabled = isLocked
         end
     end
 end
@@ -1626,34 +1751,39 @@ function PlotService:SpawnPetBall(door)
         return
     end
     
-    -- Check pet ball limit for this area
-    local currentCount = areaPetBallCounts[areaName] or 0
-    if currentCount >= MAX_PET_BALLS_PER_AREA then
+    -- Find the player who owns this area
+    local areaNumber = tonumber(areaName:match("PlayerArea(%d+)"))
+    if not areaNumber then
         return
     end
     
-    -- Get door number from door name (e.g., "Door1" -> 1)
+    local AreaService = require(script.Parent.AreaService)
+    local targetPlayer = nil
+    for _, player in pairs(Players:GetPlayers()) do
+        if AreaService:GetPlayerAssignedArea(player) == areaNumber then
+            targetPlayer = player
+            break
+        end
+    end
+    
+    if not targetPlayer then
+        return -- No player assigned to this area
+    end
+    
+    -- Get door number and level for pet generation
     local doorNumber = tonumber(door.Name:match("Door(%d+)")) or 1
-    
-    -- Determine level based on door's location in folder structure
     local level = self:GetLevelFromDoor(door)
-    -- Spawning pet ball at door
     
-    -- Generate random pet data using new spawn system
-    local PetSpawnConfig = require(ReplicatedStorage.config.PetSpawnConfig)
-    local randomPetData = PetSpawnConfig:GetRandomPet(level, doorNumber)
+    -- Generate random pet data using PetConfig (only pets with actual models)
+    local PetConfig = require(ReplicatedStorage.config.PetConfig)
+    local randomPetData = PetConfig.createRandomPetForLevel(level)
     
     if not randomPetData then
         warn("PlotService: Failed to generate random pet data")
         return
     end
     
-    -- Add variation to the pet using the new variation system
-    local VariationConfig = require(ReplicatedStorage.config.VariationConfig)
-    local variation = VariationConfig:GetRandomVariation()
-    
-    -- Apply variation to pet data
-    randomPetData.Variation = variation
+    -- Pet data already includes variation from PetConfig.createRandomPetForLevel()
     
     -- Get door position
     local doorPosition
@@ -1664,74 +1794,11 @@ function PlotService:SpawnPetBall(door)
         doorPosition = door.Position
     end
     
-    -- Create pet ball with rarity color
-    local petBall = Instance.new("Part")
-    petBall.Name = "PetBall"
-    petBall.Shape = Enum.PartType.Ball
-    petBall.Size = Vector3.new(2, 2, 2)
-    
-    -- Get rarity color from constants
-    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
-    local rarityColor = PetConstants.getRarityColor(randomPetData.Rarity)
-    petBall.Color = rarityColor
-    
-    petBall.Material = Enum.Material.Neon
-    petBall.Transparency = 0.3 -- Make ball slightly transparent for pet asset visibility
-    petBall.CanCollide = true  -- Enable collision so it can hit the ground
-    petBall.Anchored = false   -- Not anchored so it can fall
-    
-    -- Add physics properties for better rolling
-    petBall.TopSurface = Enum.SurfaceType.Smooth
-    petBall.BottomSurface = Enum.SurfaceType.Smooth
-    
-    -- Create physical properties for bounce and friction
-    local physProperties = PhysicalProperties.new(
-        0.7,   -- Density
-        0.5,   -- Friction  
-        0.3,   -- Elasticity (bounciness)
-        1,     -- FrictionWeight
-        1      -- ElasticityWeight
-    )
-    petBall.CustomPhysicalProperties = physProperties
-    
-    -- Set pet ball to PetBalls collision group (collision groups set up during initialization)
-    petBall.CollisionGroup = "PetBalls"
-    
-    -- Store pet data in the ball
-    local petDataValue = Instance.new("StringValue")
-    petDataValue.Name = "PetData"
-    petDataValue.Value = game:GetService("HttpService"):JSONEncode(randomPetData)
-    petDataValue.Parent = petBall
-    
-    -- Position at door center (slightly above)
-    local ballPosition = doorPosition + Vector3.new(0, 1, 0)
-    petBall.Position = ballPosition
-    petBall.Parent = door.Parent
-    
-    -- Add some random initial velocity for variety
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(4000, 0, 4000)
-    bodyVelocity.Velocity = Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
-    bodyVelocity.Parent = petBall
-    
-    -- Remove the body velocity after a short time to let natural physics take over
-    game:GetService("Debris"):AddItem(bodyVelocity, 0.5)
-    
-    -- Track pet ball for this area
-    areaPetBallCounts[areaName] = (areaPetBallCounts[areaName] or 0) + 1
-    
-    -- Update counter GUI
-    self:UpdateCounterGUI(areaName, areaPetBallCounts[areaName])
-    
-    -- Track when ball is destroyed (collected or expired)
-    petBall.AncestryChanged:Connect(function()
-        if not petBall.Parent then
-            areaPetBallCounts[areaName] = math.max(0, (areaPetBallCounts[areaName] or 0) - 1)
-            self:UpdateCounterGUI(areaName, areaPetBallCounts[areaName])
-        end
-    end)
-    
-    -- Pet balls don't expire - they stay until collected
+    -- Send spawn request to the target player's client for client-side pet ball creation
+    local spawnPetBallRemote = ReplicatedStorage:FindFirstChild("SpawnPetBall")
+    if spawnPetBallRemote then
+        spawnPetBallRemote:FireClient(targetPlayer, doorPosition, randomPetData, areaName)
+    end
 end
 
 -- Handle pet collection
@@ -1848,6 +1915,7 @@ function PlotService:UpdateCounterGUI(areaName, count)
         textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         textLabel.TextXAlignment = Enum.TextXAlignment.Center
         textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.Text = "Pets: 0/100" -- Set initial text
         textLabel.ZIndex = 2
         textLabel.Parent = backgroundFrame
     end
@@ -1857,24 +1925,8 @@ function PlotService:UpdateCounterGUI(areaName, count)
     local textLabel = backgroundFrame and backgroundFrame:FindFirstChild("CounterText")
     local progressBar = backgroundFrame and backgroundFrame:FindFirstChild("ProgressBar")
     
-    if textLabel then
-        textLabel.Text = string.format("Pets: %d/%d", count, MAX_PET_BALLS_PER_AREA)
-    end
-    
-    -- Update progress bar
-    if progressBar then
-        local percentage = count / MAX_PET_BALLS_PER_AREA
-        progressBar.Size = UDim2.new(percentage, 0, 1, 0)
-        
-        -- Change progress bar color based on percentage
-        if percentage >= 1.0 then
-            progressBar.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Red when full
-        elseif percentage >= 0.8 then
-            progressBar.BackgroundColor3 = Color3.fromRGB(255, 200, 100) -- Orange when almost full
-        else
-            progressBar.BackgroundColor3 = Color3.fromRGB(100, 255, 100) -- Green when normal
-        end
-    end
+    -- NOTE: Counter text and progress bar are now handled client-side by ClientPetBallService
+    -- Server no longer updates these - client-side service will handle the display
 end
 
 -- Update processing pets counter GUI for a specific area
@@ -1938,46 +1990,30 @@ function PlotService:UpdateProcessingCounter(areaName, processingCount)
     end
 end
 
--- Handle pet ball collection notification from client
+-- Handle pet ball collection notification from client (no longer needed since balls are client-only)
 function PlotService:OnPetBallCollected(ballPath)
-    -- Find which area this ball belonged to by parsing the path
-    local areaName = ballPath:match("%.PlayerAreas%.([^%.]+)%.")
-    
-    if areaName and areaPetBallCounts[areaName] then
-        -- Decrement counter
-        areaPetBallCounts[areaName] = math.max(0, areaPetBallCounts[areaName] - 1)
-        
-        -- Update GUI
-        self:UpdateCounterGUI(areaName, areaPetBallCounts[areaName])
-    end
+    -- Note: Pet ball counting is now handled client-side, this function is kept for compatibility
 end
 
 -- Reinitialize a player's area after data reset
 function PlotService:ReinitializePlayerArea(player)
-    print("PlotService: Reinitializing area for player", player.Name)
-    
     -- Get player's assigned area from AreaService
     local AreaService = require(script.Parent.AreaService)
     local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
     
     if not assignedAreaNumber then
-        print("PlotService: No area assigned to player", player.Name)
         return
     end
     
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then
-        print("PlotService: No PlayerAreas found")
         return
     end
     
     local targetArea = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
     if not targetArea then
-        print("PlotService: Area not found for player", player.Name)
         return
     end
-    
-    print("PlotService: Found area", targetArea.Name, "for player", player.Name)
     
     -- Reset all doors to red (locked)
     self:ColorAllDoorsInArea(targetArea, Color3.fromRGB(255, 0, 0))
@@ -2000,62 +2036,20 @@ function PlotService:ReinitializePlayerArea(player)
     self:UpdatePlotColors(targetArea, player)
     self:UpdatePlotVisibility(targetArea, player)
     
-    print("PlotService: Area reinitialized for player", player.Name)
 end
 
 -- Restore all plot UIs in an area (after data reset)
 function PlotService:RestoreAllPlotUIs(area)
     for i = 1, TOTAL_PLOTS do
         -- Check if UI already exists
-        local uiPart = area:FindFirstChild("PlotUI_" .. i)
-        if not uiPart then
-            -- Recreate the UI
-            local buttonsFolder = area:FindFirstChild("Buttons")
-            if buttonsFolder then
-                local plot = buttonsFolder:FindFirstChild("Plot" .. i)
-                if plot then
-                    self:CreatePlotUI(area, plot, i)
-                    
-                    -- Initially hide UI (proximity will show them)
-                    local newUiPart = area:FindFirstChild("PlotUI_" .. i)
-                    if newUiPart then
-                        newUiPart.Transparency = 1
-                        local billboard = newUiPart:FindFirstChild("PlotBillboard")
-                        if billboard then
-                            billboard.Enabled = false
-                        end
-                    end
-                end
-            end
-        end
+        -- Plot UI creation is now handled client-side by PlotGUIService
     end
 end
 
 -- Restore all TubePlot UIs in an area (after data reset)
 function PlotService:RestoreAllTubePlotUIs(area)
     for i = 1, TOTAL_TUBEPLOTS do
-        -- Check if UI already exists
-        local uiPart = area:FindFirstChild("TubePlotUI_" .. i)
-        if not uiPart then
-            -- Recreate the UI
-            local buttonsFolder = area:FindFirstChild("Buttons")
-            if buttonsFolder then
-                local tubePlot = buttonsFolder:FindFirstChild("TubePlot" .. i)
-                if tubePlot then
-                    self:CreateTubePlotUI(area, tubePlot, i)
-                    
-                    -- Initially hide UI (proximity will show them)
-                    local newUiPart = area:FindFirstChild("TubePlotUI_" .. i)
-                    if newUiPart then
-                        newUiPart.Transparency = 1
-                        local billboard = newUiPart:FindFirstChild("TubePlotBillboard")
-                        if billboard then
-                            billboard.Enabled = false
-                        end
-                    end
-                end
-            end
-        end
+        -- TubePlot UI creation is now handled client-side by PlotGUIService
     end
 end
 
@@ -2229,57 +2223,8 @@ function PlotService:CreateNewRebirthTierUIs(area, player)
         return
     end
     
-    -- Create plot UIs for the next rebirth tier (current + 1)
-    for i = 1, TOTAL_PLOTS do
-        local plotRebirthRequirement = getPlotRebirthRequirement(i)
-        -- If this plot should be visible at current rebirth level + 1, but UI doesn't exist yet
-        if playerRebirths >= (plotRebirthRequirement - 1) then
-            local uiPart = area:FindFirstChild("PlotUI_" .. i)
-            if not uiPart then
-                local plotName = "Plot" .. i
-                local plot = buttonsFolder:FindFirstChild(plotName)
-                if plot then
-                    self:CreatePlotUI(area, plot, i)
-                    
-                    -- Initially hide UI (proximity will show them)
-                    local newUiPart = area:FindFirstChild("PlotUI_" .. i)
-                    if newUiPart then
-                        newUiPart.Transparency = 1
-                        local billboard = newUiPart:FindFirstChild("PlotBillboard")
-                        if billboard then
-                            billboard.Enabled = false
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Create tubeplot UIs for the next rebirth tier (current + 1)
-    for i = 1, TOTAL_TUBEPLOTS do
-        local tubePlotRebirthRequirement = getTubePlotRebirthRequirement(i)
-        -- If this tubeplot should be visible at current rebirth level + 1, but UI doesn't exist yet
-        if playerRebirths >= (tubePlotRebirthRequirement - 1) then
-            local uiPart = area:FindFirstChild("TubePlotUI_" .. i)
-            if not uiPart then
-                local tubePlotName = "TubePlot" .. i
-                local tubePlot = buttonsFolder:FindFirstChild(tubePlotName)
-                if tubePlot then
-                    self:CreateTubePlotUI(area, tubePlot, i)
-                    
-                    -- Initially hide UI (proximity will show them)
-                    local newUiPart = area:FindFirstChild("TubePlotUI_" .. i)
-                    if newUiPart then
-                        newUiPart.Transparency = 1
-                        local billboard = newUiPart:FindFirstChild("TubePlotBillboard")
-                        if billboard then
-                            billboard.Enabled = false
-                        end
-                    end
-                end
-            end
-        end
-    end
+    -- Plot and TubePlot UI creation is now handled entirely client-side by PlotGUIService
+    -- This function is no longer needed as the client creates all GUIs dynamically
 end
 
 -- Update plot and tubeplot GUIs based on player status
@@ -2326,7 +2271,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                         
                         if ownedPlotsSet[plotNumber] then
                             -- White text for purchased plots
-                            costLabel.Text = "Purchased"
+                            costLabel.Text = "Owned"
                             costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                             costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                             costLabel.TextSize = 24
@@ -2374,7 +2319,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                     
                     if ownedTubesSet[tubeNumber] then
                         -- Orange text for purchased tubeplots
-                        costLabel.Text = "Purchased"
+                        costLabel.Text = "Owned"
                         costLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
                         costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                         costLabel.TextSize = 24
@@ -2453,9 +2398,37 @@ function PlotService:UpdatePlotColors(area, player)
             end
         end
     end
+    
+    -- Update mixer accessibility based on rebirth count
+    self:UpdateMixerAccessibility(area, player)
 end
 
--- Clear all pet balls in a player's area
+-- Update mixer accessibility based on player's rebirth count
+function PlotService:UpdateMixerAccessibility(area, player)
+    if not player then
+        return
+    end
+    
+    -- Get player's rebirth count
+    local DataService = require(script.Parent.DataService)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData or not playerData.Resources then
+        return
+    end
+    
+    local rebirthCount = playerData.Resources.Rebirths or 0
+    
+    -- Check if player has 3+ rebirths (unlocks mixer)
+    if rebirthCount >= 3 then
+        -- Unlock mixer - restore original colors
+        self:ColorPetMixerInArea(area, "RESTORE_ORIGINAL") -- Restore original colors
+    else
+        -- Keep mixer locked - color it black  
+        self:ColorPetMixerInArea(area, Color3.fromRGB(0, 0, 0)) -- Black mixer and button
+    end
+end
+
+-- Clear all pet balls in a player's area (now sends client-side clear request)
 function PlotService:ClearAllPetBallsInPlayerArea(player)
     -- Get player's assigned area
     local AreaService = require(script.Parent.AreaService)
@@ -2465,27 +2438,13 @@ function PlotService:ClearAllPetBallsInPlayerArea(player)
         return
     end
     
-    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        return
-    end
-    
-    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
-    if not area then
-        return
-    end
-    
-    -- Find and destroy all pet balls in the area
-    for _, descendant in pairs(area:GetDescendants()) do
-        if descendant.Name == "PetBall" and descendant:IsA("BasePart") then
-            descendant:Destroy()
-        end
-    end
-    
-    -- Reset counter for this area
     local areaName = "PlayerArea" .. assignedAreaNumber
-    areaPetBallCounts[areaName] = 0
-    self:UpdateCounterGUI(areaName, 0)
+    
+    -- Send clear request to client since balls are client-only
+    local clearPetBallsRemote = ReplicatedStorage:FindFirstChild("ClearPetBalls")
+    if clearPetBallsRemote then
+        clearPetBallsRemote:FireClient(player, areaName)
+    end
 end
 
 -- Debug function to manually update plot colors for all players
@@ -2509,6 +2468,18 @@ function PlotService:DebugUpdateAllPlotColors()
                 end
             end
         end
+    end
+end
+
+-- Reset player area data (called from debug reset)
+function PlotService:ResetPlayerAreaData(player)
+    local AreaService = require(script.Parent.AreaService)
+    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
+    
+    if assignedAreaNumber then
+        local areaName = "PlayerArea" .. assignedAreaNumber
+        
+        -- Note: Pet ball counters are now handled client-side
     end
 end
 

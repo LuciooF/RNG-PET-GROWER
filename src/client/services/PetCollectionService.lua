@@ -95,14 +95,32 @@ function PetCollectionService:CollectPetBall(petBall, connection)
         return
     end
     
-    -- Get ball path before destroying it
-    local ballPath = petBall:GetFullName()
+    -- Get area name before destroying ball
+    local areaName = self:GetAreaNameFromBall(petBall)
     
-    -- Instantly destroy the ball for immediate feedback
+    -- CLIENT-SIDE DESTRUCTION: Destroy immediately since balls are client-only
     petBall:Destroy()
     
-    -- Send to server with ball information for counter update
-    collectPetRemote:FireServer(petData, ballPath)
+    -- Notify ClientPetBallService that a ball was collected
+    if areaName then
+        local ClientPetBallService = require(script.Parent.ClientPetBallService)
+        ClientPetBallService:OnPetBallCollected(areaName)
+    end
+    
+    -- Send to server (no ball path needed since balls are client-only)
+    collectPetRemote:FireServer(petData)
+end
+
+function PetCollectionService:GetAreaNameFromBall(petBall)
+    -- Walk up the parent hierarchy to find the PlayerArea
+    local current = petBall.Parent
+    while current do
+        if current.Name:match("^PlayerArea%d+$") then
+            return current.Name
+        end
+        current = current.Parent
+    end
+    return nil
 end
 
 function PetCollectionService:PlayCollectionEffect(petBall)

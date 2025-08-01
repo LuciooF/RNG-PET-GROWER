@@ -9,7 +9,7 @@ local player = Players.LocalPlayer
 local teleportPart = nil
 
 -- Configuration
-local TELEPORT_REBIRTH_REQUIREMENT = 30
+local TELEPORT_REBIRTH_REQUIREMENT = 20
 local TOUCH_COOLDOWN = 3 -- 3 seconds between touch messages
 
 -- Touch cooldown tracking
@@ -40,31 +40,31 @@ function TeleportService:FindTeleportPad()
         return
     end
     
-    print("TeleportService: Found PlayerAreas, looking for player's area...")
+    -- Find player's area
     
     -- Find the player's assigned area by checking the area nameplate
     local playerArea = nil
     for _, area in pairs(playerAreas:GetChildren()) do
         if area.Name:match("PlayerArea") then
-            print("TeleportService: Checking area:", area.Name)
+            -- Check each area for player nameplate
             -- Check if this area belongs to the current player by looking at the nameplate
             local nameplate = area:FindFirstChild("AreaNameplate")
             if nameplate then
-                print("TeleportService: Found nameplate in", area.Name)
+                -- Found nameplate, check if it matches player
                 local billboard = nameplate:FindFirstChild("NameplateBillboard")
                 if billboard then
                     local textLabel = billboard:FindFirstChild("TextLabel")
                     if textLabel then
-                        print("TeleportService: Nameplate text:", textLabel.Text, "Looking for:", player.Name .. "'s Area")
+                        -- Check nameplate text
                         if textLabel.Text == (player.Name .. "'s Area") then
                             playerArea = area
-                            print("TeleportService: Found player's area:", area.Name)
+                            -- Found matching player area
                             break
                         end
                     end
                 end
             else
-                print("TeleportService: No nameplate found in", area.Name)
+                -- No nameplate in this area
             end
         end
     end
@@ -81,7 +81,7 @@ function TeleportService:FindTeleportPad()
         return
     end
     
-    print("TeleportService: Found Teleport model:", teleportPart.Name)
+    -- Found teleport part
 end
 
 function TeleportService:CreateTeleportGUI()
@@ -112,51 +112,69 @@ function TeleportService:CreateTeleportGUI()
         surfaceGui.PixelsPerStud = 100 -- Doubled from 50 to make it bigger
         surfaceGui.Parent = targetPart
         
-        -- Create requirement text label with high contrast
+        -- Create container frame for icon + text layout
+        local container = Instance.new("Frame")
+        container.Name = "Container"
+        container.Size = UDim2.new(1, 0, 1, 0)
+        container.BackgroundTransparency = 1
+        container.Parent = surfaceGui
+        
+        -- Create rebirth icon (wayyy bigger)
+        local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+        local rebirthIcon = Instance.new("ImageLabel")
+        rebirthIcon.Name = "RebirthIcon"
+        rebirthIcon.Size = UDim2.new(0, 80, 0, 80) -- Wayyy bigger icon (was 32x32)
+        rebirthIcon.Position = UDim2.new(0.5, -40, 0.15, -40) -- Centered horizontally, upper part
+        rebirthIcon.BackgroundTransparency = 1
+        rebirthIcon.Image = IconAssets.getIcon("UI", "REBIRTH")
+        rebirthIcon.ScaleType = Enum.ScaleType.Fit
+        rebirthIcon.Parent = container
+        
+        -- Create requirement text label
         local requirementLabel = Instance.new("TextLabel")
         requirementLabel.Name = "RequirementText"
-        requirementLabel.Size = UDim2.new(1, 0, 1, 0)
-        requirementLabel.Position = UDim2.new(0, 0, 0, 0)
+        requirementLabel.Size = UDim2.new(1, 0, 0.6, 0) -- Lower 60% for text
+        requirementLabel.Position = UDim2.new(0, 0, 0.4, 0) -- Below the bigger icon
         requirementLabel.BackgroundTransparency = 1 -- No background
         requirementLabel.Font = Enum.Font.GothamBold
-        requirementLabel.Text = "Unlocks at\n" .. TELEPORT_REBIRTH_REQUIREMENT .. " rebirths!"
+        requirementLabel.Text = TELEPORT_REBIRTH_REQUIREMENT .. " rebirths\nneeded"
         requirementLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Bright yellow for high contrast on purple
         requirementLabel.TextScaled = true -- Scale text to fit the GUI size
         requirementLabel.TextStrokeTransparency = 0
         requirementLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black stroke for extra contrast
         requirementLabel.TextXAlignment = Enum.TextXAlignment.Center
         requirementLabel.TextYAlignment = Enum.TextYAlignment.Center
-        requirementLabel.Parent = surfaceGui
+        requirementLabel.Parent = container
         
-        print("TeleportService: Created teleport requirement GUI on", face.Name, "face")
+        -- Created GUI on face
     end
     
-    print("TeleportService: Created teleport requirement GUI")
+    -- GUI creation complete
 end
 
 function TeleportService:SetupTouchDetection()
     if not teleportPart then return end
     
-    print("TeleportService: Setting up touch detection for teleport")
+    -- Setup touch detection
     
     -- Set up touch detection for the teleport model (handle Model with multiple parts)
     local function onTouch(hit)
-        print("TeleportService: Touch detected on teleport part by:", hit.Parent.Name)
+        -- Touch detected
         local character = hit.Parent
         if character == player.Character then
-            print("TeleportService: Touch confirmed from player character")
+            -- Valid player touch
             local humanoid = character:FindFirstChild("Humanoid")
             if humanoid then
-                print("TeleportService: Humanoid found, checking cooldown")
+                -- Check cooldown
                 -- Check cooldown to prevent spam
                 local currentTime = tick()
                 if currentTime - lastTouchTime >= TOUCH_COOLDOWN then
                     lastTouchTime = currentTime
-                    print("TeleportService: Cooldown passed, showing message")
+                    -- Cooldown passed, show message
                     -- Show requirement message
                     self:ShowRequirementMessage()
                 else
-                    print("TeleportService: Still in cooldown, ignoring touch")
+                    -- Still in cooldown
                 end
             end
         end
@@ -173,7 +191,7 @@ function TeleportService:SetupTouchDetection()
         teleportPart.Touched:Connect(onTouch)
     end
     
-    print("TeleportService: Touch detection setup complete")
+    -- Touch detection ready
 end
 
 -- Show the requirement message to the player
@@ -184,11 +202,11 @@ function TeleportService:ShowRequirementMessage()
         local message = "Next Area will be unlocked at " .. TELEPORT_REBIRTH_REQUIREMENT .. " rebirths!"
         -- Fire to server, which will fire back to client
         errorMessageRemote:FireServer(message)
-        print("TeleportService: Sent teleport requirement message to server")
+        -- Message sent to server
     else
         warn("TeleportService: ShowErrorMessage remote event not found!")
         -- Fallback: just print to console
-        print("Next Area will be unlocked at " .. TELEPORT_REBIRTH_REQUIREMENT .. " rebirths!")
+        -- Show requirement message locally
     end
 end
 

@@ -5,6 +5,8 @@ local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
+local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
+local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
 
 local TwoXMoneyButtonService = {}
 TwoXMoneyButtonService.__index = TwoXMoneyButtonService
@@ -25,6 +27,7 @@ local lastPurchaseAttempt = 0
 local lastKnownOwnership = nil
 
 function TwoXMoneyButtonService:Initialize()
+    
     -- Find the 2x Money button in the player's area
     self:FindTwoXMoneyButton()
     
@@ -43,36 +46,8 @@ function TwoXMoneyButtonService:FindTwoXMoneyButton()
         player.CharacterAdded:Wait()
     end
     
-    -- Use event-based waiting instead of hardcoded delay
-    
-    -- Find player's area
-    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        warn("TwoXMoneyButtonService: PlayerAreas not found")
-        return
-    end
-    
-    print("TwoXMoneyButtonService: Found PlayerAreas, looking for player's area...")
-    
-    -- Find the player's assigned area by checking the area nameplate
-    local playerArea = nil
-    for _, area in pairs(playerAreas:GetChildren()) do
-        if area.Name:match("PlayerArea") then
-            local nameplate = area:FindFirstChild("AreaNameplate")
-            if nameplate then
-                local billboard = nameplate:FindFirstChild("NameplateBillboard")
-                if billboard then
-                    local textLabel = billboard:FindFirstChild("TextLabel")
-                    if textLabel and textLabel.Text == (player.Name .. "'s Area") then
-                        playerArea = area
-                        print("TwoXMoneyButtonService: Found player's area:", area.Name)
-                        break
-                    end
-                end
-            end
-        end
-    end
-    
+    -- Use shared utility to find player's area
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(5)
     if not playerArea then
         warn("TwoXMoneyButtonService: Player area not found")
         return
@@ -88,7 +63,6 @@ function TwoXMoneyButtonService:FindTwoXMoneyButton()
     -- Find the 2xMoneyButton
     twoXMoneyButtonPart = buttonsFolder:FindFirstChild("2xMoneyButton")
     if twoXMoneyButtonPart then
-        print("TwoXMoneyButtonService: Found 2xMoneyButton")
         self:UpdateGamepassGUI()
     else
         warn("TwoXMoneyButtonService: 2xMoneyButton not found")
@@ -109,7 +83,6 @@ end
 
 function TwoXMoneyButtonService:CheckOwnershipAndUpdateGUI(billboard)
     -- Get player data to check ownership
-    local DataSyncService = require(script.Parent.DataSyncService)
     local playerData = DataSyncService:GetPlayerData()
     
     local ownsGamepass = false
@@ -122,146 +95,201 @@ function TwoXMoneyButtonService:CheckOwnershipAndUpdateGUI(billboard)
         end
     end
     
-    -- Get template labels
-    local titleLabel = billboard:FindFirstChild("TitleLabel")
-    local descriptionLabel = billboard:FindFirstChild("DescriptionLabel")
-    local ownedLabel = billboard:FindFirstChild("OwnedLabel")
+    -- Update billboard GUI with icon and price
+    self:UpdateBillboardInfo(billboard)
     
+    -- Show/hide OWNED surface GUI based on ownership
     if ownsGamepass then
-        -- Show owned state: hide title+description, show owned label
-        if titleLabel then titleLabel.Visible = false end
-        if descriptionLabel then descriptionLabel.Visible = false end
-        if ownedLabel then ownedLabel.Visible = true end
+        self:ShowOwnedSurfaceGUI()
     else
-        -- Show purchase state: show title+description, hide owned label
-        if titleLabel then titleLabel.Visible = true end
-        if descriptionLabel then descriptionLabel.Visible = true end
-        if ownedLabel then ownedLabel.Visible = false end
+        self:HideOwnedSurfaceGUI()
     end
     
-    print("TwoXMoneyButtonService: Player owns gamepass:", ownsGamepass)
 end
 
-function TwoXMoneyButtonService:CreateGamepassGUI_OLD()
-    -- Find the best part to attach GUI to
-    local targetPart = nil
+-- Update billboard GUI with gamepass icon, name, and robux price
+function TwoXMoneyButtonService:UpdateBillboardInfo(billboard)
+    if not billboard then return end
+    
+    -- Clean existing elements and create new layout
+    billboard:ClearAllChildren()
+    
+    -- Create container frame for vertical layout
+    local container = Instance.new("Frame")
+    container.Name = "Container"
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = billboard
+    
+    -- Get gamepass info from MarketplaceService (async to prevent yielding in Redux)
+    local gamepassId = GamepassConfig.GAMEPASSES.TwoXMoney.id
+    local gamepassName = "2X Money"
+    local price = GamepassConfig.GAMEPASSES.TwoXMoney.price
+    local iconId = nil
+    
+    -- Use task.spawn to prevent yielding in Redux callback
+    task.spawn(function()
+        local success, info = pcall(function()
+            return MarketplaceService:GetProductInfo(gamepassId, Enum.InfoType.GamePass)
+        end)
+        
+        if success and info then
+            gamepassName = info.Name
+            price = info.PriceInRobux
+            iconId = info.IconImageAssetId
+        end
+        
+        -- Continue with UI creation after async call
+        self:CreateBillboardUI(billboard, container, gamepassName, price, iconId)
+    end)
+end
+
+function TwoXMoneyButtonService:CreateBillboardUI(billboard, container, gamepassName, price, iconId)
+    if not billboard or not container then return end
+    
+    -- Create gamepass icon (top)
+    local gamepassIcon = Instance.new("ImageLabel")
+    gamepassIcon.Name = "GamepassIcon"
+    gamepassIcon.Size = UDim2.new(0, 40, 0, 40)
+    gamepassIcon.Position = UDim2.new(0.5, -20, 0, 5)
+    gamepassIcon.BackgroundTransparency = 1
+    gamepassIcon.Image = iconId and ("rbxassetid://" .. tostring(iconId)) or ""
+    gamepassIcon.ScaleType = Enum.ScaleType.Fit
+    gamepassIcon.Parent = container
+    
+    -- Create gamepass name label (middle)
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 0, 0, 50)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Text = gamepassName
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 14
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+    nameLabel.Parent = container
+    
+    -- Create price container with robux icon (bottom)
+    local priceContainer = Instance.new("Frame")
+    priceContainer.Name = "PriceContainer"
+    priceContainer.Size = UDim2.new(1, 0, 0, 20)
+    priceContainer.Position = UDim2.new(0, 0, 0, 75)
+    priceContainer.BackgroundTransparency = 1
+    priceContainer.Parent = container
+    
+    -- Create robux icon
+    local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+    local robuxIcon = Instance.new("ImageLabel")
+    robuxIcon.Name = "RobuxIcon"
+    robuxIcon.Size = UDim2.new(0, 16, 0, 16)
+    robuxIcon.Position = UDim2.new(0.5, -25, 0.5, -8)
+    robuxIcon.BackgroundTransparency = 1
+    robuxIcon.Image = IconAssets.getIcon("CURRENCY", "ROBUX")
+    robuxIcon.ScaleType = Enum.ScaleType.Fit
+    robuxIcon.Parent = priceContainer
+    
+    -- Create price label
+    local priceLabel = Instance.new("TextLabel")
+    priceLabel.Name = "PriceLabel"
+    priceLabel.Size = UDim2.new(0, 50, 1, 0)
+    priceLabel.Position = UDim2.new(0.5, -5, 0, 0)
+    priceLabel.BackgroundTransparency = 1
+    priceLabel.Font = Enum.Font.GothamBold
+    priceLabel.Text = tostring(price)
+    priceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    priceLabel.TextSize = 14
+    priceLabel.TextStrokeTransparency = 0
+    priceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    priceLabel.TextYAlignment = Enum.TextYAlignment.Center
+    priceLabel.Parent = priceContainer
+    
+    -- Adjust billboard size to fit new layout
+    billboard.Size = UDim2.new(0, 120, 0, 100)
+end
+
+-- Add "Owned" surface GUI to the button part
+function TwoXMoneyButtonService:AddOwnedSurfaceGUI()
+    if not twoXMoneyButtonPart then 
+        return 
+    end
+    
+    -- Check if already exists
+    local existingGui = twoXMoneyButtonPart:FindFirstChild("OwnedSurfaceGui")
+    if existingGui then
+        if existingGui.Parent then
+            return
+        else
+            existingGui:Destroy()
+        end
+    end
+    
+    -- Find the main part to attach GUI to
+    local targetPart = twoXMoneyButtonPart
     if twoXMoneyButtonPart:IsA("Model") then
-        -- Look for a suitable part in the model
         for _, part in pairs(twoXMoneyButtonPart:GetDescendants()) do
             if part:IsA("BasePart") then
                 targetPart = part
                 break
             end
         end
-    else
-        targetPart = twoXMoneyButtonPart
     end
     
-    if not targetPart then
-        warn("TwoXMoneyButtonService: No suitable part found for GUI attachment")
-        return
-    end
+    -- Create surface GUI on Top face to be visible
+    local surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "OwnedSurfaceGui"
+    surfaceGui.Face = Enum.NormalId.Top
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 100 -- Standardized across all gamepass buttons
+    surfaceGui.Parent = targetPart
     
-    -- Clean up existing GUIs
-    local existingBillboard = twoXMoneyButtonPart:FindFirstChild("GamepassBillboard", true)
-    if existingBillboard then
-        existingBillboard:Destroy()
-    end
-    
-    -- Create BillboardGui for gamepass information
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "GamepassBillboard"
-    billboardGui.Size = UDim2.new(0, 150, 0, 80) -- Smaller size
-    billboardGui.StudsOffset = Vector3.new(0, 4, 0) -- Float 4 studs above the part
-    billboardGui.MaxDistance = 80 -- Much further visibility for camera angles
-    billboardGui.Parent = targetPart
-    
-    -- Create gamepass icon
-    local iconLabel = Instance.new("ImageLabel")
-    iconLabel.Name = "GamepassIcon"
-    iconLabel.Size = UDim2.new(0, 40, 0, 40)
-    iconLabel.Position = UDim2.new(0.5, -20, 0, 5)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png" -- Default, will be updated
-    iconLabel.Parent = billboardGui
-    
-    -- Create gamepass label
-    local gamepassLabel = Instance.new("TextLabel")
-    gamepassLabel.Name = "GamepassText"
-    gamepassLabel.Size = UDim2.new(1, 0, 0, 20)
-    gamepassLabel.Position = UDim2.new(0, 0, 0, 48)
-    gamepassLabel.BackgroundTransparency = 1
-    gamepassLabel.Font = Enum.Font.GothamBold
-    gamepassLabel.Text = "2x Money"
-    gamepassLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
-    gamepassLabel.TextSize = 18
-    gamepassLabel.TextStrokeTransparency = 0
-    gamepassLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    gamepassLabel.Parent = billboardGui
-    
-    -- Create status label (will show "Owned" or price)
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusText"
-    statusLabel.Size = UDim2.new(1, 0, 0, 14)
-    statusLabel.Position = UDim2.new(0, 0, 1, -16)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Loading..."
-    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    statusLabel.TextSize = 14
-    statusLabel.TextStrokeTransparency = 0
-    statusLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    statusLabel.Parent = billboardGui
-    
-    -- Update status and icon based on ownership
-    self:UpdateGamepassStatus(statusLabel, iconLabel)
-    
-    -- Also try to update immediately in case data is already loaded
-    task.spawn(function()
-        task.wait(0.5) -- Small delay to ensure MarketplaceService is ready
-        self:UpdateGamepassStatus(statusLabel, iconLabel)
-    end)
+    -- Create "Owned" text label
+    local ownedLabel = Instance.new("TextLabel")
+    ownedLabel.Name = "OwnedText"
+    ownedLabel.Size = UDim2.new(1, 0, 1, 0)
+    ownedLabel.BackgroundTransparency = 1
+    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Text = "OWNED"
+    ownedLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow for visibility
+    ownedLabel.TextSize = 32 -- Standardized text size
+    ownedLabel.TextStrokeTransparency = 0
+    ownedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    ownedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ownedLabel.TextYAlignment = Enum.TextYAlignment.Center
+    ownedLabel.Rotation = 180 -- Rotate 180 degrees to fix upside-down text
+    ownedLabel.Parent = surfaceGui
 end
 
-function TwoXMoneyButtonService:UpdateGamepassStatus(statusLabel, iconLabel)
-    if not statusLabel then return end
+function TwoXMoneyButtonService:ShowOwnedSurfaceGUI()
+    if not twoXMoneyButtonPart then return end
     
-    local playerData = DataSyncService:GetPlayerData()
-    local owns2xMoney = playerData and playerData.OwnedGamepasses and table.find(playerData.OwnedGamepasses, "TwoXMoney")
-    
-    -- Check if we need to update (ownership changed or still showing Loading...)
-    local needsUpdate = lastKnownOwnership ~= owns2xMoney or statusLabel.Text == "Loading..."
-    
-    if not needsUpdate then
-        return
+    local ownedGui = twoXMoneyButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = true
     end
-    lastKnownOwnership = owns2xMoney
+end
+
+function TwoXMoneyButtonService:HideOwnedSurfaceGUI()
+    if not twoXMoneyButtonPart then return end
     
-    -- Get gamepass info for icon and price
-    local success, info = pcall(function()
-        return MarketplaceService:GetProductInfo(GAMEPASS_ID, Enum.InfoType.GamePass)
-    end)
-    
-    -- Update icon if we have it
-    if iconLabel and success and info and info.IconImageAssetId then
-        iconLabel.Image = "rbxassetid://" .. tostring(info.IconImageAssetId)
-    end
-    
-    if owns2xMoney then
-        statusLabel.Text = "OWNED"
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green
-    else
-        if success and info then
-            statusLabel.Text = info.PriceInRobux .. " R$"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow
-        else
-            statusLabel.Text = "Buy Now"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow
-        end
+    local ownedGui = twoXMoneyButtonPart:FindFirstChild("OwnedSurfaceGui", true)
+    if ownedGui then
+        ownedGui.Enabled = false
     end
 end
 
 function TwoXMoneyButtonService:SetupProximityDetection()
+    if not twoXMoneyButtonPart then return end
+    
+    -- Clean up existing connections
+    if proximityConnection then
+        proximityConnection:Disconnect()
+    end
+    
     -- Get button position for distance calculation
     local buttonPosition
     if twoXMoneyButtonPart:IsA("Model") then
@@ -271,7 +299,7 @@ function TwoXMoneyButtonService:SetupProximityDetection()
         buttonPosition = twoXMoneyButtonPart.Position
     end
     
-    -- Set up touch detection for the gamepass button
+    -- Set up touch detection for the button
     local function onTouch(hit)
         local character = hit.Parent
         if character == player.Character then
@@ -279,7 +307,22 @@ function TwoXMoneyButtonService:SetupProximityDetection()
             if humanoidRootPart then
                 local distance = (humanoidRootPart.Position - buttonPosition).Magnitude
                 if distance <= INTERACTION_DISTANCE then
-                    self:HandleGamepassPurchase()
+                    -- Check cooldown to prevent spamming
+                    local currentTime = tick()
+                    if currentTime - lastPurchaseAttempt < PURCHASE_COOLDOWN then
+                        local timeLeft = PURCHASE_COOLDOWN - (currentTime - lastPurchaseAttempt)
+                        return -- Still in cooldown, ignore touch
+                    end
+                    
+                    -- Check if player already owns the gamepass
+                    local playerData = DataSyncService:GetPlayerData()
+                    if not self:PlayerOwnsTwoXMoney(playerData) then
+                        -- Update cooldown timer
+                        lastPurchaseAttempt = currentTime
+                        -- Trigger gamepass purchase popup
+                        self:OpenGamepassPurchasePopup()
+                    else
+                    end
                 end
             end
         end
@@ -293,72 +336,90 @@ function TwoXMoneyButtonService:SetupProximityDetection()
             end
         end
     elseif twoXMoneyButtonPart:IsA("BasePart") then
-        twoXMoneyButtonPart.Touched:Connect(onTouch)
+        proximityConnection = twoXMoneyButtonPart.Touched:Connect(onTouch)
     end
 end
 
-
-function TwoXMoneyButtonService:HandleGamepassPurchase()
-    -- Check cooldown
-    local currentTime = tick()
-    if currentTime - lastPurchaseAttempt < PURCHASE_COOLDOWN then
-        return
-    end
-    lastPurchaseAttempt = currentTime
-    
-    -- Check if player already owns the gamepass
-    local playerData = DataSyncService:GetPlayerData()
-    local owns2xMoney = playerData and playerData.OwnedGamepasses and table.find(playerData.OwnedGamepasses, "TwoXMoney")
-    
-    if owns2xMoney then
-        print("TwoXMoneyButtonService: Player already owns 2x Money gamepass")
-        return
-    end
-    
-    print("TwoXMoneyButtonService: Prompting 2x Money gamepass purchase")
-    
-    -- Prompt the purchase
-    local success, error = pcall(function()
-        MarketplaceService:PromptGamePassPurchase(player, GAMEPASS_ID)
-    end)
-    
-    if not success then
-        warn("TwoXMoneyButtonService: Failed to prompt gamepass purchase:", error)
+-- Open gamepass purchase popup
+function TwoXMoneyButtonService:OpenGamepassPurchasePopup()
+    -- Send purchase request to server (same as the GamepassUI does)
+    local purchaseGamepassRemote = ReplicatedStorage:FindFirstChild("PurchaseGamepass")
+    if purchaseGamepassRemote then
+        purchaseGamepassRemote:FireServer("TwoXMoney")
+    else
+        warn("TwoXMoneyButtonService: PurchaseGamepass remote not found")
     end
 end
 
+-- Set up subscription to player data changes for visibility updates
 function TwoXMoneyButtonService:SetupDataSubscription()
-    -- Subscribe to data changes to update GUI
-    DataSyncService:Subscribe(function(newState)
-        if newState and newState.player then
-            local billboard = twoXMoneyButtonPart and twoXMoneyButtonPart:FindFirstChild("GamepassBillboard", true)
-            if billboard then
-                local statusLabel = billboard:FindFirstChild("StatusText")
-                local iconLabel = billboard:FindFirstChild("GamepassIcon")
-                if statusLabel then
-                    self:UpdateGamepassStatus(statusLabel, iconLabel)
-                end
+    -- Subscribe to data changes to check gamepass ownership - BUT ONLY when gamepass data changes
+    local lastGamepassData = nil
+    
+    local unsubscribe = DataSyncService:Subscribe(function(newState)
+        if newState.player and newState.player.OwnedGamepasses then
+            -- Only update if gamepass data actually changed
+            local currentGamepassData = game:GetService("HttpService"):JSONEncode(newState.player.OwnedGamepasses)
+            if currentGamepassData ~= lastGamepassData then
+                lastGamepassData = currentGamepassData
+                self:UpdateButtonVisibility()
             end
         end
     end)
+    
+    -- Store unsubscribe function for cleanup
+    self.dataSubscription = unsubscribe
 end
 
+-- Update button visibility based on gamepass ownership
+function TwoXMoneyButtonService:UpdateButtonVisibility()
+    if not twoXMoneyButtonPart then return end
+    
+    -- Get player data from DataSyncService
+    local playerData = DataSyncService:GetPlayerData()
+    local ownsTwoXMoney = self:PlayerOwnsTwoXMoney(playerData)
+    
+    -- Only update if ownership state has changed
+    if lastKnownOwnership == ownsTwoXMoney then
+        return -- No change, skip update
+    end
+    
+    -- Update the tracked state
+    lastKnownOwnership = ownsTwoXMoney
+    
+    -- Update the GUI to reflect the new ownership status
+    self:UpdateGamepassGUI()
+    
+end
+
+-- Check if player owns TwoXMoney gamepass
+function TwoXMoneyButtonService:PlayerOwnsTwoXMoney(playerData)
+    if not playerData or not playerData.OwnedGamepasses then
+        return false
+    end
+    
+    for _, gamepass in pairs(playerData.OwnedGamepasses) do
+        if gamepass == "TwoXMoney" then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Clean up connections
 function TwoXMoneyButtonService:Cleanup()
     if proximityConnection then
         proximityConnection:Disconnect()
         proximityConnection = nil
     end
-    
+    if self.dataSubscription then
+        self.dataSubscription()
+        self.dataSubscription = nil
+    end
+    -- Reset cooldown and state tracking
+    lastPurchaseAttempt = 0
     lastKnownOwnership = nil
-    print("TwoXMoneyButtonService: Cleaned up")
 end
-
--- Handle character respawn
-Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Re-initialize after character respawn
-    TwoXMoneyButtonService:Cleanup()
-    task.wait(1) -- Wait for character to fully load
-    TwoXMoneyButtonService:Initialize()
-end)
 
 return TwoXMoneyButtonService

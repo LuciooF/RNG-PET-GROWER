@@ -2,6 +2,8 @@
 -- Handles map creation, player assignment, and data management
 
 local ServerScriptService = game:GetService("ServerScriptService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Initialize data services first
 local DataService = require(ServerScriptService.services.DataService)
@@ -16,6 +18,88 @@ StateService:Initialize()
 PetService:Initialize()
 GamepassService:Initialize()
 PetMixerService:Initialize()
+
+-- Rebirth function (shared by both money and Robux rebirth)
+local function performRebirth(player, skipMoneyCheck)
+    skipMoneyCheck = skipMoneyCheck or false
+    
+    print("Main: Rebirth request from", player.Name)
+    
+    -- Check if player has enough money (unless skipping for Robux purchase)
+    local playerData = DataService:GetPlayerData(player)
+    if not skipMoneyCheck then
+        local RebirthUtils = require(ReplicatedStorage.utils.RebirthUtils)
+        local currentRebirths = (playerData and playerData.Resources and playerData.Resources.Rebirths) or 0
+        local rebirthCost = RebirthUtils.getRebirthCost(currentRebirths)
+        
+        if not playerData or not playerData.Resources or playerData.Resources.Money < rebirthCost then
+            warn("Main: Player", player.Name, "does not have enough money for rebirth")
+            return false
+        end
+    end
+    
+    -- Perform rebirth - reset everything except rebirths
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        warn("Main: No profile found for player", player.Name)
+        return false
+    end
+    
+    -- Increment rebirth count and reset everything else
+    local currentRebirths = playerData.Resources.Rebirths or 0
+    local currentDiamonds = playerData.Resources.Diamonds or 0 -- Keep diamonds
+    local currentEquippedPets = playerData.EquippedPets or {} -- Keep equipped pets
+    
+    profile.Data.Resources = {
+        Diamonds = currentDiamonds, -- Keep diamonds through rebirth
+        Money = 0, -- Reset money to 0
+        Rebirths = currentRebirths + 1
+    }
+    profile.Data.Pets = currentEquippedPets -- Only keep equipped pets
+    profile.Data.EquippedPets = currentEquippedPets -- Keep equipped pets
+    profile.Data.ProcessingPets = {} -- Clear processing pets
+    profile.Data.OwnedTubes = {}
+    profile.Data.OwnedPlots = {}
+    
+    -- Stop any active heaven processing
+    PetService:StopHeavenProcessing(player)
+    
+    -- Clear spawned pet balls in player's area
+    PlotService:ClearAllPetBallsInPlayerArea(player)
+    
+    -- Sync updated data to client
+    StateService:BroadcastPlayerDataUpdate(player)
+    
+    -- Re-initialize the player's area to update visuals
+    PlotService:ReinitializePlayerArea(player)
+    
+    print("Main: Rebirth completed for", player.Name, "- now has", currentRebirths + 1, "rebirths")
+    return true
+end
+
+-- Set up MarketplaceService ProcessReceipt for developer products
+local ROBUX_REBIRTH_DEV_PRODUCT_ID = 3353655412
+
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+    -- Check if this is the rebirth dev product
+    if receiptInfo.ProductId == ROBUX_REBIRTH_DEV_PRODUCT_ID then
+        local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
+        if player then
+            -- Perform rebirth (skip money check since they paid Robux)
+            local success = performRebirth(player, true)
+            if success then
+                print("Main: Processed Robux rebirth for", player.Name)
+                return Enum.ProductPurchaseDecision.PurchaseGranted
+            else
+                warn("Main: Failed to process Robux rebirth for", player.Name)
+                return Enum.ProductPurchaseDecision.NotProcessedYet
+            end
+        end
+    end
+    
+    -- If we don't handle this product, don't grant it
+    return Enum.ProductPurchaseDecision.NotProcessedYet
+end
 
 -- Set up callback so StateService syncs data when ProfileStore loads
 DataService.OnPlayerDataLoaded = function(player)
@@ -32,6 +116,16 @@ DataService.OnPlayerDataLoaded = function(player)
     end)
     -- Check for completed mixers (offline progress)
     PetMixerService:OnPlayerJoined(player)
+    
+    -- Resume pet processing if player has processing pets
+    task.spawn(function()
+        local playerData = DataService:GetPlayerData(player)
+        if playerData and playerData.ProcessingPets and #playerData.ProcessingPets > 0 then
+            print("Main: Resuming pet processing for", player.Name, "with", #playerData.ProcessingPets, "pets")
+            -- Use StartHeavenProcessingLoop directly since pets are already in ProcessingPets
+            PetService:StartHeavenProcessingLoop(player)
+        end
+    end)
 end
 
 -- Setup AreaTemplate with static GUIs before creating player areas
@@ -83,6 +177,30 @@ if not collectPetRemote then
     collectPetRemote = Instance.new("RemoteEvent")
     collectPetRemote.Name = "CollectPet"
     collectPetRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for client-side pet ball spawning
+local spawnPetBallRemote = ReplicatedStorage:FindFirstChild("SpawnPetBall")
+if not spawnPetBallRemote then
+    spawnPetBallRemote = Instance.new("RemoteEvent")
+    spawnPetBallRemote.Name = "SpawnPetBall"
+    spawnPetBallRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for client-side pet ball clearing (for rebirth)
+local clearPetBallsRemote = ReplicatedStorage:FindFirstChild("ClearPetBalls")
+if not clearPetBallsRemote then
+    clearPetBallsRemote = Instance.new("RemoteEvent")
+    clearPetBallsRemote.Name = "ClearPetBalls"
+    clearPetBallsRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for client-side heaven pet ball spawning
+local spawnHeavenPetBallRemote = ReplicatedStorage:FindFirstChild("SpawnHeavenPetBall")
+if not spawnHeavenPetBallRemote then
+    spawnHeavenPetBallRemote = Instance.new("RemoteEvent")
+    spawnHeavenPetBallRemote.Name = "SpawnHeavenPetBall"
+    spawnHeavenPetBallRemote.Parent = ReplicatedStorage
 end
 
 -- Create remote events for data synchronization
@@ -199,28 +317,29 @@ if not cancelMixerRemote then
 end
 
 -- Handle pet collection from client
-collectPetRemote.OnServerEvent:Connect(function(player, petData, ballPath)
+collectPetRemote.OnServerEvent:Connect(function(player, petData)
     -- Validate the pet data
     if not petData or not petData.Name or not petData.Rarity then
         warn("Main: Invalid pet data received from", player.Name)
         return
     end
     
-    -- Add pet to player's inventory
-    DataService:AddPetToPlayer(player, petData)
+    -- Add pet to player's inventory (with inventory limit check and auto-equip)
+    local success, result = DataService:AddPetToPlayer(player, petData)
     
-    -- Give player diamonds for collecting a pet ball (with gamepass multipliers)
-    local baseDiamonds = 1
-    local finalDiamonds = PetService:ApplyGamepassMultipliers(player, baseDiamonds, "Diamonds")
-    DataService:UpdatePlayerResources(player, "Diamonds", finalDiamonds)
-    
-    -- Notify PlotService that a ball was collected for counter update
-    if ballPath then
-        PlotService:OnPetBallCollected(ballPath)
+    if success then
+        -- Give player diamonds for collecting a pet ball (with gamepass multipliers)
+        local baseDiamonds = 1
+        local finalDiamonds = PetService:ApplyGamepassMultipliers(player, baseDiamonds, "Diamonds")
+        DataService:UpdatePlayerResources(player, "Diamonds", finalDiamonds)
+        
+        -- Sync updated data to client
+        StateService:BroadcastPlayerDataUpdate(player)
+    else
+        -- Pet not added due to inventory limit or other issue
+        -- Error message already sent by DataService:AddPetToPlayer
+        print("Main: Failed to add pet for", player.Name, "- Reason:", result)
     end
-    
-    -- Sync updated data to client
-    StateService:BroadcastPlayerDataUpdate(player)
     
 end)
 
@@ -231,6 +350,9 @@ resetPlayerDataRemote.OnServerEvent:Connect(function(player)
     -- Reset player data to template
     local success = DataService:ResetPlayerData(player)
     if success then
+        -- Reset pet ball area data for this player
+        PlotService:ResetPlayerAreaData(player)
+        
         -- Sync updated data to client
         StateService:BroadcastPlayerDataUpdate(player)
         
@@ -318,51 +440,8 @@ end)
 
 -- Handle rebirth from client
 rebirthRemote.OnServerEvent:Connect(function(player)
-    print("Main: Rebirth request from", player.Name)
-    
-    -- Check if player has enough money (1000)
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData or not playerData.Resources or playerData.Resources.Money < 1000 then
-        warn("Main: Player", player.Name, "does not have enough money for rebirth")
-        return
-    end
-    
-    -- Perform rebirth - reset everything except rebirths
-    local profile = DataService:GetPlayerProfile(player)
-    if not profile then
-        warn("Main: No profile found for player", player.Name)
-        return
-    end
-    
-    -- Increment rebirth count and reset everything else
-    local currentRebirths = playerData.Resources.Rebirths or 0
-    local currentDiamonds = playerData.Resources.Diamonds or 0 -- Keep diamonds
-    local currentEquippedPets = playerData.EquippedPets or {} -- Keep equipped pets
-    
-    profile.Data.Resources = {
-        Diamonds = currentDiamonds, -- Keep diamonds through rebirth
-        Money = 0, -- Reset money to 0
-        Rebirths = currentRebirths + 1
-    }
-    profile.Data.Pets = currentEquippedPets -- Only keep equipped pets
-    profile.Data.EquippedPets = currentEquippedPets -- Keep equipped pets
-    profile.Data.ProcessingPets = {} -- Clear processing pets
-    profile.Data.OwnedTubes = {}
-    profile.Data.OwnedPlots = {}
-    
-    -- Stop any active heaven processing
-    PetService:StopHeavenProcessing(player)
-    
-    -- Clear spawned pet balls in player's area
-    PlotService:ClearAllPetBallsInPlayerArea(player)
-    
-    -- Sync updated data to client
-    StateService:BroadcastPlayerDataUpdate(player)
-    
-    -- Re-initialize the player's area to update visuals
-    PlotService:ReinitializePlayerArea(player)
-    
-    print("Main: Rebirth completed for", player.Name, "- now has", currentRebirths + 1, "rebirths")
+    -- Use the shared rebirth function (with money check)
+    performRebirth(player, false)
 end)
 
 -- Handle pet mixer events

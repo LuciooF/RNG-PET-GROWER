@@ -1,18 +1,124 @@
--- PetInventoryUI - Shows player's pet collection and rebirth functionality
+-- Modern Pet Inventory UI - Matches screenshot design with white background and proper sections
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
-local RebirthUI = require(script.Parent.RebirthUI)
+local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
-local function PetInventoryUI()
+-- Pet inventory limit
+local MAX_PET_INVENTORY = 1000
+
+-- Helper function to create pet models for ViewportFrame (same pattern as ClientPetBallService)
+local function createPetModelForInventory(petData, rotationIndex)
+    -- Try to get actual pet model from ReplicatedStorage.Pets
+    local petsFolder = ReplicatedStorage:FindFirstChild("Pets")
+    
+    if petsFolder then
+        -- Use the actual model name from pet data, or fall back to first available pet
+        local modelName = petData.ModelName or petData.Name or "Acid Rain Doggy"
+        
+        local petModelTemplate = petsFolder:FindFirstChild(modelName)
+        if not petModelTemplate then
+            petModelTemplate = petsFolder:GetChildren()[1]
+        end
+        
+        if petModelTemplate then
+            local clonedModel = petModelTemplate:Clone()
+            clonedModel.Name = "PetModel"
+            
+            -- First, process all parts for scaling and properties
+            local scaleFactor = 4.2 -- 20% bigger than previous (3.5 * 1.2)
+            
+            for _, descendant in pairs(clonedModel:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    descendant.Size = descendant.Size * scaleFactor
+                    descendant.CanCollide = false
+                    descendant.Anchored = true -- Anchored for viewport
+                    descendant.Massless = true
+                    -- Make parts visible with original materials preserved
+                    descendant.Transparency = math.max(0, descendant.Transparency - 0.3) -- Reduce transparency
+                    -- Keep original material unless it's invisible
+                    if descendant.Material == Enum.Material.ForceField then
+                        descendant.Material = Enum.Material.Plastic
+                    end
+                end
+            end
+            
+            -- Use 160 degrees rotation for all pets to show faces correctly
+            local rotationAngle = 160
+            
+            -- Move entire model to origin using MoveTo, then rotate all parts
+            clonedModel:MoveTo(Vector3.new(0, 0, 0))
+            
+            -- Then apply rotation to each part around the origin
+            for _, descendant in pairs(clonedModel:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    -- Rotate each part around the origin
+                    local rotationCFrame = CFrame.Angles(0, math.rad(rotationAngle), 0)
+                    local currentPos = descendant.Position
+                    local rotatedPos = rotationCFrame * currentPos
+                    descendant.Position = rotatedPos
+                    
+                    -- Also rotate the part's orientation
+                    descendant.CFrame = CFrame.new(rotatedPos) * rotationCFrame * (descendant.CFrame - descendant.Position)
+                end
+            end
+            
+            return clonedModel
+        end
+    end
+    
+    -- Return nil if no model found
+    return nil
+end
+
+-- Helper function to setup ViewportFrame camera for pet model
+local function setupPetViewportCamera(viewportFrame, petModel)
+    if not viewportFrame or not petModel then
+        return
+    end
+    
+    -- Create camera for the viewport
+    local camera = Instance.new("Camera")
+    camera.CameraType = Enum.CameraType.Scriptable
+    camera.Parent = viewportFrame
+    viewportFrame.CurrentCamera = camera
+    
+    -- Get model bounds for better camera positioning
+    local modelCFrame, modelSize = petModel:GetBoundingBox()
+    local maxSize = math.max(modelSize.X, modelSize.Y, modelSize.Z)
+    
+    -- Position camera at a good angle to show the pet model fully
+    local distance = maxSize * 1.8 -- Good distance to see full model
+    local cameraPosition = modelCFrame.Position + Vector3.new(distance * 0.7, distance * 0.4, distance * 0.7)
+    
+    -- Point camera at center of model
+    camera.CFrame = CFrame.lookAt(cameraPosition, modelCFrame.Position)
+    
+    -- Add slight lighting by setting the ambient
+    game.Lighting.Ambient = Color3.fromRGB(100, 100, 100)
+end
+
+local function PetInventoryUI(props)
     local playerData, setPlayerData = React.useState({
-        Pets = {}
+        Pets = {},
+        EquippedPets = {}
     })
-    local isVisible, setIsVisible = React.useState(false)
-    local isRebirthVisible, setIsRebirthVisible = React.useState(false)
+    local isVisible, setIsVisible = React.useState(props.visible or false)
+    local hoveredPet, setHoveredPet = React.useState(nil)
+    local tooltipPosition, setTooltipPosition = React.useState(UDim2.new(0, 0, 0, 0))
+    
+    -- Update visibility when props change
+    React.useEffect(function()
+        setIsVisible(props.visible or false)
+    end, {props.visible})
 
     -- Subscribe to data changes
     React.useEffect(function()
@@ -22,7 +128,7 @@ local function PetInventoryUI()
             setPlayerData(initialData)
         end
         
-        -- Use proper Rodux subscription instead of heartbeat
+        -- Subscribe to data updates
         local unsubscribe = DataSyncService:Subscribe(function(newState)
             if newState and newState.player then
                 setPlayerData(newState.player)
@@ -58,423 +164,759 @@ local function PetInventoryUI()
     local pets = playerData and playerData.Pets or {}
     local equippedPets = playerData and playerData.EquippedPets or {}
     
-    -- Create a set of equipped pet IDs for quick lookup
-    local equippedPetIds = {}
-    for _, pet in ipairs(equippedPets) do
-        equippedPetIds[pet.ID] = true
-    end
-    
-    -- Separate pets into equipped and non-equipped groups
-    local groupedEquippedPets = {}
-    local groupedInventoryPets = {}
-    
-    -- First, group equipped pets
-    for _, pet in ipairs(equippedPets) do
-        local rarityName = (pet.Rarity and pet.Rarity.RarityName) or "Common"
-        local variationName = (pet.Variation and pet.Variation.VariationName) or "Bronze"
-        local key = string.format("%s_%s_%s_equipped", pet.Name or "Unknown", rarityName, variationName)
+    -- Group pets by name, rarity, and variation for inventory
+    local function groupPets(petList)
+        local groups = {}
         
-        if not groupedEquippedPets[key] then
-            groupedEquippedPets[key] = {
-                Name = pet.Name or "Unknown",
-                Rarity = pet.Rarity or {RarityName = "Common", RarityColor = {200, 200, 200}}, 
-                Variation = pet.Variation or {VariationName = "Bronze", VariationColor = {205, 127, 50}},
-                Quantity = 0,
-                IsEquipped = true,
-                SamplePet = pet -- Store sample pet for unequip
-            }
-        end
-        groupedEquippedPets[key].Quantity = groupedEquippedPets[key].Quantity + 1
-    end
-    
-    -- Then, group non-equipped pets from inventory
-    for _, pet in ipairs(pets) do
-        if not equippedPetIds[pet.ID] then -- Only include if not equipped
-            local rarityName = (pet.Rarity and pet.Rarity.RarityName) or "Common"
-            local variationName = (pet.Variation and pet.Variation.VariationName) or "Bronze"
-            local key = string.format("%s_%s_%s", pet.Name or "Unknown", rarityName, variationName)
-            
-            if not groupedInventoryPets[key] then
-                groupedInventoryPets[key] = {
-                    Name = pet.Name or "Unknown",
-                    Rarity = pet.Rarity or {RarityName = "Common", RarityColor = {200, 200, 200}}, 
-                    Variation = pet.Variation or {VariationName = "Bronze", VariationColor = {205, 127, 50}},
-                    Quantity = 0,
-                    IsEquipped = false,
-                    SamplePet = pet -- Store sample pet for equip
-                }
+        for _, pet in ipairs(petList) do
+            if pet and pet.Name and pet.Rarity and pet.Variation then
+                local key = string.format("%s_%s_%s", pet.Name, pet.Rarity, pet.Variation)
+                
+                if not groups[key] then
+                    groups[key] = {
+                        Name = pet.Name,
+                        Rarity = pet.Rarity,
+                        Variation = pet.Variation,
+                        BaseValue = pet.BaseValue or 100,
+                        BaseBoost = pet.BaseBoost or 1,
+                        FinalBoost = pet.FinalBoost or pet.BaseBoost or 1,
+                        Quantity = 0,
+                        SamplePet = pet
+                    }
+                end
+                groups[key].Quantity = groups[key].Quantity + 1
             end
-            groupedInventoryPets[key].Quantity = groupedInventoryPets[key].Quantity + 1
         end
-    end
-    
-    -- Combine both groups (equipped first, then inventory)
-    local groupedPets = {}
-    for key, group in pairs(groupedEquippedPets) do
-        groupedPets[key] = group
-    end
-    for key, group in pairs(groupedInventoryPets) do
-        groupedPets[key] = group
-    end
-    
-    -- Convert to array and sort (equipped pets first)
-    local petGroups = {}
-    for _, group in pairs(groupedPets) do
-        table.insert(petGroups, group)
-    end
-    
-    -- Sort: equipped pets first, then by rarity/name
-    table.sort(petGroups, function(a, b)
-        if a.IsEquipped and not b.IsEquipped then
-            return true
-        elseif not a.IsEquipped and b.IsEquipped then
-            return false
-        else
-            -- Both equipped or both not equipped, sort by name
-            return a.Name < b.Name
-        end
-    end)
-
-    -- Side buttons (Pets and Rebirth)
-    local sideButtons = React.createElement("Frame", {
-        Size = UDim2.new(0, 100, 0, 120),
-        Position = UDim2.new(0, 10, 0.5, -60),
-        BackgroundTransparency = 1,
-    }, {
-        -- Pets button
-        PetsButton = React.createElement("Frame", {
-            Size = UDim2.new(1, 0, 0, 50),
-            Position = UDim2.new(0, 0, 0, 0),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0,
-        }, {
-            Corner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 8)
-            }),
-            
-            Button = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                BorderSizePixel = 0,
-                Text = "Pets",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                [React.Event.Activated] = function()
-                    setIsVisible(true)
-                end
-            }, {
-                Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 8)
-                }),
-                
-                PetCount = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0.3, 0),
-                    Position = UDim2.new(0, 0, 0.7, 0),
-                    BackgroundTransparency = 1,
-                    Text = string.format("(%d)", #pets),
-                    TextColor3 = Color3.fromRGB(200, 200, 200),
-                    TextScaled = true,
-                    Font = Enum.Font.Gotham
-                })
-            })
-        }),
         
-        -- Rebirth button
-        RebirthButton = React.createElement("Frame", {
-            Size = UDim2.new(1, 0, 0, 50),
-            Position = UDim2.new(0, 0, 0, 60),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0,
+        -- Convert to array and sort by boost (highest first)
+        local groupArray = {}
+        for _, group in pairs(groups) do
+            table.insert(groupArray, group)
+        end
+        
+        table.sort(groupArray, function(a, b)
+            local aBoost = a.FinalBoost or a.BaseBoost or 1
+            local bBoost = b.FinalBoost or b.BaseBoost or 1
+            if aBoost ~= bBoost then
+                return aBoost > bBoost -- Higher boost first
+            else
+                return a.Name < b.Name -- Alphabetical as tiebreaker
+            end
+        end)
+        
+        return groupArray
+    end
+    
+    local equippedGroups = groupPets(equippedPets)
+    local inventoryGroups = groupPets(pets)
+    
+    -- Create pet card component
+    local function createPetCard(petGroup, cardIndex, isEquipped, inEquippedSection)
+        -- Safety check: ensure petGroup is valid
+        if not petGroup or not petGroup.Name then
+            return nil
+        end
+        local variationColor = PetConstants.getVariationColor(petGroup.Variation)
+        local rarityColor = PetConstants.getRarityColor(petGroup.Rarity)
+        
+        -- Calculate final value
+        local baseValue = petGroup.BaseValue or 100
+        local variationMultiplier = PetConstants.getVariationMultiplier(petGroup.Variation)
+        local finalValue = math.floor(baseValue * variationMultiplier)
+        
+        -- Calculate final boost display
+        local finalBoost = petGroup.FinalBoost or petGroup.BaseBoost or 1
+        local boostPercentage = (finalBoost - 1) * 100
+        
+        return React.createElement("Frame", {
+            Size = ScreenUtils.udim2(0, 130, 0, 130), -- Original card size
+            BackgroundTransparency = 1, -- Fully transparent to show colored background
+            BorderSizePixel = 0, -- No border, using UIStroke instead
+            LayoutOrder = cardIndex,
+            ZIndex = 10,
         }, {
             Corner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 8)
+                CornerRadius = ScreenUtils.udim(0, 65) -- Half of 130 for perfect circle
             }),
             
-            Button = React.createElement("TextButton", {
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundColor3 = Color3.fromRGB(138, 43, 226),
-                BorderSizePixel = 0,
-                Text = "Rebirth",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                [React.Event.Activated] = function()
-                    setIsRebirthVisible(true)
-                end
+            -- Squiggle background with rarity color (waiting for white squiggle asset)
+            SquiggleBackground = React.createElement("ImageLabel", {
+                Size = ScreenUtils.udim2(0.9, 0, 0.9, 0),
+                Position = ScreenUtils.udim2(0.5, 0, 0.5, 0),
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1, -- Transparent background
+                Image = IconAssets.getIcon("UI", "SQUIGGLE"),
+                ImageColor3 = variationColor, -- Apply rarity color to squiggle
+                ImageTransparency = 0.3, -- Slightly transparent
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 9, -- Behind viewport
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 8)
+                    CornerRadius = ScreenUtils.udim(0, 58) -- Circular clipping
+                }),
+            }),
+            
+            -- Pet model viewport (takes most of the card space)
+            PetViewport = React.createElement("ViewportFrame", {
+                Size = ScreenUtils.udim2(1, -10, 1, -25), -- Leave space for pet name and badges
+                Position = ScreenUtils.udim2(0, 5, 0, 5),
+                BackgroundTransparency = 1, -- Transparent viewport
+                ZIndex = 11, -- Above paint splatter
+                
+                -- Load pet model when viewport is created
+                [React.Event.AncestryChanged] = function(rbx)
+                    if rbx.Parent then
+                        -- Delay to ensure viewport is ready
+                        task.spawn(function()
+                            task.wait(0.1)
+                            
+                            local petModel = createPetModelForInventory(petGroup.SamplePet or petGroup, cardIndex)
+                            if petModel then
+                                petModel.Parent = rbx
+                                setupPetViewportCamera(rbx, petModel)
+                            end
+                        end)
+                    end
+                end,
+            }, {
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 60) -- Circular viewport
+                }),
+            }),
+            
+            -- Quantity badge (top right)
+            QuantityBadge = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(0, 60, 0, 30), -- Bigger badge
+                Position = ScreenUtils.udim2(1, -65, 0, 5),
+                BackgroundColor3 = Color3.fromRGB(255, 215, 0), -- Gold background
+                BackgroundTransparency = 0,
+                BorderSizePixel = 3,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Thicker black outline
+                ZIndex = 12,
+            }, {
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 6)
                 }),
                 
-                RebirthCount = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0.3, 0),
-                    Position = UDim2.new(0, 0, 0.7, 0),
+                QuantityText = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
                     BackgroundTransparency = 1,
-                    Text = string.format("(%d)", playerData.Resources and playerData.Resources.Rebirths or 0),
-                    TextColor3 = Color3.fromRGB(200, 200, 200),
-                    TextScaled = true,
-                    Font = Enum.Font.Gotham
+                    Text = "x" .. petGroup.Quantity,
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    TextStrokeTransparency = 0, -- Add text outline
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    ZIndex = 13,
+                })
+            }),
+            
+            -- Equipped badge (top left, higher up to avoid overlap with quantity)
+            EquippedBadge = (isEquipped and not inEquippedSection) and React.createElement("Frame", {
+                Size = ScreenUtils.udim2(0, 80, 0, 30), -- Bigger badge
+                Position = ScreenUtils.udim2(0, 5, 0, -35), -- Moved higher up (negative Y offset)
+                BackgroundColor3 = Color3.fromRGB(50, 205, 50), -- Lime green background
+                BackgroundTransparency = 0,
+                BorderSizePixel = 3,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Thicker black outline
+                ZIndex = 12,
+            }, {
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 6)
+                }),
+                
+                EquippedText = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
+                    BackgroundTransparency = 1,
+                    Text = "EQUIPPED",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 0.9, -- Bigger text
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    TextStrokeTransparency = 0, -- Add text outline
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    ZIndex = 13,
+                })
+            }) or nil,
+            
+            
+            -- Boost text above pet name
+            BoostText = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -10, 0, 20),
+                Position = ScreenUtils.udim2(0, 5, 1, -45),
+                BackgroundTransparency = 1,
+                Text = string.format("Boost: %.2fx", finalBoost),
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = ScreenUtils.TEXT_SIZES.SMALL() * 1.5, -- 1.5x bigger
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                ZIndex = 14,
+            }),
+            
+            -- Pet name at bottom (with rarity color)
+            PetName = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -10, 0, 20),
+                Position = ScreenUtils.udim2(0, 5, 1, -20),
+                BackgroundTransparency = 1, -- No background
+                Text = petGroup.Name,
+                TextColor3 = rarityColor, -- Use rarity color instead of white
+                TextSize = ScreenUtils.TEXT_SIZES.SMALL(),
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                TextScaled = true,
+                TextStrokeTransparency = 0, -- Black stroke for visibility
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                ZIndex = 14,
+            }),
+            
+            -- Hover detection for tooltip
+            HoverDetector = React.createElement("TextButton", {
+                Size = ScreenUtils.udim2(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = "",
+                ZIndex = 15,
+                [React.Event.MouseEnter] = function(rbx)
+                    setHoveredPet(petGroup)
+                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + 10, 0, rbx.AbsolutePosition.Y))
+                end,
+                [React.Event.MouseLeave] = function()
+                    setHoveredPet(nil)
+                end,
+            })
+        })
+    end
+    
+    -- Create tooltip component
+    local function createTooltip()
+        if not hoveredPet then return nil end
+        
+        local variationColor = PetConstants.getVariationColor(hoveredPet.Variation)
+        local rarityColor = PetConstants.getRarityColor(hoveredPet.Rarity)
+        
+        -- Calculate final value
+        local baseValue = hoveredPet.BaseValue or 100
+        local variationMultiplier = PetConstants.getVariationMultiplier(hoveredPet.Variation)
+        local finalValue = math.floor(baseValue * variationMultiplier)
+        
+        -- Calculate final boost
+        local finalBoost = hoveredPet.FinalBoost or hoveredPet.BaseBoost or 1
+        
+        return React.createElement("Frame", {
+            Size = ScreenUtils.udim2(0, 280, 0, 210), -- Even bigger tooltip to fit rarity chance
+            Position = tooltipPosition,
+            BackgroundColor3 = Color3.fromRGB(250, 250, 250), -- Light background
+            BorderSizePixel = 0, -- No border, using shadow effect
+            ZIndex = 1000,
+        }, {
+            Corner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 12) -- More rounded corners
+            }),
+            
+            -- Drop shadow effect
+            Shadow = React.createElement("UIStroke", {
+                Color = Color3.fromRGB(0, 0, 0),
+                Thickness = 2,
+                Transparency = 0.8, -- Subtle shadow
+            }),
+            
+            -- Gradient background for modern look
+            Gradient = React.createElement("UIGradient", {
+                Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 240, 240))
+                }),
+                Rotation = 45,
+            }),
+            
+            -- Pet name (title)
+            Name = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 10),
+                BackgroundTransparency = 1,
+                Text = hoveredPet.Name,
+                TextColor3 = Color3.fromRGB(50, 50, 50),
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger title
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 1001,
+            }),
+            
+            -- Rarity (with color)
+            Rarity = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -20, 0, 25),
+                Position = ScreenUtils.udim2(0, 10, 0, 45),
+                BackgroundTransparency = 1,
+                Text = "Rarity: " .. hoveredPet.Rarity,
+                TextColor3 = rarityColor,
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 1001,
+            }),
+            
+            -- Variation (with color and black outline for visibility)
+            Variation = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -20, 0, 25),
+                Position = ScreenUtils.udim2(0, 10, 0, 75),
+                BackgroundTransparency = 1,
+                Text = "Variation: " .. hoveredPet.Variation,
+                TextColor3 = variationColor,
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextStrokeTransparency = 0, -- Black outline for visibility
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                ZIndex = 1001,
+            }),
+            
+            -- Rarity chance (1 in xxx format)
+            RarityChance = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, -20, 0, 25),
+                Position = ScreenUtils.udim2(0, 10, 0, 105),
+                BackgroundTransparency = 1,
+                Text = "Chance: 1 in " .. (PetConstants.getCombinedRarityChance and NumberFormatter.format(PetConstants.getCombinedRarityChance(hoveredPet.Rarity, hoveredPet.Variation)) or "???"),
+                TextColor3 = Color3.fromRGB(100, 100, 100), -- Gray color for chance text
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextStrokeTransparency = 0, -- Black outline for visibility
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                ZIndex = 1001,
+            }),
+            
+            -- Value with money icon
+            Value = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -20, 0, 25),
+                Position = ScreenUtils.udim2(0, 10, 0, 135), -- Moved down to make room for rarity chance
+                BackgroundTransparency = 1,
+                ZIndex = 1001,
+            }, {
+                MoneyIcon = React.createElement("ImageLabel", {
+                    Size = ScreenUtils.udim2(0, 20, 0, 20), -- Bigger icon
+                    Position = ScreenUtils.udim2(0, 0, 0, 2),
+                    BackgroundTransparency = 1,
+                    Image = IconAssets.getIcon("CURRENCY", "MONEY"),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 1002,
+                }),
+                
+                ValueText = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, -25, 1, 0),
+                    Position = ScreenUtils.udim2(0, 25, 0, 0),
+                    BackgroundTransparency = 1,
+                    Text = "Value: " .. NumberFormatter.format(finalValue),
+                    TextColor3 = Color3.fromRGB(50, 50, 50),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 1002,
+                })
+            }),
+            
+            -- Boost with boost icon
+            Boost = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -20, 0, 25),
+                Position = ScreenUtils.udim2(0, 10, 0, 165), -- Moved down further to make room for rarity chance and value
+                BackgroundTransparency = 1,
+                ZIndex = 1001,
+            }, {
+                BoostIcon = React.createElement("ImageLabel", {
+                    Size = ScreenUtils.udim2(0, 20, 0, 20), -- Bigger icon
+                    Position = ScreenUtils.udim2(0, 0, 0, 2),
+                    BackgroundTransparency = 1,
+                    Image = IconAssets.getIcon("UI", "BOOST"),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 1002,
+                }),
+                
+                BoostText = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, -25, 1, 0),
+                    Position = ScreenUtils.udim2(0, 25, 0, 0),
+                    BackgroundTransparency = 1,
+                    Text = "Boost: " .. string.format("%.2f", finalBoost),
+                    TextColor3 = Color3.fromRGB(50, 50, 50),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(100, 100, 100),
+                    ZIndex = 1002,
                 })
             })
         })
-    })
-
-    if not isVisible and not isRebirthVisible then
-        return sideButtons
     end
 
-    -- Pet inventory panel
-    local petInventoryPanel = React.createElement("Frame", {
-        Size = UDim2.new(0, 600, 0, 400),
-        Position = UDim2.new(0.5, -300, 0.5, -200),
-        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-        BorderSizePixel = 0,
-        ZIndex = 100,
-        Visible = true
+    if not isVisible then
+        return nil
+    end
+
+    -- Main inventory panel
+    return React.createElement("ScreenGui", {
+        Name = "PetInventoryGUI",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
     }, {
-        Corner = React.createElement("UICorner", {
-            CornerRadius = UDim.new(0, 12)
+        -- Background overlay
+        Background = React.createElement("TextButton", {
+            Size = ScreenUtils.udim2(1, 0, 1, 0),
+            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+            BackgroundTransparency = 0.5,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 1,
+            [React.Event.Activated] = function()
+                setIsVisible(false)
+                if props.onClose then props.onClose() end
+            end
         }),
         
-        -- Header
-        Header = React.createElement("Frame", {
-            Size = UDim2.new(1, 0, 0, 50),
-            BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-            BorderSizePixel = 0,
-            ZIndex = 101,
-            Visible = true
+        -- Main panel (smaller and more centered)
+        MainPanel = React.createElement("Frame", {
+            Size = ScreenUtils.udim2(0.6, 0, 0.75, 0), -- Even smaller overall UI
+            Position = ScreenUtils.udim2(0.5, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
+            BorderSizePixel = 3,
+            BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+            ZIndex = 5,
         }, {
             Corner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0, 12)
+                CornerRadius = ScreenUtils.udim(0, 12)
             }),
             
-            Title = React.createElement("TextLabel", {
-                Size = UDim2.new(1, -100, 1, 0),
-                Position = UDim2.new(0, 20, 0, 0),
-                BackgroundTransparency = 1,
-                Text = string.format("Pet Inventory (%d pets, %d unique)", #pets, #petGroups),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 102,
-                Visible = true
-            }),
-            
-            CloseButton = React.createElement("TextButton", {
-                Size = UDim2.new(0, 40, 0, 40),
-                Position = UDim2.new(1, -50, 0.5, -20),
-                BackgroundColor3 = Color3.fromRGB(200, 50, 50),
-                BorderSizePixel = 0,
-                Text = "✕",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextScaled = true,
-                Font = Enum.Font.GothamBold,
-                ZIndex = 102,
-                Visible = true,
-                [React.Event.Activated] = function()
-                    setIsVisible(false)
-                end
+            -- Header with X button
+            Header = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, 0, 0, 50),
+                BackgroundTransparency = 1, -- Transparent for gradient
+                BorderSizePixel = 2,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+                ZIndex = 6,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 8)
+                    CornerRadius = ScreenUtils.udim(0, 12)
+                }),
+                
+                -- Gradient background for header
+                GradientBackground = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
+                    BackgroundColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise base
+                    BorderSizePixel = 0,
+                    ZIndex = 5,
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 12)
+                    }),
+                    Gradient = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
+                        }),
+                        Transparency = NumberSequence.new({
+                            NumberSequenceKeypoint.new(0, 0.3),
+                            NumberSequenceKeypoint.new(1, 0.6)
+                        }),
+                        Rotation = 90,
+                    }),
+                }),
+                
+                Title = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, -60, 1, 0),
+                    Position = ScreenUtils.udim2(0.5, 0, 0, 0),
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    Text = "Pet Inventory",
+                    TextColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Bigger
+                    TextStrokeTransparency = 0, -- Black outline
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    ZIndex = 7,
+                }),
+                
+                CloseButton = React.createElement("ImageButton", {
+                    Size = ScreenUtils.udim2(0, 40, 0, 40),
+                    Position = ScreenUtils.udim2(1, -45, 0.5, -20),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundTransparency = 1,
+                    Image = IconAssets.getIcon("UI", "X_BUTTON"),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 7,
+                    [React.Event.Activated] = function()
+                        setIsVisible(false)
+                        if props.onClose then props.onClose() end
+                    end
                 })
+            }),
+            
+            -- Equipped pets section
+            EquippedSection = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -40, 0, 230), -- Increased height to prevent text cutoff
+                Position = ScreenUtils.udim2(0.5, 0, 0, 60),
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundTransparency = 1, -- Remove background for image
+                BorderSizePixel = 2,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+                ZIndex = 6,
+            }, {
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 8)
+                }),
+                
+                Stroke = React.createElement("UIStroke", {
+                    Color = Color3.fromRGB(0, 0, 0), -- Black outline
+                    Thickness = 2,
+                }),
+                
+                -- White background
+                WhiteBackground = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
+                    Position = ScreenUtils.udim2(0, 0, 0, 0),
+                    BackgroundColor3 = Color3.fromRGB(245, 245, 245), -- Light grey background
+                    BorderSizePixel = 0,
+                    ZIndex = 4, -- Behind everything
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                }),
+                
+                -- Background image for equipped pets section
+                BackgroundImage = React.createElement("ImageLabel", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
+                    Position = ScreenUtils.udim2(0, 0, 0, 0),
+                    BackgroundTransparency = 1, -- Transparent so white shows through
+                    Image = "rbxassetid://116367512866072",
+                    ScaleType = Enum.ScaleType.Tile,
+                    TileSize = ScreenUtils.udim2(0, 120, 0, 120), -- Medium paw pattern
+                    ImageTransparency = 0.85, -- More transparent for subtle effect
+                    ImageColor3 = Color3.fromRGB(200, 200, 200), -- Lighter grey tint
+                    ZIndex = 5, -- Above white background
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                }),
+                
+                EquippedTitle = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, -10, 0, 30),
+                    Position = ScreenUtils.udim2(0.5, 0, 0, 5),
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    Text = string.format("Equipped Pets %d/3", #equippedPets),
+                    TextColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2, -- Bigger
+                    TextStrokeTransparency = 0, -- Black outline
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    ZIndex = 7,
+                }),
+                
+                -- Auto-equip disclaimer with animation (top-left, tilted)
+                Disclaimer = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(0, 300, 0, 35), -- Bigger and fixed width
+                    Position = ScreenUtils.udim2(0, 20, 0, 10), -- Top-left corner
+                    AnchorPoint = Vector2.new(0, 0),
+                    BackgroundTransparency = 1,
+                    Text = "Best pets automatically get equipped!",
+                    TextColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger text
+                    Font = Enum.Font.GothamBold, -- Bold for emphasis
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Rotation = -15, -- Tilted 15 degrees
+                    ZIndex = 8,
+                    
+                    -- Animation setup
+                    [React.Event.AncestryChanged] = function(rbx)
+                        if rbx.Parent then
+                            -- Create bouncing animation
+                            local startY = rbx.Position.Y.Offset
+                            local startX = rbx.Position.X.Offset
+                            local amplitude = 6 -- Bounce 6 pixels (gentler)
+                            local speed = 0.5 -- 0.5 cycles per second (much slower)
+                            
+                            task.spawn(function()
+                                local connection
+                                connection = RunService.Heartbeat:Connect(function()
+                                    if not rbx.Parent then
+                                        connection:Disconnect()
+                                        return
+                                    end
+                                    
+                                    local time = tick()
+                                    local bounce = math.sin(time * speed * math.pi * 2) * amplitude
+                                    rbx.Position = UDim2.new(0, startX, 0, startY + bounce)
+                                end)
+                            end)
+                        end
+                    end,
+                }),
+                
+                EquippedGrid = React.createElement("ScrollingFrame", {
+                    Size = ScreenUtils.udim2(1, -10, 1, -50), -- More space since disclaimer is in corner
+                    Position = ScreenUtils.udim2(0.5, 0, 0, 45), -- Back to normal position
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 2,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+                    ScrollBarThickness = 6,
+                    ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
+                    ScrollingDirection = Enum.ScrollingDirection.X, -- Horizontal scroll
+                    CanvasSize = ScreenUtils.udim2(0, math.max(400, #equippedGroups * 130), 1, 0), -- Original equipped pets sizing
+                    ZIndex = 7,
+                }, {
+                    Layout = React.createElement("UIListLayout", {
+                        FillDirection = Enum.FillDirection.Horizontal,
+                        SortOrder = Enum.SortOrder.LayoutOrder,
+                        Padding = ScreenUtils.udim(0, 10),
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                        VerticalAlignment = Enum.VerticalAlignment.Center,
+                    }),
+                    
+                    Padding = React.createElement("UIPadding", {
+                        PaddingLeft = ScreenUtils.udim(0, 5),
+                        PaddingRight = ScreenUtils.udim(0, 5),
+                        PaddingTop = ScreenUtils.udim(0, 5),
+                        PaddingBottom = ScreenUtils.udim(0, 5)
+                    })
+                }, #equippedGroups > 0 and React.createElement(React.Fragment, nil, (function()
+                    local equippedElements = {}
+                    for i, petGroup in ipairs(equippedGroups) do
+                        equippedElements["EquippedPet_" .. i] = createPetCard(petGroup, i, true, true) -- true for inEquippedSection
+                    end
+                    return equippedElements
+                end)()) or nil)
+            }),
+            
+            -- Inventory pets section
+            InventorySection = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -40, 1, -310), -- Adjusted for bigger equipped section
+                Position = ScreenUtils.udim2(0.5, 0, 0, 300), -- Moved down 30 pixels
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundTransparency = 1, -- Remove background for image
+                BorderSizePixel = 2,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+                ZIndex = 6,
+            }, {
+                Corner = React.createElement("UICorner", {
+                    CornerRadius = ScreenUtils.udim(0, 8)
+                }),
+                
+                Stroke = React.createElement("UIStroke", {
+                    Color = Color3.fromRGB(0, 0, 0), -- Black outline
+                    Thickness = 2,
+                }),
+                
+                -- White background
+                WhiteBackground = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
+                    Position = ScreenUtils.udim2(0, 0, 0, 0),
+                    BackgroundColor3 = Color3.fromRGB(245, 245, 245), -- Light grey background
+                    BorderSizePixel = 0,
+                    ZIndex = 4, -- Behind everything
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                }),
+                
+                -- Background image for inventory pets section
+                BackgroundImage = React.createElement("ImageLabel", {
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
+                    Position = ScreenUtils.udim2(0, 0, 0, 0),
+                    BackgroundTransparency = 1, -- Transparent so white shows through
+                    Image = "rbxassetid://116367512866072",
+                    ScaleType = Enum.ScaleType.Tile,
+                    TileSize = ScreenUtils.udim2(0, 120, 0, 120), -- Medium paw pattern
+                    ImageTransparency = 0.85, -- More transparent for subtle effect
+                    ImageColor3 = Color3.fromRGB(200, 200, 200), -- Lighter grey tint
+                    ZIndex = 5, -- Above white background
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                }),
+                
+                InventoryTitle = React.createElement("TextLabel", {
+                    Size = ScreenUtils.udim2(1, -10, 0, 30),
+                    Position = ScreenUtils.udim2(0.5, 0, 0, 5),
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    Text = string.format("Pets %d/%d", #pets, MAX_PET_INVENTORY),
+                    TextColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2, -- Bigger
+                    TextStrokeTransparency = 0, -- Black outline
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    ZIndex = 7,
+                }),
+                
+                InventoryGrid = React.createElement("ScrollingFrame", {
+                    Size = ScreenUtils.udim2(1, -10, 1, -40),
+                    Position = ScreenUtils.udim2(0.5, 0, 0, 35),
+                    AnchorPoint = Vector2.new(0.5, 0),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 2,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+                    ScrollBarThickness = 8,
+                    ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
+                    CanvasSize = ScreenUtils.udim2(0, 0, 0, math.ceil(#inventoryGroups / 7) * 155 + 30), -- Updated for 7 columns with spacing
+                    ZIndex = 7,
+                }, {
+                    Layout = React.createElement("UIGridLayout", {
+                        CellSize = ScreenUtils.udim2(0, 130, 0, 140), -- Original cell size
+                        CellPadding = ScreenUtils.udim2(0, 15, 0, 15), -- More spacing
+                        StartCorner = Enum.StartCorner.TopLeft,
+                        FillDirectionMaxCells = 7, -- Max 7 columns per row
+                        SortOrder = Enum.SortOrder.LayoutOrder,
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                        VerticalAlignment = Enum.VerticalAlignment.Top
+                    }),
+                    
+                    Padding = React.createElement("UIPadding", {
+                        PaddingLeft = ScreenUtils.udim(0, 5),
+                        PaddingRight = ScreenUtils.udim(0, 5),
+                        PaddingTop = ScreenUtils.udim(0, 5),
+                        PaddingBottom = ScreenUtils.udim(0, 5)
+                    })
+                }, #inventoryGroups > 0 and React.createElement(React.Fragment, nil, (function()
+                    -- Create a lookup table for equipped pets
+                    local equippedLookup = {}
+                    for _, equippedGroup in ipairs(equippedGroups) do
+                        -- Create a key from name and variation to identify unique pets
+                        local key = equippedGroup.Name .. "_" .. equippedGroup.Variation
+                        equippedLookup[key] = true
+                    end
+                    
+                    local inventoryElements = {}
+                    for i, petGroup in ipairs(inventoryGroups) do
+                        -- Check if this pet is equipped
+                        local petKey = petGroup.Name .. "_" .. petGroup.Variation
+                        local isEquipped = equippedLookup[petKey] == true
+                        inventoryElements["InventoryPet_" .. i] = createPetCard(petGroup, i, isEquipped, false) -- false for inEquippedSection
+                    end
+                    return inventoryElements
+                end)()) or nil)
             })
         }),
         
-        -- Content
-        Content = React.createElement("ScrollingFrame", {
-            Size = UDim2.new(1, -20, 1, -70),
-            Position = UDim2.new(0, 10, 0, 60),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            ScrollBarThickness = 8,
-            ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
-            CanvasSize = UDim2.new(0, 0, 0, math.ceil(#petGroups / 4) * 120 + 20),
-            ZIndex = 101,
-            Visible = true
-        }, {
-            Layout = React.createElement("UIGridLayout", {
-                CellSize = UDim2.new(0, 130, 0, 100),
-                CellPadding = UDim2.new(0, 10, 0, 10),
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                HorizontalAlignment = Enum.HorizontalAlignment.Left,
-                VerticalAlignment = Enum.VerticalAlignment.Top
-            }),
-            
-            Padding = React.createElement("UIPadding", {
-                PaddingTop = UDim.new(0, 10),
-                PaddingBottom = UDim.new(0, 10),
-                PaddingLeft = UDim.new(0, 10),
-                PaddingRight = UDim.new(0, 10)
-            })
-        }, #petGroups > 0 and React.createElement(React.Fragment, nil, (function()
-            local petElements = {}
-            
-            for i, petGroup in ipairs(petGroups) do
-                petElements["PetGroup_" .. i] = React.createElement("Frame", {
-                    BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                    BorderSizePixel = 0,
-                    LayoutOrder = i,
-                    ZIndex = 102,
-                    Visible = true
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = UDim.new(0, 8)
-                    }),
-                    
-                    PetName = React.createElement("TextLabel", {
-                        Size = UDim2.new(1, -10, 0, 18),
-                        Position = UDim2.new(0, 5, 0, 5),
-                        BackgroundTransparency = 1,
-                        Text = petGroup.Name,
-                        TextColor3 = Color3.fromRGB(255, 255, 255),
-                        TextScaled = true,
-                        Font = Enum.Font.GothamBold,
-                        TextXAlignment = Enum.TextXAlignment.Center,
-                        ZIndex = 103,
-                        Visible = true
-                    }),
-                    
-                    Quantity = React.createElement("TextLabel", {
-                        Size = UDim2.new(1, -10, 0, 16),
-                        Position = UDim2.new(0, 5, 0, 23),
-                        BackgroundTransparency = 1,
-                        Text = string.format("QTY: %d", petGroup.Quantity),
-                        TextColor3 = Color3.fromRGB(100, 255, 100),
-                        TextScaled = true,
-                        Font = Enum.Font.GothamBold,
-                        TextXAlignment = Enum.TextXAlignment.Center,
-                        ZIndex = 103,
-                        Visible = true
-                    }),
-                    
-                    Rarity = React.createElement("TextLabel", {
-                        Size = UDim2.new(1, -10, 0, 14),
-                        Position = UDim2.new(0, 5, 0, 42),
-                        BackgroundTransparency = 1,
-                        Text = (petGroup.Rarity and petGroup.Rarity.RarityName) or "Common",
-                        TextColor3 = Color3.fromRGB(150, 200, 255),
-                        TextScaled = true,
-                        Font = Enum.Font.Gotham,
-                        TextXAlignment = Enum.TextXAlignment.Center,
-                        ZIndex = 103,
-                        Visible = true
-                    }),
-                    
-                    Variation = React.createElement("TextLabel", {
-                        Size = UDim2.new(1, -10, 0, 14),
-                        Position = UDim2.new(0, 5, 0, 58),
-                        BackgroundTransparency = 1,
-                        Text = (petGroup.Variation and petGroup.Variation.VariationName) or "Bronze",
-                        TextColor3 = Color3.fromRGB(255, 215, 100),
-                        TextScaled = true,
-                        Font = Enum.Font.Gotham,
-                        TextXAlignment = Enum.TextXAlignment.Center,
-                        ZIndex = 103,
-                        Visible = true
-                    }),
-                    
-                    -- Equipped indicator
-                    EquippedIndicator = petGroup.IsEquipped and React.createElement("TextLabel", {
-                        Size = UDim2.new(0, 60, 0, 12),
-                        Position = UDim2.new(1, -65, 0, 5),
-                        BackgroundColor3 = Color3.fromRGB(100, 255, 100),
-                        BorderSizePixel = 0,
-                        Text = "EQUIPPED",
-                        TextColor3 = Color3.fromRGB(0, 0, 0),
-                        TextScaled = true,
-                        Font = Enum.Font.GothamBold,
-                        TextXAlignment = Enum.TextXAlignment.Center,
-                        ZIndex = 104,
-                    }, {
-                        Corner = React.createElement("UICorner", {
-                            CornerRadius = UDim.new(0, 4)
-                        })
-                    }) or nil,
-                    
-                    -- Equip/Unequip button
-                    EquipButton = React.createElement("TextButton", {
-                        Size = UDim2.new(1, -10, 0, 18),
-                        Position = UDim2.new(0, 5, 1, -23),
-                        BackgroundColor3 = petGroup.IsEquipped and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100),
-                        BorderSizePixel = 0,
-                        Text = petGroup.IsEquipped and "Unequip" or "Equip",
-                        TextColor3 = Color3.fromRGB(0, 0, 0),
-                        TextScaled = true,
-                        Font = Enum.Font.GothamBold,
-                        ZIndex = 103,
-                        [React.Event.Activated] = function()
-                            local equipRemote = ReplicatedStorage:FindFirstChild("EquipPet")
-                            local unequipRemote = ReplicatedStorage:FindFirstChild("UnequipPet")
-                            
-                            if petGroup.IsEquipped then
-                                -- Unequip pet
-                                if unequipRemote and petGroup.SamplePet then
-                                    unequipRemote:FireServer(petGroup.SamplePet.ID)
-                                end
-                            else
-                                -- Equip pet
-                                if equipRemote and petGroup.SamplePet then
-                                    equipRemote:FireServer(petGroup.SamplePet.ID)
-                                end
-                            end
-                        end
-                    }, {
-                        Corner = React.createElement("UICorner", {
-                            CornerRadius = UDim.new(0, 4)
-                        })
-                    })
-                })
-            end
-            
-            return petElements
-        end)()) or nil),
-        
-        -- Empty state
-        EmptyState = #petGroups == 0 and React.createElement("Frame", {
-            Size = UDim2.new(1, -20, 1, -70),
-            Position = UDim2.new(0, 10, 0, 60),
-            BackgroundTransparency = 1
-        }, {
-            EmptyText = React.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = "No pets collected yet!\nTouch purple pet balls to collect pets.",
-                TextColor3 = Color3.fromRGB(150, 150, 150),
-                TextScaled = true,
-                Font = Enum.Font.Gotham,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Center
-            })
-        }) or nil
-    })
-    
-    -- Handle rebirth functionality
-    local function handleRebirth()
-        -- Create remote event request
-        local rebirthRemote = ReplicatedStorage:WaitForChild("RebirthPlayer")
-        rebirthRemote:FireServer()
-        setIsRebirthVisible(false)
-    end
-    
-    -- Return multiple UI elements
-    return React.createElement(React.Fragment, nil, {
-        SideButtons = sideButtons,
-        
-        PetInventory = isVisible and petInventoryPanel or nil,
-        
-        RebirthPanel = isRebirthVisible and React.createElement(RebirthUI.new, {
-            visible = isRebirthVisible,
-            playerMoney = playerData.Resources and playerData.Resources.Money or 0,
-            playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0,
-            canRebirth = playerData.Resources and playerData.Resources.Money >= 1000,
-            onClose = function()
-                setIsRebirthVisible(false)
-            end,
-            onRebirth = handleRebirth
-        }) or nil
+        -- Tooltip (rendered on top)
+        Tooltip = createTooltip()
     })
 end
 

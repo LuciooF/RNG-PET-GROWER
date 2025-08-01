@@ -156,7 +156,7 @@ end
 
 -- Auto-equip best pets for a player
 function PetService:AutoEquipBestPets(player, maxEquipped)
-    maxEquipped = maxEquipped or 6 -- Default max equipped pets
+    maxEquipped = maxEquipped or 3 -- Default to 3 equipped pets for new design
     
     local playerData = DataService:GetPlayerData(player)
     if not playerData then
@@ -168,11 +168,15 @@ function PetService:AutoEquipBestPets(player, maxEquipped)
         return false
     end
     
-    -- Get best pets
+    -- Get best pets from inventory (sorted by boost)
     local bestPets = self:GetBestPets(player, maxEquipped)
     
     -- Replace equipped pets with best pets
     profile.Data.EquippedPets = bestPets
+    
+    -- Sync data to client to update UI
+    local StateService = require(script.Parent.StateService)
+    StateService:BroadcastPlayerDataUpdate(player)
     
     return true
 end
@@ -419,7 +423,7 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
         -- Calculate pet value (BaseValue * VariationMultiplier)
         local petValue = self:CalculatePetValue(pet)
         
-        -- Apply gamepass multipliers
+        -- Apply gamepass multipliers (includes equipped pet boost)
         local finalValue = self:ApplyGamepassMultipliers(player, petValue, "Money")
         
         -- Add money to player
@@ -476,106 +480,22 @@ function PetService:CalculatePetValue(pet)
     return math.floor(baseValue * variationMultiplier)
 end
 
--- Create heaven effect (floating pet ball)
+-- Create heaven effect (floating pet ball) - Client-side version
 function PetService:CreateHeavenEffect(player, pet, tubeNumber)
-    -- Get player's area
-    local AreaService = require(script.Parent.AreaService)
-    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-    
-    if not assignedAreaNumber then
-        return
-    end
-    
-    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        return
-    end
-    
-    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
-    if not area then
-        return
-    end
-    
-    -- Find the tube and its base
-    local tubesFolder = area:FindFirstChild("Tubes")
-    if not tubesFolder then
-        return
-    end
-    
-    local innerTubesFolder = tubesFolder:FindFirstChild("Tubes")
-    if not innerTubesFolder then
-        return
-    end
-    
-    local tube = innerTubesFolder:FindFirstChild("Tube" .. tubeNumber)
-    if not tube then
-        print("PetService: Tube" .. tubeNumber .. " not found in", innerTubesFolder.Name)
-        return
-    end
-    
-    print("PetService: Found tube:", tube.Name, "at position:", tube:GetPivot().Position)
-    
-    local tubeBase = tube:FindFirstChild("TubeBase")
-    if not tubeBase then
-        print("PetService: TubeBase not found in", tube.Name)
-        return
-    end
-    
-    print("PetService: Creating heaven effect at tube base position:", tubeBase.Position)
-    
-    -- Create floating pet ball
-    local petBall = Instance.new("Part")
-    petBall.Name = "HeavenPetBall"
-    petBall.Shape = Enum.PartType.Ball
-    petBall.Size = Vector3.new(3, 3, 3) -- Larger for better visibility
-    petBall.Material = Enum.Material.Neon
-    petBall.CanCollide = false
-    petBall.Anchored = true
-    petBall.Transparency = 0 -- Completely visible
-    
-    -- Color by rarity
-    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
-    local rarityColor = PetConstants.getRarityColor(pet.Rarity or "Common")
-    petBall.Color = rarityColor
-    
-    -- Position at tube base (higher up for visibility)
-    local startPosition = tubeBase.Position + Vector3.new(0, 10, 0) -- Much higher
-    petBall.Position = startPosition
-    petBall.Parent = game.Workspace -- Parent to workspace for maximum visibility
-    
-    
-    -- Wait a moment so the ball is visible before starting animation
-    wait(0.5)
-    
-    -- Animate floating up to heaven (slower and longer)
-    local TweenService = game:GetService("TweenService")
-    local endPosition = startPosition + Vector3.new(0, 100, 0) -- Float up 100 studs
-    local floatTween = TweenService:Create(petBall,
-        TweenInfo.new(2.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), -- 2.5 seconds, 2x faster again
-        {
-            Position = endPosition -- Float higher, keep size and transparency the same
-        }
-    )
-    
-    floatTween:Play()
-    
-    -- After animation, wait a bit then fade out
-    floatTween.Completed:Connect(function()
-        -- Fade out over 1 second
-        local fadeOut = TweenService:Create(petBall,
-            TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {
-                Transparency = 1,
-                Size = Vector3.new(1, 1, 1)
-            }
-        )
-        fadeOut:Play()
+    -- Send heaven pet ball spawn request to the client
+    local spawnHeavenPetBallRemote = ReplicatedStorage:FindFirstChild("SpawnHeavenPetBall")
+    if spawnHeavenPetBallRemote then
+        -- Get player's area name
+        local AreaService = require(script.Parent.AreaService)
+        local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
         
-        -- Destroy after fade completes
-        fadeOut.Completed:Connect(function()
-            petBall:Destroy()
-        end)
-    end)
+        if assignedAreaNumber then
+            local areaName = "PlayerArea" .. assignedAreaNumber
+            spawnHeavenPetBallRemote:FireClient(player, pet, tubeNumber, areaName)
+        end
+    else
+        warn("PetService: SpawnHeavenPetBall remote not found")
+    end
 end
 
 -- Stop heaven processing for a player
@@ -632,23 +552,47 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
             multiplier = multiplier * 2
         end
         
-        -- Check for VIP gamepass (includes all benefits)
+        -- Check for VIP gamepass (stacks with other gamepasses)
         if gamepasses.VIP then
             multiplier = multiplier * 2
         end
+        
+        -- Apply equipped pet boost (additive - add boost amounts together)
+        local petBoostMultiplier = self:GetEquippedPetBoostMultiplier(player)
+        multiplier = multiplier + petBoostMultiplier - 1 -- Subtract 1 to avoid double-counting base multiplier
     elseif rewardType == "Diamonds" then
         -- Check for 2x Diamonds gamepass
         if gamepasses.TwoXDiamonds then
             multiplier = multiplier * 2
         end
         
-        -- Check for VIP gamepass (includes all benefits)
+        -- Check for VIP gamepass (stacks with other gamepasses)
         if gamepasses.VIP then
             multiplier = multiplier * 2
         end
     end
     
     return math.floor(baseValue * multiplier)
+end
+
+-- Calculate total boost multiplier from equipped pets
+function PetService:GetEquippedPetBoostMultiplier(player)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData or not playerData.EquippedPets then
+        return 1 -- No boost if no equipped pets
+    end
+    
+    local totalBoostMultiplier = 1 -- Start with 1 (no boost)
+    
+    -- Add boost from each equipped pet (use BaseBoost, not FinalBoost to avoid double-multiplying)
+    for _, equippedPet in pairs(playerData.EquippedPets) do
+        local petBoost = equippedPet.BaseBoost or 1
+        -- Convert boost to multiplier (e.g., 1.1 boost = 0.1 = 10% boost)
+        local boostPercentage = petBoost - 1 -- 1.1 becomes 0.1 (10%)
+        totalBoostMultiplier = totalBoostMultiplier + boostPercentage
+    end
+    
+    return totalBoostMultiplier
 end
 
 -- Get processing speed multiplier from gamepasses

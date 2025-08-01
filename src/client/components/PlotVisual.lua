@@ -31,18 +31,19 @@ local function getTubePlotRebirthRequirement(tubePlotNumber)
     return tubePlotNumber - 1
 end
 
+-- BALANCED: Updated plot costs for better progression challenge
 local function getPlotCost(plotNumber)
     if plotNumber == 1 then
         return 0 -- First plot is free
     end
-    return 10 * (2 ^ (plotNumber - 2))
+    return 5 * (2 ^ (plotNumber - 2))  -- Increased from 2 to 5 for more challenge
 end
 
 local function getTubePlotCost(tubePlotNumber)
     if tubePlotNumber == 1 then
         return 0 -- First tubeplot is free
     end
-    return 20 * (2 ^ (tubePlotNumber - 2))
+    return 10 * (2 ^ (tubePlotNumber - 2))  -- Increased from 5 to 10 for more challenge
 end
 
 local function PlotVisual()
@@ -140,8 +141,8 @@ local function PlotVisual()
                                 -- Green if can afford
                                 cube.Color = Color3.fromRGB(0, 255, 0)
                             else
-                                -- Red if can't afford
-                                cube.Color = Color3.fromRGB(255, 0, 0)
+                                -- Darker turquoise if can't afford
+                                cube.Color = Color3.fromRGB(32, 178, 170)
                             end
                         end
                     end
@@ -168,8 +169,8 @@ local function PlotVisual()
                             -- Green if can afford
                             cube.Color = Color3.fromRGB(0, 255, 0)
                         else
-                            -- Red if can't afford
-                            cube.Color = Color3.fromRGB(255, 0, 0)
+                            -- Darker turquoise if can't afford
+                            cube.Color = Color3.fromRGB(32, 178, 170)
                         end
                     end
                 end

@@ -9,6 +9,9 @@ local PetUtils = require(ReplicatedStorage.utils.PetUtils)
 local DataService = {}
 DataService.__index = DataService
 
+-- Auto-equip debounce system to handle rapid pet additions
+local autoEquipDebounceTimers = {} -- player -> timer
+
 -- Configuration
 local PROFILE_TEMPLATE = {
     Resources = {
@@ -93,6 +96,12 @@ end
 function DataService:UnloadPlayerProfile(player)
     local profile = Profiles[player]
     if profile ~= nil then
+        -- Clear any pending auto-equip timers
+        if autoEquipDebounceTimers[player] then
+            task.cancel(autoEquipDebounceTimers[player])
+            autoEquipDebounceTimers[player] = nil
+        end
+        
         profile:EndSession()
         Profiles[player] = nil
     end
@@ -179,8 +188,12 @@ function DataService:TrackCollectedPet(player, petData)
     
     -- Create collection key from pet name and variation
     local petName = petData.Name or "Unknown"
-    local variationName = "Normal"
-    if petData.Variation and petData.Variation.VariationName then
+    local variationName = "Bronze" -- Default to Bronze
+    
+    -- Handle both variation formats (string or object)
+    if type(petData.Variation) == "string" then
+        variationName = petData.Variation
+    elseif petData.Variation and petData.Variation.VariationName then
         variationName = petData.Variation.VariationName
     end
     
@@ -212,6 +225,15 @@ end
 function DataService:AddPetToPlayer(player, petData)
     local profile = Profiles[player]
     if profile then
+        -- Check inventory limit (1000 pets maximum)
+        local MAX_PET_INVENTORY = 1000
+        if #profile.Data.Pets >= MAX_PET_INVENTORY then
+            -- Send error message to player about inventory being full
+            local PetService = require(script.Parent.PetService)
+            PetService:ShowErrorMessage(player, "Your pet inventory is full! (" .. MAX_PET_INVENTORY .. " pets max). Send some pets to heaven to make space.")
+            return false, "inventory_full"
+        end
+        
         -- Ensure pet has an ID
         if not petData.ID then
             petData.ID = game:GetService("HttpService"):GenerateGUID(false)
@@ -223,14 +245,50 @@ function DataService:AddPetToPlayer(player, petData)
         -- Sanitize pet data for DataStore compatibility
         local sanitizedPet = PetUtils.sanitizePetForStorage(petData)
         table.insert(profile.Data.Pets, sanitizedPet)
-        return true
+        
+        -- Schedule debounced auto-equip to handle rapid pet additions
+        self:ScheduleDebouncedAutoEquip(player)
+        
+        return true, "success"
     end
-    return false
+    return false, "profile_not_found"
+end
+
+-- Debounced auto-equip system to prevent race conditions
+function DataService:ScheduleDebouncedAutoEquip(player)
+    -- Cancel existing timer if it exists
+    if autoEquipDebounceTimers[player] then
+        task.cancel(autoEquipDebounceTimers[player])
+    end
+    
+    -- Schedule new auto-equip after a short delay (0.1 seconds)
+    autoEquipDebounceTimers[player] = task.delay(0.1, function()
+        -- Clear the timer
+        autoEquipDebounceTimers[player] = nil
+        
+        -- Perform auto-equip if player is still valid
+        if player.Parent == game.Players then
+            local PetService = require(script.Parent.PetService)
+            local success, error = pcall(function()
+                PetService:AutoEquipBestPets(player, 3) -- Max 3 equipped pets
+            end)
+            
+            if not success then
+                warn("DataService: Auto-equip failed for", player.Name, ":", error)
+            end
+        end
+    end)
 end
 
 function DataService:ResetPlayerData(player)
     local profile = Profiles[player]
     if profile then
+        -- Clear any pending auto-equip timers
+        if autoEquipDebounceTimers[player] then
+            task.cancel(autoEquipDebounceTimers[player])
+            autoEquipDebounceTimers[player] = nil
+        end
+        
         -- Reset data to template values
         profile.Data.Resources = {
             Diamonds = 0,
@@ -242,8 +300,15 @@ function DataService:ResetPlayerData(player)
         profile.Data.ProcessingPets = {}
         profile.Data.OwnedTubes = {}
         profile.Data.OwnedPlots = {}
+        profile.Data.CollectedPets = {} -- Reset pet index/discovery data
+        profile.Data.Mixers = {} -- Reset mixer data
+        profile.Data.OwnedGamepasses = {} -- Reset gamepasses
+        profile.Data.GamepassSettings = { -- Reset gamepass settings
+            AutoHeavenEnabled = true,
+            PetMagnetEnabled = true
+        }
         
-        print("DataService: Reset player data for", player.Name)
+        print("DataService: Reset player data for", player.Name, "- including pet index and all progress")
         return true
     end
     return false

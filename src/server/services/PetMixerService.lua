@@ -15,7 +15,6 @@ PetMixerService.__index = PetMixerService
 local mixerCheckConnections = {}
 
 function PetMixerService:Initialize()
-    print("PetMixerService: Initialized")
     
     -- Set up periodic checks for all players
     self:SetupMixerCompletionChecks()
@@ -140,7 +139,6 @@ function PetMixerService:StartMixing(player, petIds)
     -- Sync data to client
     StateService:BroadcastPlayerDataUpdate(player)
     
-    print("PetMixerService: Started mixing", #inputPets, "pets for", player.Name, "- completes in", mixTime, "seconds")
     
     return true, mixer
 end
@@ -227,7 +225,6 @@ function PetMixerService:ClaimMixer(player, mixerId)
     -- Sync data to client
     StateService:BroadcastPlayerDataUpdate(player)
     
-    print("PetMixerService: Player", player.Name, "claimed mixer with output:", mixer.outputPet.Name)
     
     return true, mixer.outputPet
 end
@@ -270,7 +267,6 @@ function PetMixerService:CancelMixer(player, mixerId)
     -- Sync data to client
     StateService:BroadcastPlayerDataUpdate(player)
     
-    print("PetMixerService: Player", player.Name, "cancelled mixer, returned", #mixer.inputPets, "pets")
     
     return true
 end
@@ -288,7 +284,6 @@ function PetMixerService:CheckMixerCompletions(player)
     for _, mixer in ipairs(profile.Data.Mixers or {}) do
         if not mixer.claimed and currentTime >= mixer.completionTime then
             hasCompletions = true
-            print("PetMixerService: Mixer completed for", player.Name, "- output:", mixer.outputPet.Name)
         end
     end
     
@@ -328,7 +323,6 @@ function PetMixerService:OnPlayerJoined(player)
     -- Wait for data to load
     task.wait(3)
     
-    print("PetMixerService: Checking mixer completions for", player.Name)
     self:CheckMixerCompletions(player)
 end
 
