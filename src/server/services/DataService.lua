@@ -30,7 +30,14 @@ local PROFILE_TEMPLATE = {
         PetMagnetEnabled = true -- Whether Pet Magnet is enabled (when owned)
     },
     Mixers = {}, -- Array of active pet mixers with offline timer support
-    CollectedPets = {} -- Dictionary of all pets ever collected: {["MouseNormal"] = {count = 5, firstCollected = tick(), lastCollected = tick()}}
+    CollectedPets = {}, -- Dictionary of all pets ever collected: {["MouseNormal"] = {count = 5, firstCollected = tick(), lastCollected = tick()}}
+    ProcessedPets = 0, -- Total number of pets processed through tubes
+    TutorialCompleted = false, -- Whether the player has completed the tutorial
+    TutorialProgress = { -- Tutorial progression tracking
+        currentStep = 1,
+        completedSteps = {},
+        active = false
+    }
 }
 
 local DATASTORE_NAME = "PlayerData"
@@ -307,8 +314,15 @@ function DataService:ResetPlayerData(player)
             AutoHeavenEnabled = true,
             PetMagnetEnabled = true
         }
+        profile.Data.ProcessedPets = 0 -- Reset processed pets counter
+        profile.Data.TutorialCompleted = false -- Reset tutorial completion
+        profile.Data.TutorialProgress = { -- Reset tutorial progress
+            currentStep = 1,
+            completedSteps = {},
+            active = false
+        }
         
-        print("DataService: Reset player data for", player.Name, "- including pet index and all progress")
+        print("DataService: Reset player data for", player.Name, "- including pet index, tutorial, and all progress")
         return true
     end
     return false

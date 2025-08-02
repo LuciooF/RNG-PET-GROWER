@@ -436,6 +436,9 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
         table.remove(processingPets, 1)
         
         petsProcessed = petsProcessed + 1
+        
+        -- Increment total processed pets counter for tutorial tracking
+        profile.Data.ProcessedPets = (profile.Data.ProcessedPets or 0) + 1
     end
     
     -- Update ProcessingPets

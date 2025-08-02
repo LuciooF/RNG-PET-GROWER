@@ -175,7 +175,7 @@ local function PetIndexUI(props)
         
         
         return React.createElement("TextButton", {
-            Size = ScreenUtils.udim2(0, 220, 0, 240), -- Even bigger size
+            Size = ScreenUtils.udim2(0, 190, 0, 190), -- Same size as updated Pet Inventory cards
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Text = "", -- Empty text for TextButton
@@ -185,13 +185,14 @@ local function PetIndexUI(props)
             
             [React.Event.MouseEnter] = function(rbx)
                 if not pinnedTooltip or pinnedTooltip.name ~= petName then
-                    setHoveredPet({name = petName, index = cardIndex})
+                    setHoveredPet({name = petName, index = cardIndex, level = selectedLevel}) -- Include level in hover state
                     -- Calculate tooltip position
                     if rbx and rbx.Parent then
                         local success, _ = pcall(function()
                             local absPos = rbx.AbsolutePosition
                             local absSize = rbx.AbsoluteSize
-                            setTooltipPosition(UDim2.new(0, absPos.X + absSize.X + 15, 0, absPos.Y))
+                            local responsiveOffset = ScreenUtils.getScaleFactor() * 15
+                            setTooltipPosition(UDim2.new(0, absPos.X + absSize.X + responsiveOffset, 0, absPos.Y))
                         end)
                     end
                 end
@@ -205,124 +206,94 @@ local function PetIndexUI(props)
             
             [React.Event.MouseButton1Click] = function(rbx)
                 -- Pin tooltip on click
-                setPinnedTooltip({name = petName, index = cardIndex})
-                setHoveredPet({name = petName, index = cardIndex})
+                setPinnedTooltip({name = petName, index = cardIndex, level = selectedLevel}) -- Include level in pinned state
+                setHoveredPet({name = petName, index = cardIndex, level = selectedLevel}) -- Include level in hover state
                 -- Calculate tooltip position
                 if rbx and rbx.Parent then
                     local success, _ = pcall(function()
                         local absPos = rbx.AbsolutePosition
                         local absSize = rbx.AbsoluteSize
-                        setTooltipPosition(UDim2.new(0, absPos.X + absSize.X + 15, 0, absPos.Y))
+                        local responsiveOffset = ScreenUtils.getScaleFactor() * 15
+                        setTooltipPosition(UDim2.new(0, absPos.X + absSize.X + responsiveOffset, 0, absPos.Y))
                     end)
                 end
             end,
         }, {
             Corner = React.createElement("UICorner", {
-                CornerRadius = ScreenUtils.udim(0, 90) -- Bigger radius for bigger card
+                CornerRadius = ScreenUtils.udim(0, 80) -- Same as Pet Inventory cards (half of 160)
             }),
             
-            -- Pet name at the top (full width, no collision)
+            -- Pet name at the bottom (same position as Pet Inventory)
             PetName = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -10, 0, 35), -- Full width again since badge moved
-                Position = ScreenUtils.udim2(0, 5, 0, 5), -- Top of card
+                Size = ScreenUtils.udim2(1, -10, 0, 25),
+                Position = ScreenUtils.udim2(0, 5, 1, -25), -- Bottom of card like Pet Inventory
                 BackgroundTransparency = 1,
                 Text = isCollected and petName or "???",
                 TextColor3 = isCollected and PetConstants.getRarityColor(petRarity) or Color3.fromRGB(255, 100, 100),
-                TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 8, -- Way bigger text
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as Pet Inventory
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
+                TextScaled = true,
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 ZIndex = 112,
             }),
             
-            -- Rarity chance text (1 in xxx format) - always show
+            -- Rarity chance text (1 in xxx format) - above pet name like Pet Inventory boost text
             RarityChanceText = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, -10, 0, 25),
-                Position = ScreenUtils.udim2(0, 5, 0, 45), -- Below pet name
+                Position = ScreenUtils.udim2(0, 5, 1, -55), -- Above pet name like boost text in Pet Inventory
                 BackgroundTransparency = 1,
-                Text = "1 in " .. (PetConstants.getRarityChance and NumberFormatter.format(PetConstants.getRarityChance(petRarity)) or "???"), -- Dynamic rarity chance
-                TextColor3 = isCollected and PetConstants.getRarityColor(petRarity) or Color3.fromRGB(255, 0, 0), -- Normal rarity color for collected, start red for rainbow animation for not collected
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Big text
+                Text = "1 in " .. (PetConstants.getRarityChance and NumberFormatter.format(PetConstants.getRarityChance(petRarity)) or "???"),
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Same size as boost text in Pet Inventory
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 ZIndex = 112,
-                
-                -- Add rainbow animation for unlocked pets
-                [React.Event.AncestryChanged] = not isCollected and function(rbx)
-                    if rbx.Parent then
-                        task.spawn(function()
-                            local TweenService = game:GetService("TweenService")
-                            
-                            -- Rainbow color animation for unlocked pets
-                            while rbx.Parent do
-                                -- Red to Orange
-                                local tween1 = TweenService:Create(rbx, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(255, 165, 0)})
-                                tween1:Play()
-                                tween1.Completed:Wait()
-                                
-                                -- Orange to Yellow
-                                local tween2 = TweenService:Create(rbx, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(255, 255, 0)})
-                                tween2:Play()
-                                tween2.Completed:Wait()
-                                
-                                -- Yellow to Green
-                                local tween3 = TweenService:Create(rbx, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(0, 255, 0)})
-                                tween3:Play()
-                                tween3.Completed:Wait()
-                                
-                                -- Green to Blue
-                                local tween4 = TweenService:Create(rbx, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(0, 0, 255)})
-                                tween4:Play()
-                                tween4.Completed:Wait()
-                                
-                                -- Blue to Purple
-                                local tween5 = TweenService:Create(rbx, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(128, 0, 128)})
-                                tween5:Play()
-                                tween5.Completed:Wait()
-                                
-                                -- Purple to Red
-                                local tween6 = TweenService:Create(rbx, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(255, 0, 0)})
-                                tween6:Play()
-                                tween6.Completed:Wait()
-                            end
-                        end)
-                    end
-                end or nil,
+            }, {
+                -- Rainbow gradient for all pets (collected and locked)
+                RainbowGradient = React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
+                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
+                    }),
+                    Rotation = 0 -- Horizontal gradient
+                })
             }),
             
-            -- Simple colored background behind pet (circular like Pets UI)
-            ColoredBackground = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(0.8, 0, 0.45, 0), -- Slightly smaller circular background
-                Position = ScreenUtils.udim2(0.5, 0, 0, 80), -- Below rarity text
-                AnchorPoint = Vector2.new(0.5, 0),
-                BackgroundColor3 = variationColor,
-                BackgroundTransparency = 0.7, -- Slightly transparent like Pets UI
-                BorderSizePixel = 0,
+            -- Squiggle background (same as Pet Inventory UI)
+            SquiggleBackground = React.createElement("ImageLabel", {
+                Size = ScreenUtils.udim2(0.9, 0, 0.9, 0), -- Same relative size as Pet Inventory
+                Position = ScreenUtils.udim2(0.5, 0, 0.5, 0), -- Centered in card
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1, -- Transparent background
+                Image = IconAssets.getIcon("UI", "SQUIGGLE"),
+                ImageColor3 = isCollected and variationColor or Color3.fromRGB(50, 50, 50), -- Black for locked pets
+                ImageTransparency = 0.3, -- Same as Pet Inventory UI
+                ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 109, -- Behind viewport
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 78) -- Circular background (half of approx width)
-                }),
-                
-                Stroke = React.createElement("UIStroke", {
-                    Color = Color3.fromRGB(0, 0, 0), -- Dark outline like Pets UI
-                    Thickness = 1, -- Thin outline like Pets UI
-                    Transparency = 0.5, -- Semi-transparent for subtle effect like Pets UI
+                    CornerRadius = ScreenUtils.udim(0, 72) -- Circular clipping to match card size
                 }),
             }),
             
-            -- Pet viewport repositioned for middle area (circular like Pets UI)
+            -- Pet viewport (same as Pet Inventory UI)
             PetViewport = React.createElement("ViewportFrame", {
-                Size = ScreenUtils.udim2(0.8, 0, 0.45, 0), -- Match colored background size exactly
-                Position = ScreenUtils.udim2(0.5, 0, 0, 80), -- Match colored background position
-                AnchorPoint = Vector2.new(0.5, 0),
-                BackgroundTransparency = 1, -- Transparent viewport like Pets UI
-                ZIndex = 111, -- Above background
+                Size = ScreenUtils.udim2(1, -10, 1, -25), -- Same size as Pet Inventory viewport
+                Position = ScreenUtils.udim2(0, 5, 0, 5), -- Same position as Pet Inventory
+                BackgroundTransparency = 1, -- Transparent viewport
+                ZIndex = 111, -- Above squiggle background
+                key = "viewport_" .. selectedLevel .. "_" .. petName, -- Force recreation when level changes
                 
                 [React.Event.AncestryChanged] = function(rbx)
                     if rbx.Parent then
@@ -350,19 +321,19 @@ local function PetIndexUI(props)
                 end,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 78) -- Circular viewport matching background
+                    CornerRadius = ScreenUtils.udim(0, 60) -- Same as Pet Inventory viewport
                 }),
             }),
             
-            -- Collection status badge with variation count (moved to viewport area)
+            -- Collection status badge (top right corner like Pet Inventory quantity badge)
             CollectionBadge = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(0, 60, 0, 30),
-                Position = ScreenUtils.udim2(1, -65, 0, 80), -- Over the viewport background area
+                Size = ScreenUtils.udim2(0, 70, 0, 35), -- Same size as Pet Inventory quantity badge
+                Position = ScreenUtils.udim2(1, -75, 0, 5), -- Top right corner
                 BackgroundColor3 = isCollected and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 50, 50), -- Green if collected, red if not
-                BackgroundTransparency = 0.1,
-                BorderSizePixel = 2,
-                BorderColor3 = Color3.fromRGB(0, 0, 0),
-                ZIndex = 113, -- Above viewport
+                BackgroundTransparency = 0,
+                BorderSizePixel = 3,
+                BorderColor3 = Color3.fromRGB(0, 0, 0), -- Same border as Pet Inventory
+                ZIndex = 112, -- Above viewport
             }, {
                 Corner = React.createElement("UICorner", {
                     CornerRadius = ScreenUtils.udim(0, 6)
@@ -379,28 +350,14 @@ local function PetIndexUI(props)
                         return tostring(count) .. "/15"
                     end)() or "???",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 1,
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2, -- Same size as Pet Inventory quantity text
                     Font = Enum.Font.GothamBold,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
-                    ZIndex = 114,
+                    TextStrokeTransparency = 0, -- Add text outline
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    ZIndex = 113,
                 })
-            }),
-            
-            -- Best variation text at the bottom
-            BestRarityText = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -10, 0, 35),
-                Position = ScreenUtils.udim2(0, 5, 1, -40), -- Bottom of card
-                BackgroundTransparency = 1,
-                Text = isCollected and ("Best: " .. (rarestVariation or "Bronze")) or "Locked",
-                TextColor3 = isCollected and PetConstants.getVariationColor(rarestVariation) or Color3.fromRGB(200, 200, 200),
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 6, -- Way bigger text
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Center,
-                TextStrokeTransparency = 0,
-                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                ZIndex = 112,
             }),
         })
     end
@@ -412,8 +369,12 @@ local function PetIndexUI(props)
             return nil 
         end
         
+        -- Get pets from the level that was active when hovered (not current selected level)
+        local petLevel = displayPet.level or selectedLevel
+        local levelPets = PetConfig.getPetsByLevel(petLevel)
+        
         local petConfig = nil
-        for i, pet in ipairs(allPets) do
+        for i, pet in ipairs(levelPets) do
             if pet.Name == displayPet.name then
                 petConfig = pet
                 break
@@ -476,7 +437,7 @@ local function PetIndexUI(props)
                         TextColor3 = hasVariation and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(120, 120, 120),
                         TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 1,
                         Font = hasVariation and Enum.Font.GothamBold or Enum.Font.Gotham,
-                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                         TextYAlignment = Enum.TextYAlignment.Center,
                         TextTruncate = Enum.TextTruncate.AtEnd,
                         ZIndex = 1002,
@@ -618,7 +579,7 @@ local function PetIndexUI(props)
         
         levelTabs[i] = React.createElement("TextButton", {
             Name = "LevelTab_" .. level,
-            Size = ScreenUtils.udim2(0, 130, 0, 45),
+            Size = ScreenUtils.udim2(0, 160, 0, 55), -- Bigger tabs for better visibility
             BackgroundColor3 = isSelected and levelColor or Color3.fromRGB(248, 248, 248),
             BorderSizePixel = 0,
             Text = "",
@@ -645,7 +606,7 @@ local function PetIndexUI(props)
                 BackgroundTransparency = 1,
                 Text = "Level " .. level,
                 TextColor3 = isSelected and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(60, 60, 60),
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2, -- Bigger text for better readability
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = isSelected and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255),
                 Font = Enum.Font.GothamBold,
@@ -705,8 +666,8 @@ local function PetIndexUI(props)
     }, {
         PetIndexModal = React.createElement("Frame", {
             Name = "PetIndexModal",
-            Size = ScreenUtils.udim2(0.9, 0, 0.9, 0), -- Match Pets UI size
-            Position = ScreenUtils.udim2(0.5, 0, 0.5, 0), -- Centered like Pets UI
+            Size = ScreenUtils.udim2(0.6, 0, 0.75, 0), -- Same size as Pet Inventory UI
+            Position = ScreenUtils.udim2(0.5, 0, 0.5, 0), -- Centered
             AnchorPoint = Vector2.new(0.5, 0.5), -- Center anchor point
             BackgroundColor3 = Color3.fromRGB(255, 255, 255),
             BackgroundTransparency = 0,
@@ -803,8 +764,8 @@ local function PetIndexUI(props)
                 }),
                 
                 CloseButton = React.createElement("ImageButton", {
-                    Size = ScreenUtils.udim2(0, 30, 0, 30),
-                    Position = ScreenUtils.udim2(1, -35, 0.5, -15),
+                    Size = ScreenUtils.udim2(0, 50, 0, 50), -- Bigger close button
+                    Position = ScreenUtils.udim2(1, -55, 0.5, -25),
                     BackgroundColor3 = Color3.fromRGB(255, 100, 100),
                     Image = IconAssets.getIcon("UI", "X_BUTTON"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -855,14 +816,14 @@ local function PetIndexUI(props)
                     BorderSizePixel = 0,
                     ScrollBarThickness = 8,
                     ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
-                    CanvasSize = UDim2.new(0, 0, 0, math.ceil(#allPets / 5) * 230 + 40), -- Updated for 5 per row and bigger cards
+                    CanvasSize = UDim2.new(0, 0, 0, math.ceil(#allPets / 6) * 215 + 30), -- Updated for 6 per row with bigger spacing
                     ZIndex = 109,
                 }, {
                     Layout = React.createElement("UIGridLayout", {
-                        CellSize = ScreenUtils.udim2(0, 180, 0, 210), -- Bigger cells for more info
-                        CellPadding = ScreenUtils.udim2(0, 20, 0, 20), -- More padding
+                        CellSize = ScreenUtils.udim2(0, 190, 0, 200), -- Same as updated Pet Inventory cards
+                        CellPadding = ScreenUtils.udim2(0, 15, 0, 15), -- Same spacing as Pet Inventory
                         StartCorner = Enum.StartCorner.TopLeft,
-                        FillDirectionMaxCells = 5, -- 5 per row instead of 7
+                        FillDirectionMaxCells = 6, -- Same as updated Pet Inventory: 6 per row for bigger cards
                         SortOrder = Enum.SortOrder.LayoutOrder,
                         HorizontalAlignment = Enum.HorizontalAlignment.Center,
                         VerticalAlignment = Enum.VerticalAlignment.Top
@@ -883,7 +844,7 @@ local function PetIndexUI(props)
                 Position = ScreenUtils.udim2(0, 20, 1, -45), -- Bottom of modal
                 BackgroundTransparency = 1,
                 Text = "Here you can see how rare your pets really are!",
-                TextColor3 = Color3.fromRGB(255, 0, 0), -- Start with red for rainbow animation
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center,
@@ -892,6 +853,20 @@ local function PetIndexUI(props)
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 ZIndex = 105,
             }, {
+                -- Rainbow gradient for bottom text
+                RainbowGradient = React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
+                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
+                    }),
+                    Rotation = 0 -- Horizontal gradient
+                }),
+                
                 -- Cool bouncing and scaling animation
                 Bounce = React.createElement("UIScale", {
                     Scale = 1.0,
@@ -922,44 +897,10 @@ local function PetIndexUI(props)
                                     end
                                 end
                                 
-                                -- Rainbow color animation
-                                local function animateRainbow()
-                                    while textLabel.Parent do
-                                        -- Red to Orange
-                                        local tween1 = TweenService:Create(textLabel, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(255, 165, 0)})
-                                        tween1:Play()
-                                        tween1.Completed:Wait()
-                                        
-                                        -- Orange to Yellow
-                                        local tween2 = TweenService:Create(textLabel, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(255, 255, 0)})
-                                        tween2:Play()
-                                        tween2.Completed:Wait()
-                                        
-                                        -- Yellow to Green
-                                        local tween3 = TweenService:Create(textLabel, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(0, 255, 0)})
-                                        tween3:Play()
-                                        tween3.Completed:Wait()
-                                        
-                                        -- Green to Blue
-                                        local tween4 = TweenService:Create(textLabel, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(0, 0, 255)})
-                                        tween4:Play()
-                                        tween4.Completed:Wait()
-                                        
-                                        -- Blue to Purple
-                                        local tween5 = TweenService:Create(textLabel, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(128, 0, 128)})
-                                        tween5:Play()
-                                        tween5.Completed:Wait()
-                                        
-                                        -- Purple to Red
-                                        local tween6 = TweenService:Create(textLabel, TweenInfo.new(0.4), {TextColor3 = Color3.fromRGB(255, 0, 0)})
-                                        tween6:Play()
-                                        tween6.Completed:Wait()
-                                    end
-                                end
+                                -- No more rainbow animation - using gradient instead
                                 
-                                -- Start both animations simultaneously in parallel
+                                -- Start bouncing animation only
                                 task.spawn(animateBounce)
-                                task.spawn(animateRainbow)
                             end)
                         end
                     end,

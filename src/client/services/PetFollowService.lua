@@ -107,9 +107,9 @@ function PetFollowService:CreatePetModel(petData, position)
         return
     end
     
-    -- Calculate appropriate ball size based on pet model (same as other balls)
+    -- Calculate appropriate ball size based on pet model (bigger for equipped pets)
     local modelSize = actualPetModel:GetExtentsSize()
-    local ballSize = math.min(2.0, math.max(modelSize.X, modelSize.Y, modelSize.Z) * 0.8)
+    local ballSize = math.min(3.0, math.max(modelSize.X, modelSize.Y, modelSize.Z) * 1.2) -- Increased from 2.0 and 0.8
     
     -- Create pet ball sized appropriately around the model
     local ball = Instance.new("Part")
@@ -215,8 +215,8 @@ function PetFollowService:CreateActualPetModel(petData)
             local clonedModel = petModelTemplate:Clone()
             clonedModel.Name = "PetModel"
             
-            -- Process all parts in the model
-            local scaleFactor = 0.15 -- Same as other pet balls
+            -- Process all parts in the model (bigger for equipped pets)
+            local scaleFactor = 0.25 -- Increased from 0.15 for bigger equipped pets
             local partCount = 0
             
             for _, descendant in pairs(clonedModel:GetDescendants()) do
@@ -278,7 +278,7 @@ function PetFollowService:CreateActualPetModel(petData)
     local petPart = Instance.new("Part")
     petPart.Name = "PetPart"
     petPart.Shape = Enum.PartType.Ball
-    petPart.Size = Vector3.new(1.2, 1.2, 1.2)
+    petPart.Size = Vector3.new(1.8, 1.8, 1.8) -- Increased from 1.2 for bigger equipped pets
     petPart.Material = Enum.Material.Neon
     petPart.CanCollide = false
     petPart.Anchored = false

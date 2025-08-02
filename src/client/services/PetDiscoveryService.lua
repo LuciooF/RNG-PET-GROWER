@@ -38,8 +38,7 @@ function PetDiscoveryService:Initialize()
         previousCollectedPets = self:CloneTable(initialData.CollectedPets)
     end
     
-    -- Process discovery queue with rate limiting
-    self:StartQueueProcessor()
+    -- No queue processor needed - discoveries show immediately or not at all
 end
 
 function PetDiscoveryService:CloneTable(original)
@@ -99,32 +98,14 @@ function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
         end
     end
     
-    -- Add discoveries to queue, but limit to top 3 rarest if too many
-    for _, discovery in ipairs(newDiscoveries) do
-        table.insert(discoveryQueue, discovery)
+    -- If there's already a popup showing, ignore new discoveries (no queue)
+    if isShowingDiscovery then
+        return
     end
     
-    -- If queue gets too long, keep only the 3 rarest discoveries
-    if #discoveryQueue > 3 then
-        -- Sort discoveries by rarity (rarest first)
-        table.sort(discoveryQueue, function(a, b)
-            local petConfigA = self:FindPetByName(a.name)
-            local petConfigB = self:FindPetByName(b.name)
-            
-            if petConfigA and petConfigB then
-                local rarityOrderA = self:GetRarityOrder(petConfigA.Rarity)
-                local rarityOrderB = self:GetRarityOrder(petConfigB.Rarity)
-                return rarityOrderA > rarityOrderB -- Higher order = rarer
-            end
-            return false
-        end)
-        
-        -- Keep only top 3 rarest
-        local topDiscoveries = {}
-        for i = 1, math.min(3, #discoveryQueue) do
-            table.insert(topDiscoveries, discoveryQueue[i])
-        end
-        discoveryQueue = topDiscoveries
+    -- If there are new discoveries and no popup is active, show the first one
+    if #newDiscoveries > 0 then
+        self:ShowDiscoveryPopup(newDiscoveries[1]) -- Only show the first discovery
     end
     
     -- Update previous state
@@ -153,19 +134,7 @@ function PetDiscoveryService:GetRarityOrder(rarity)
     return rarityOrder[rarity] or 1
 end
 
-function PetDiscoveryService:StartQueueProcessor()
-    task.spawn(function()
-        while true do
-            if not isShowingDiscovery and #discoveryQueue > 0 then
-                local discovery = table.remove(discoveryQueue, 1)
-                self:ShowDiscoveryPopup(discovery)
-                -- Wait longer between popups to prevent overwhelming
-                task.wait(6) -- 6 seconds between each popup
-            end
-            task.wait(0.5) -- Check queue every 500ms
-        end
-    end)
-end
+-- Queue processor removed - no longer needed since we don't queue discoveries
 
 -- Helper function to find pet data by name
 function PetDiscoveryService:FindPetByName(petName)
@@ -220,8 +189,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Main popup frame (smaller and more transparent)
     local popupFrame = Instance.new("Frame")
     popupFrame.Name = "PopupFrame"
-    popupFrame.Size = UDim2.new(0, 320, 0, 160) -- Smaller size
-    popupFrame.Position = UDim2.new(0.5, 0, 1, 50) -- Start below screen
+    popupFrame.Size = ScreenUtils.udim2(0, 420, 0, 220) -- Much bigger popup
+    popupFrame.Position = UDim2.new(0.5, 0, 1, ScreenUtils.getScaleFactor() * 50) -- Responsive start position
     popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     popupFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     popupFrame.BackgroundTransparency = 0.15 -- More transparent
@@ -231,13 +200,13 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     
     -- Rounded corners
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 20)
+    corner.CornerRadius = ScreenUtils.udim(0, 20) -- Responsive corner radius
     corner.Parent = popupFrame
     
     -- Drop shadow
     local shadow = Instance.new("UIStroke")
     shadow.Color = Color3.fromRGB(0, 0, 0)
-    shadow.Thickness = 3
+    shadow.Thickness = math.max(1, ScreenUtils.getScaleFactor() * 3) -- Responsive thickness
     shadow.Transparency = 0.7
     shadow.Parent = popupFrame
     
@@ -254,15 +223,15 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     gradient.Rotation = 45
     gradient.Parent = popupFrame
     
-    -- "New Pet Discovered!" title (smaller)
+    -- "New Pet Discovered!" title (responsive)
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = UDim2.new(1, -20, 0, 28)
-    titleLabel.Position = UDim2.new(0, 10, 0, 8)
+    titleLabel.Size = ScreenUtils.udim2(1, -20, 0, 35) -- Bigger title area
+    titleLabel.Position = ScreenUtils.udim2(0, 10, 0, 10) -- Responsive position
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = discovery.variation and "New Variation Discovered!" or "New Pet Discovered!"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = 20 -- Smaller text
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 6 -- Bigger text for bigger popup
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -282,12 +251,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "PetName"
-    nameLabel.Size = UDim2.new(1, -20, 0, 25)
-    nameLabel.Position = UDim2.new(0, 10, 0, 40)
+    nameLabel.Size = ScreenUtils.udim2(1, -20, 0, 35) -- Bigger name area
+    nameLabel.Position = ScreenUtils.udim2(0, 10, 0, 55) -- Adjusted position
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = actualPetName
     nameLabel.TextColor3 = rarityColor
-    nameLabel.TextSize = 18 -- Smaller text
+    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4 -- Bigger text for bigger popup
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
@@ -299,12 +268,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     if discovery.variation then
         local variationLabel = Instance.new("TextLabel")
         variationLabel.Name = "Variation"
-        variationLabel.Size = UDim2.new(1, -20, 0, 20)
-        variationLabel.Position = UDim2.new(0, 10, 0, 68)
+        variationLabel.Size = ScreenUtils.udim2(1, -20, 0, 25) -- Bigger variation area
+        variationLabel.Position = ScreenUtils.udim2(0, 10, 0, 95) -- Adjusted position
         variationLabel.BackgroundTransparency = 1
         variationLabel.Text = discovery.variation .. " Variation"
         variationLabel.TextColor3 = variationColor
-        variationLabel.TextSize = 15 -- Smaller text
+        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 6 -- Bigger text for bigger popup
         variationLabel.Font = Enum.Font.GothamBold
         variationLabel.TextXAlignment = Enum.TextXAlignment.Center
         variationLabel.TextStrokeTransparency = 0
@@ -313,30 +282,30 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         variationLabel.Parent = popupFrame
     end
     
-    -- Rarity info (smaller)
+    -- Rarity info (responsive)
     local rarityLabel = Instance.new("TextLabel")
     rarityLabel.Name = "Rarity"
-    rarityLabel.Size = UDim2.new(1, -20, 0, 18)
-    rarityLabel.Position = UDim2.new(0, 10, 0, discovery.variation and 92 or 70)
+    rarityLabel.Size = ScreenUtils.udim2(1, -20, 0, 25) -- Bigger rarity area
+    rarityLabel.Position = ScreenUtils.udim2(0, 10, 0, discovery.variation and 125 or 95) -- Adjusted position
     rarityLabel.BackgroundTransparency = 1
     local rarityChance = PetConstants.getRarityChance and PetConstants.getRarityChance(petConfig.Rarity) or 1000000
     rarityLabel.Text = "Rarity: " .. petConfig.Rarity .. " (1 in " .. NumberFormatter.format(rarityChance) .. ")"
     rarityLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
-    rarityLabel.TextSize = 12 -- Smaller text
+    rarityLabel.TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 3 -- Bigger text for bigger popup
     rarityLabel.Font = Enum.Font.Gotham
     rarityLabel.TextXAlignment = Enum.TextXAlignment.Center
     rarityLabel.ZIndex = 1001
     rarityLabel.Parent = popupFrame
     
-    -- Congratulations message (smaller and adjusted)
+    -- Congratulations message (responsive)
     local congratsLabel = Instance.new("TextLabel")
     congratsLabel.Name = "Congrats"
-    congratsLabel.Size = UDim2.new(1, -20, 0, 22)
-    congratsLabel.Position = UDim2.new(0, 10, 0, discovery.variation and 115 or 93)
+    congratsLabel.Size = ScreenUtils.udim2(1, -20, 0, 30) -- Bigger congrats area
+    congratsLabel.Position = ScreenUtils.udim2(0, 10, 0, discovery.variation and 155 or 125) -- Adjusted position
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "🎉 Well done! Check your Pet Index! 🎉"
     congratsLabel.TextColor3 = Color3.fromRGB(50, 205, 50) -- Lime green
-    congratsLabel.TextSize = 14 -- Smaller text
+    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2 -- Bigger text for bigger popup
     congratsLabel.Font = Enum.Font.GothamBold
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0
@@ -379,18 +348,20 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         animateCongrats()
     end)
     
-    -- Auto-dismiss after 3 seconds (shorter for less intrusive)
-    task.wait(3)
-    
-    -- Slide down animation
-    local slideDownTween = TweenService:Create(popupFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-        Position = UDim2.new(0.5, 0, 1, 50) -- Back below screen
-    })
-    
-    slideDownTween:Play()
-    slideDownTween.Completed:Connect(function()
-        popupGui:Destroy()
-        isShowingDiscovery = false
+    -- Auto-dismiss after 3 seconds (wrap in separate task to avoid yielding in store callback)
+    task.spawn(function()
+        task.wait(3)
+        
+        -- Slide down animation
+        local slideDownTween = TweenService:Create(popupFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, 0, 1, ScreenUtils.getScaleFactor() * 50) -- Responsive exit position
+        })
+        
+        slideDownTween:Play()
+        slideDownTween.Completed:Connect(function()
+            popupGui:Destroy()
+            isShowingDiscovery = false
+        end)
     end)
 end
 

@@ -44,9 +44,9 @@ local function SideBar(props)
         petCountText = tostring(petCount)
     end
     
-    -- Simple button setup
+    -- Responsive button setup
     local buttonSize = ScreenUtils.SIZES.SIDE_BUTTON_WIDTH()
-    local buttonSpacing = 40 -- 40px spacing between buttons
+    local buttonSpacing = ScreenUtils.getProportionalSize(60) -- Increased spacing to prevent misclicks
     
     -- True mathematical center of screen (0.5) - ignoring GUI inset completely
     -- If screen is 200px, center is at pixel 100 (50%)
@@ -63,7 +63,7 @@ local function SideBar(props)
         GamepassButton = TooltipUtils.createHoverButton({
             Name = "GamepassButton",
             Size = buttonSize,
-            Position = UDim2.new(0, 0, centerY, -buttonSpacing * 2),
+            Position = ScreenUtils.udim2(0, 0, centerY, -buttonSpacing * 2),
             BackgroundTransparency = 1,
             Image = IconAssets.getIcon("CURRENCY", "ROBUX"),
             ScaleType = Enum.ScaleType.Fit,
@@ -79,15 +79,15 @@ local function SideBar(props)
         PetsButtonContainer = React.createElement("Frame", {
             Name = "PetsButtonContainer",
             Size = buttonSize,
-            Position = UDim2.new(0, 0, centerY, -buttonSpacing * 1),
+            Position = ScreenUtils.udim2(0, 0, centerY, -buttonSpacing * 1),
             BackgroundTransparency = 1,
             ZIndex = 50
         }, {
             -- Main pets button
             PetsButton = TooltipUtils.createHoverButton({
                 Name = "PetsButton",
-                Size = UDim2.new(1, 0, 1, 0),
-                Position = UDim2.new(0, 0, 0, 0),
+                Size = ScreenUtils.udim2(1, 0, 1, 0),
+                Position = ScreenUtils.udim2(0, 0, 0, 0),
                 BackgroundTransparency = 1,
                 Image = IconAssets.getIcon("UI", "PET"),
                 ScaleType = Enum.ScaleType.Fit,
@@ -102,19 +102,19 @@ local function SideBar(props)
             -- Pet count badge (always show, even with 0 pets)
             PetCountBadge = React.createElement("Frame", {
                 Name = "PetCountBadge",
-                Size = UDim2.new(0, 24, 0, 16), -- Small badge
-                Position = UDim2.new(1, -12, 0, -2), -- Top-right corner
+                Size = ScreenUtils.udim2(0, 24, 0, 16), -- Small badge
+                Position = ScreenUtils.udim2(1, -12, 0, -2), -- Top-right corner
                 AnchorPoint = Vector2.new(0.5, 0),
                 BackgroundColor3 = Color3.fromRGB(255, 100, 100), -- Red badge
                 BorderSizePixel = 0,
                 ZIndex = 52
             }, {
                 UICorner = React.createElement("UICorner", {
-                    CornerRadius = UDim.new(0, 8) -- Rounded badge
+                    CornerRadius = ScreenUtils.udim(0, 8) -- Rounded badge
                 }),
                 
                 CountText = React.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 1, 0),
+                    Size = ScreenUtils.udim2(1, 0, 1, 0),
                     BackgroundTransparency = 1,
                     Text = petCountText,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -133,7 +133,7 @@ local function SideBar(props)
         IndexButton = TooltipUtils.createHoverButton({
             Name = "IndexButton",
             Size = buttonSize,
-            Position = UDim2.new(0, 0, centerY, 0),
+            Position = ScreenUtils.udim2(0, 0, centerY, 0),
             BackgroundTransparency = 1,
             Image = IconAssets.getIcon("UI", "INDEX"),
             ScaleType = Enum.ScaleType.Fit,
@@ -149,7 +149,7 @@ local function SideBar(props)
         RebirthButton = TooltipUtils.createHoverButton({
             Name = "RebirthButton",
             Size = buttonSize,
-            Position = UDim2.new(0, 0, centerY, buttonSpacing * 1),
+            Position = ScreenUtils.udim2(0, 0, centerY, buttonSpacing * 1),
             BackgroundTransparency = 1,
             Image = IconAssets.getIcon("UI", "REBIRTH"),
             ScaleType = Enum.ScaleType.Fit,
@@ -165,7 +165,7 @@ local function SideBar(props)
         DebugButton = TooltipUtils.createHoverButton({
             Name = "DebugButton",
             Size = buttonSize,
-            Position = UDim2.new(0, 0, centerY, buttonSpacing * 2),
+            Position = ScreenUtils.udim2(0, 0, centerY, buttonSpacing * 2),
             BackgroundTransparency = 1,
             Image = IconAssets.getIcon("UI", "SETTINGS"),
             ScaleType = Enum.ScaleType.Fit,

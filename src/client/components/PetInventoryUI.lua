@@ -229,14 +229,14 @@ local function PetInventoryUI(props)
         local boostPercentage = (finalBoost - 1) * 100
         
         return React.createElement("Frame", {
-            Size = ScreenUtils.udim2(0, 130, 0, 130), -- Original card size
+            Size = ScreenUtils.udim2(0, 190, 0, 190), -- Even bigger card size (was 160x160)
             BackgroundTransparency = 1, -- Fully transparent to show colored background
             BorderSizePixel = 0, -- No border, using UIStroke instead
             LayoutOrder = cardIndex,
             ZIndex = 10,
         }, {
             Corner = React.createElement("UICorner", {
-                CornerRadius = ScreenUtils.udim(0, 65) -- Half of 130 for perfect circle
+                CornerRadius = ScreenUtils.udim(0, 80) -- Half of 160 for perfect circle
             }),
             
             -- Squiggle background with rarity color (waiting for white squiggle asset)
@@ -286,8 +286,8 @@ local function PetInventoryUI(props)
             
             -- Quantity badge (top right)
             QuantityBadge = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(0, 60, 0, 30), -- Bigger badge
-                Position = ScreenUtils.udim2(1, -65, 0, 5),
+                Size = ScreenUtils.udim2(0, 70, 0, 35), -- Even bigger badge
+                Position = ScreenUtils.udim2(1, -75, 0, 5),
                 BackgroundColor3 = Color3.fromRGB(255, 215, 0), -- Gold background
                 BackgroundTransparency = 0,
                 BorderSizePixel = 3,
@@ -303,7 +303,7 @@ local function PetInventoryUI(props)
                     BackgroundTransparency = 1,
                     Text = "x" .. petGroup.Quantity,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2, -- Even bigger text
                     Font = Enum.Font.GothamBold,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
@@ -314,9 +314,10 @@ local function PetInventoryUI(props)
             }),
             
             -- Equipped badge (top left, higher up to avoid overlap with quantity)
-            EquippedBadge = (isEquipped and not inEquippedSection) and React.createElement("Frame", {
+            EquippedBadge = (isEquipped and not inEquippedSection) and (function()
+                return React.createElement("Frame", {
                 Size = ScreenUtils.udim2(0, 80, 0, 30), -- Bigger badge
-                Position = ScreenUtils.udim2(0, 5, 0, -35), -- Moved higher up (negative Y offset)
+                Position = ScreenUtils.udim2(0.5, -40, 0.5, -15), -- Center of the card
                 BackgroundColor3 = Color3.fromRGB(50, 205, 50), -- Lime green background
                 BackgroundTransparency = 0,
                 BorderSizePixel = 3,
@@ -340,33 +341,46 @@ local function PetInventoryUI(props)
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 13,
                 })
-            }) or nil,
+            })
+            end)() or nil,
             
             
-            -- Boost text above pet name
+            -- Boost text above pet name (rainbow gradient for visual appeal)
             BoostText = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -10, 0, 20),
-                Position = ScreenUtils.udim2(0, 5, 1, -45),
+                Size = ScreenUtils.udim2(1, -10, 0, 25), -- Bigger height
+                Position = ScreenUtils.udim2(0, 5, 1, -55), -- Adjust position for bigger card
                 BackgroundTransparency = 1,
-                Text = string.format("Boost: %.2fx", finalBoost),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = ScreenUtils.TEXT_SIZES.SMALL() * 1.5, -- 1.5x bigger
+                Text = string.format("x%.2f", finalBoost),
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient overlay
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
-                TextStrokeTransparency = 0,
+                TextScaled = true, -- Match pet name scaling
+                TextStrokeTransparency = 0, -- Black outline for boost text
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 ZIndex = 14,
+            }, {
+                -- Shiny pink to blue gradient overlay
+                ShinyGradient = React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
+                        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
+                        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
+                    }),
+                    Rotation = 0 -- Horizontal gradient
+                })
             }),
             
             -- Pet name at bottom (with rarity color)
             PetName = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -10, 0, 20),
-                Position = ScreenUtils.udim2(0, 5, 1, -20),
+                Size = ScreenUtils.udim2(1, -10, 0, 25), -- Bigger height
+                Position = ScreenUtils.udim2(0, 5, 1, -25), -- Adjust position
                 BackgroundTransparency = 1, -- No background
                 Text = petGroup.Name,
                 TextColor3 = rarityColor, -- Use rarity color instead of white
-                TextSize = ScreenUtils.TEXT_SIZES.SMALL(),
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Increased from MEDIUM
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
@@ -384,7 +398,8 @@ local function PetInventoryUI(props)
                 ZIndex = 15,
                 [React.Event.MouseEnter] = function(rbx)
                     setHoveredPet(petGroup)
-                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + 10, 0, rbx.AbsolutePosition.Y))
+                    local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
                 end,
                 [React.Event.MouseLeave] = function()
                     setHoveredPet(nil)
@@ -444,7 +459,7 @@ local function PetInventoryUI(props)
                 TextColor3 = Color3.fromRGB(50, 50, 50),
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger title
                 Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
+                TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
             }),
             
@@ -457,11 +472,11 @@ local function PetInventoryUI(props)
                 TextColor3 = rarityColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
                 Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
+                TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
             }),
             
-            -- Variation (with color and black outline for visibility)
+            -- Variation (with color, no outline)
             Variation = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, -20, 0, 25),
                 Position = ScreenUtils.udim2(0, 10, 0, 75),
@@ -470,9 +485,7 @@ local function PetInventoryUI(props)
                 TextColor3 = variationColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                 Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextStrokeTransparency = 0, -- Black outline for visibility
-                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
             }),
             
@@ -482,12 +495,12 @@ local function PetInventoryUI(props)
                 Position = ScreenUtils.udim2(0, 10, 0, 105),
                 BackgroundTransparency = 1,
                 Text = "Chance: 1 in " .. (PetConstants.getCombinedRarityChance and NumberFormatter.format(PetConstants.getCombinedRarityChance(hoveredPet.Rarity, hoveredPet.Variation)) or "???"),
-                TextColor3 = Color3.fromRGB(100, 100, 100), -- Gray color for chance text
+                TextColor3 = Color3.fromRGB(150, 150, 150), -- Lighter gray for better visibility
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextStrokeTransparency = 0, -- Black outline for visibility
-                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                Font = Enum.Font.GothamSemibold,
+                TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
+                TextStrokeTransparency = 0.5, -- Lighter stroke
+                TextStrokeColor3 = Color3.fromRGB(255, 255, 255), -- White outline instead of black
                 ZIndex = 1001,
             }),
             
@@ -515,7 +528,7 @@ local function PetInventoryUI(props)
                     TextColor3 = Color3.fromRGB(50, 50, 50),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
                     Font = Enum.Font.GothamBold,
-                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                     ZIndex = 1002,
                 })
             }),
@@ -540,14 +553,27 @@ local function PetInventoryUI(props)
                     Size = ScreenUtils.udim2(1, -25, 1, 0),
                     Position = ScreenUtils.udim2(0, 25, 0, 0),
                     BackgroundTransparency = 1,
-                    Text = "Boost: " .. string.format("%.2f", finalBoost),
-                    TextColor3 = Color3.fromRGB(50, 50, 50),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                    Text = string.format("x%.2f", finalBoost),
+                    TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
                     Font = Enum.Font.GothamBold,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(100, 100, 100),
+                    TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    TextScaled = true, -- Match pet name scaling
+                    TextStrokeTransparency = 0, -- Black outline for boost text
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 1002,
+                }, {
+                    -- Same pink to blue gradient as inventory cards
+                    ShinyGradient = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
+                            ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
+                            ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
+                        }),
+                        Rotation = 0 -- Horizontal gradient
+                    })
                 })
             })
         })
@@ -644,8 +670,8 @@ local function PetInventoryUI(props)
                 }),
                 
                 CloseButton = React.createElement("ImageButton", {
-                    Size = ScreenUtils.udim2(0, 40, 0, 40),
-                    Position = ScreenUtils.udim2(1, -45, 0.5, -20),
+                    Size = ScreenUtils.udim2(0, 50, 0, 50), -- Bigger close button
+                    Position = ScreenUtils.udim2(1, -55, 0.5, -25),
                     AnchorPoint = Vector2.new(0, 0.5),
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("UI", "X_BUTTON"),
@@ -660,7 +686,7 @@ local function PetInventoryUI(props)
             
             -- Equipped pets section
             EquippedSection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 0, 230), -- Increased height to prevent text cutoff
+                Size = ScreenUtils.udim2(1, -40, 0, 320), -- Even bigger height for better visibility
                 Position = ScreenUtils.udim2(0.5, 0, 0, 60),
                 AnchorPoint = Vector2.new(0.5, 0),
                 BackgroundTransparency = 1, -- Remove background for image
@@ -714,7 +740,7 @@ local function PetInventoryUI(props)
                     BackgroundTransparency = 1,
                     Text = string.format("Equipped Pets %d/3", #equippedPets),
                     TextColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2, -- Bigger
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Much bigger section title
                     TextStrokeTransparency = 0, -- Black outline
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Font = Enum.Font.GothamBold,
@@ -725,12 +751,12 @@ local function PetInventoryUI(props)
                 
                 -- Auto-equip disclaimer with animation (top-left, tilted)
                 Disclaimer = React.createElement("TextLabel", {
-                    Size = ScreenUtils.udim2(0, 300, 0, 35), -- Bigger and fixed width
+                    Size = ScreenUtils.udim2(0, 320, 0, 50), -- Even bigger to fit two lines
                     Position = ScreenUtils.udim2(0, 20, 0, 10), -- Top-left corner
                     AnchorPoint = Vector2.new(0, 0),
                     BackgroundTransparency = 1,
-                    Text = "Best pets automatically get equipped!",
-                    TextColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
+                    Text = "Best pets automatically get equipped!\nThe boost affects the money production!",
+                    TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger text
                     Font = Enum.Font.GothamBold, -- Bold for emphasis
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -763,6 +789,20 @@ local function PetInventoryUI(props)
                             end)
                         end
                     end,
+                }, {
+                    -- Rainbow gradient overlay
+                    RainbowGradient = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
+                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
+                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
+                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
+                        }),
+                        Rotation = 0 -- Horizontal rainbow gradient
+                    })
                 }),
                 
                 EquippedGrid = React.createElement("ScrollingFrame", {
@@ -775,7 +815,7 @@ local function PetInventoryUI(props)
                     ScrollBarThickness = 6,
                     ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
                     ScrollingDirection = Enum.ScrollingDirection.X, -- Horizontal scroll
-                    CanvasSize = ScreenUtils.udim2(0, math.max(400, #equippedGroups * 130), 1, 0), -- Original equipped pets sizing
+                    CanvasSize = ScreenUtils.udim2(0, math.max(500, #equippedGroups * 160), 1, 0), -- Bigger spacing for bigger cards
                     ZIndex = 7,
                 }, {
                     Layout = React.createElement("UIListLayout", {
@@ -803,8 +843,8 @@ local function PetInventoryUI(props)
             
             -- Inventory pets section
             InventorySection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 1, -310), -- Adjusted for bigger equipped section
-                Position = ScreenUtils.udim2(0.5, 0, 0, 300), -- Moved down 30 pixels
+                Size = ScreenUtils.udim2(1, -40, 1, -400), -- Adjust for even bigger equipped section
+                Position = ScreenUtils.udim2(0.5, 0, 0, 390), -- Move down more to accommodate bigger equipped section
                 AnchorPoint = Vector2.new(0.5, 0),
                 BackgroundTransparency = 1, -- Remove background for image
                 BorderSizePixel = 2,
@@ -857,7 +897,7 @@ local function PetInventoryUI(props)
                     BackgroundTransparency = 1,
                     Text = string.format("Pets %d/%d", #pets, MAX_PET_INVENTORY),
                     TextColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2, -- Bigger
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Much bigger section title
                     TextStrokeTransparency = 0, -- Black outline
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Font = Enum.Font.GothamBold,
@@ -875,14 +915,14 @@ local function PetInventoryUI(props)
                 BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
                     ScrollBarThickness = 8,
                     ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
-                    CanvasSize = ScreenUtils.udim2(0, 0, 0, math.ceil(#inventoryGroups / 7) * 155 + 30), -- Updated for 7 columns with spacing
+                    CanvasSize = ScreenUtils.udim2(0, 0, 0, math.ceil(#inventoryGroups / 6) * 215 + 30), -- Updated for 6 columns with bigger spacing
                     ZIndex = 7,
                 }, {
                     Layout = React.createElement("UIGridLayout", {
-                        CellSize = ScreenUtils.udim2(0, 130, 0, 140), -- Original cell size
+                        CellSize = ScreenUtils.udim2(0, 190, 0, 200), -- Even bigger cell size to match card size
                         CellPadding = ScreenUtils.udim2(0, 15, 0, 15), -- More spacing
                         StartCorner = Enum.StartCorner.TopLeft,
-                        FillDirectionMaxCells = 7, -- Max 7 columns per row
+                        FillDirectionMaxCells = 6, -- Reduced to 6 columns per row for bigger cards
                         SortOrder = Enum.SortOrder.LayoutOrder,
                         HorizontalAlignment = Enum.HorizontalAlignment.Center,
                         VerticalAlignment = Enum.VerticalAlignment.Top
@@ -908,6 +948,7 @@ local function PetInventoryUI(props)
                         -- Check if this pet is equipped
                         local petKey = petGroup.Name .. "_" .. petGroup.Variation
                         local isEquipped = equippedLookup[petKey] == true
+                        
                         inventoryElements["InventoryPet_" .. i] = createPetCard(petGroup, i, isEquipped, false) -- false for inEquippedSection
                     end
                     return inventoryElements

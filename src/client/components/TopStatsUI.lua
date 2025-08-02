@@ -16,7 +16,8 @@ local function TopStatsUI()
             Money = 0,
             Diamonds = 0,
             Rebirths = 0
-        }
+        },
+        OwnedGamepasses = {}
     })
     
     -- Subscribe to data changes
@@ -35,6 +36,33 @@ local function TopStatsUI()
         
         return unsubscribe
     end, {})
+    
+    -- Check if player owns a specific gamepass
+    local function ownsGamepass(gamepassName)
+        if not playerData.OwnedGamepasses then return false end
+        for _, ownedGamepass in pairs(playerData.OwnedGamepasses) do
+            if ownedGamepass == gamepassName then
+                return true
+            end
+        end
+        return false
+    end
+    
+    -- Determine if text should be rainbow based on gamepass ownership
+    local function shouldBeRainbow(statType)
+        local ownsVIP = ownsGamepass("VIP")
+        local owns2xMoney = ownsGamepass("2X_MONEY")
+        local owns2xDiamonds = ownsGamepass("2X_DIAMONDS")
+        
+        if ownsVIP then
+            return true -- VIP makes everything rainbow
+        elseif statType == "Money" and owns2xMoney then
+            return true
+        elseif statType == "Diamonds" and owns2xDiamonds then
+            return true
+        end
+        return false
+    end
     
     -- Format numbers for display with better prettification
     local function formatNumber(num)
@@ -87,7 +115,7 @@ local function TopStatsUI()
                 
                 DiamondsIcon = React.createElement("ImageLabel", {
                     Name = "DiamondsIcon",
-                    Size = ScreenUtils.udim2(0, 48, 0, 48), -- BIGGER icon
+                    Size = ScreenUtils.udim2(0, 55, 0, 55), -- Even bigger icon
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("CURRENCY", "DIAMONDS"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -96,16 +124,29 @@ local function TopStatsUI()
                 
                 DiamondsLabel = React.createElement("TextLabel", {
                     Name = "DiamondsLabel",
-                    Size = ScreenUtils.udim2(0, 120, 0, 48),
+                    Size = ScreenUtils.udim2(0, 120, 0, 55),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = ScreenUtils.TEXT_SIZES.TITLE(), -- BIGGER text
+                    TextSize = ScreenUtils.TEXT_SIZES.TITLE() + 4, -- Even bigger text
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Text = formatNumber(playerData.Resources.Diamonds),
                     TextXAlignment = Enum.TextXAlignment.Left
-                })
+                }, shouldBeRainbow("Diamonds") and {
+                    Rainbow = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
+                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
+                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
+                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
+                        }),
+                        Rotation = 0
+                    })
+                } or nil)
             }),
             
             -- Money Display (LARGEST, center)
@@ -123,7 +164,7 @@ local function TopStatsUI()
                 
                 MoneyIcon = React.createElement("ImageLabel", {
                     Name = "MoneyIcon",
-                    Size = ScreenUtils.udim2(0, 60, 0, 60), -- LARGEST icon
+                    Size = ScreenUtils.udim2(0, 70, 0, 70), -- Even larger icon
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("CURRENCY", "MONEY"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -132,16 +173,29 @@ local function TopStatsUI()
                 
                 MoneyLabel = React.createElement("TextLabel", {
                     Name = "MoneyLabel",
-                    Size = ScreenUtils.udim2(0, 145, 0, 60),
+                    Size = ScreenUtils.udim2(0, 145, 0, 70),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = math.max(28, ScreenUtils.TEXT_SIZES.TITLE() * 1.3), -- BIGGEST text for main currency
+                    TextSize = math.max(32, ScreenUtils.TEXT_SIZES.TITLE() * 1.5), -- Even bigger text for main currency
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Text = formatNumber(playerData.Resources.Money),
                     TextXAlignment = Enum.TextXAlignment.Left
-                })
+                }, shouldBeRainbow("Money") and {
+                    Rainbow = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
+                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
+                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
+                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
+                        }),
+                        Rotation = 0
+                    })
+                } or nil)
             }),
             
             -- Rebirths Display (BIGGER, right side)
@@ -159,7 +213,7 @@ local function TopStatsUI()
                 
                 RebirthsIcon = React.createElement("ImageLabel", {
                     Name = "RebirthsIcon",
-                    Size = ScreenUtils.udim2(0, 48, 0, 48), -- BIGGER icon
+                    Size = ScreenUtils.udim2(0, 55, 0, 55), -- Even bigger icon
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("UI", "REBIRTH"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -168,16 +222,29 @@ local function TopStatsUI()
                 
                 RebirthsLabel = React.createElement("TextLabel", {
                     Name = "RebirthsLabel",
-                    Size = ScreenUtils.udim2(0, 120, 0, 48),
+                    Size = ScreenUtils.udim2(0, 120, 0, 55),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = ScreenUtils.TEXT_SIZES.TITLE(), -- BIGGER text
+                    TextSize = ScreenUtils.TEXT_SIZES.TITLE() + 4, -- Even bigger text
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Text = formatNumber(playerData.Resources.Rebirths),
                     TextXAlignment = Enum.TextXAlignment.Left
-                })
+                }, shouldBeRainbow("Rebirths") and {
+                    Rainbow = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
+                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
+                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
+                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
+                        }),
+                        Rotation = 0
+                    })
+                } or nil)
             })
         })
     })

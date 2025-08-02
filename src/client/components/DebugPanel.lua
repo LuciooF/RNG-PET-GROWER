@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 
@@ -45,6 +46,16 @@ local function DebugPanel(props)
         if resetDataRemote then
             resetDataRemote:FireServer()
         end
+    end
+    
+    local function startTutorial()
+        print("DebugPanel: Starting tutorial manually")
+        TutorialService:StartTutorial()
+    end
+    
+    local function stopTutorial()
+        print("DebugPanel: Stopping tutorial manually")
+        TutorialService:StopTutorial()
     end
     
     if not isVisible then
@@ -145,8 +156,8 @@ local function DebugPanel(props)
                 
                 -- Close button (right side)
                 CloseButton = React.createElement("ImageButton", {
-                    Size = ScreenUtils.udim2(0, 30, 0, 30),
-                    Position = ScreenUtils.udim2(1, -40, 0.5, -15),
+                    Size = ScreenUtils.udim2(0, 50, 0, 50), -- Bigger close button
+                    Position = ScreenUtils.udim2(1, -55, 0.5, -25),
                     BackgroundColor3 = Color3.fromRGB(255, 100, 100), -- Light red
                     Image = IconAssets.getIcon("UI", "X_BUTTON"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -314,6 +325,56 @@ local function DebugPanel(props)
                     }),
                     Outline = React.createElement("UIStroke", {
                         Thickness = 3, -- Thicker outline for danger
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
+                
+                StartTutorialButton = React.createElement("TextButton", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 35),
+                    BackgroundColor3 = Color3.fromRGB(100, 150, 255), -- Blue for tutorial
+                    BorderSizePixel = 0,
+                    Text = "🎯 Start Tutorial",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                    Font = Enum.Font.GothamBold,
+                    LayoutOrder = 7,
+                    ZIndex = 203,
+                    [React.Event.Activated] = function()
+                        startTutorial()
+                    end
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    }),
+                }),
+                
+                StopTutorialButton = React.createElement("TextButton", {
+                    Size = ScreenUtils.udim2(1, 0, 0, 35),
+                    BackgroundColor3 = Color3.fromRGB(150, 150, 150), -- Gray for stop
+                    BorderSizePixel = 0,
+                    Text = "⏹️ Stop Tutorial",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                    Font = Enum.Font.GothamBold,
+                    LayoutOrder = 8,
+                    ZIndex = 203,
+                    [React.Event.Activated] = function()
+                        stopTutorial()
+                    end
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    Outline = React.createElement("UIStroke", {
+                        Thickness = 2,
                         Color = Color3.fromRGB(0, 0, 0),
                         Transparency = 0,
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Border,

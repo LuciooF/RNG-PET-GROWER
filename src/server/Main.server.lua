@@ -316,6 +316,14 @@ if not cancelMixerRemote then
     cancelMixerRemote.Parent = ReplicatedStorage
 end
 
+--- Create remote event for tutorial progress updates
+local updateTutorialProgressRemote = ReplicatedStorage:FindFirstChild("UpdateTutorialProgress")
+if not updateTutorialProgressRemote then
+    updateTutorialProgressRemote = Instance.new("RemoteEvent")
+    updateTutorialProgressRemote.Name = "UpdateTutorialProgress"
+    updateTutorialProgressRemote.Parent = ReplicatedStorage
+end
+
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
     -- Validate the pet data
@@ -488,6 +496,37 @@ cancelMixerRemote.OnServerEvent:Connect(function(player, mixerId)
         -- Show error message to player
         errorMessageRemote:FireClient(player, result or "Failed to cancel mixer")
     end
+end)
+
+-- Handle tutorial progress updates
+updateTutorialProgressRemote.OnServerEvent:Connect(function(player, tutorialProgress)
+    if not tutorialProgress or type(tutorialProgress) ~= "table" then
+        warn("Main: Invalid tutorial progress received from", player.Name)
+        return
+    end
+    
+    print("Main: Tutorial progress update from", player.Name, tutorialProgress)
+    
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        warn("Main: No profile found for player", player.Name)
+        return
+    end
+    
+    -- Update tutorial progress in player data
+    profile.Data.TutorialProgress = {
+        currentStep = tutorialProgress.currentStep or 1,
+        active = tutorialProgress.active or false
+    }
+    
+    -- Mark tutorial as completed if finished
+    if tutorialProgress.completed then
+        profile.Data.TutorialCompleted = true
+        profile.Data.TutorialProgress.active = false
+    end
+    
+    -- Sync to client
+    StateService:BroadcastPlayerDataUpdate(player)
 end)
 
 -- StateService handles the other remote events, we just need pet collection here

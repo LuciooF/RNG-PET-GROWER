@@ -426,8 +426,8 @@ local function PetMixerUI()
             -- Close button
             CloseButton = React.createElement("TextButton", {
                 Name = "CloseButton",
-                Size = UDim2.new(0, 30, 0, 30),
-                Position = UDim2.new(1, -40, 0, 10),
+                Size = UDim2.new(0, 50, 0, 50), -- Bigger close button
+                Position = UDim2.new(1, -55, 0, 10),
                 BackgroundColor3 = Color3.fromRGB(200, 50, 50),
                 BorderSizePixel = 0,
                 Font = Enum.Font.GothamBold,

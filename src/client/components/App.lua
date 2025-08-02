@@ -17,7 +17,9 @@ local PetIndexUI = require(script.Parent.PetIndexUI)
 local SideBar = require(script.Parent.SideBar)
 local BoostButton = require(script.Parent.BoostButton)
 local BoostPanel = require(script.Parent.BoostPanel)
+local TutorialUI = require(script.Parent.TutorialUI)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
 local TeleportService = require(script.Parent.Parent.services.TeleportService)
 local PetMagnetService = require(script.Parent.Parent.services.PetMagnetService)
@@ -39,6 +41,8 @@ local function App()
     local petInventoryVisible, setPetInventoryVisible = React.useState(false)
     local gamepassVisible, setGamepassVisible = React.useState(false)
     local boostPanelVisible, setBoostPanelVisible = React.useState(false)
+    local tutorialVisible, setTutorialVisible = React.useState(false)
+    local tutorialData, setTutorialData = React.useState({})
     local playerData, setPlayerData = React.useState({
         Resources = { Money = 0, Rebirths = 0 }
     })
@@ -136,6 +140,37 @@ local function App()
         end
     end, {})
     
+    -- Set up tutorial service
+    React.useEffect(function()
+        TutorialService:Initialize()
+        
+        -- Update tutorial state (no polling, event-driven)
+        local updateTutorial = function()
+            local tutorialActive = TutorialService:IsActive()
+            local currentTutorialData = TutorialService:GetTutorialData()
+            
+            setTutorialVisible(tutorialActive)
+            setTutorialData(currentTutorialData)
+        end
+        
+        -- Initial update only
+        updateTutorial()
+        
+        -- Update when tutorial service changes (via DataSyncService subscription)
+        local tutorialConnection = DataSyncService:Subscribe(function(newState)
+            if newState.player then
+                updateTutorial()
+            end
+        end)
+        
+        return function()
+            TutorialService:Cleanup()
+            if tutorialConnection then
+                tutorialConnection()
+            end
+        end
+    end, {})
+    
     -- Handle rebirth UI close
     local function handleRebirthClose()
         setRebirthUIVisible(false)
@@ -153,12 +188,36 @@ local function App()
         end
     end
     
+    -- Tutorial event handlers
+    local function handleTutorialClose()
+        TutorialService:StopTutorial()
+        setTutorialVisible(false)
+    end
+    
+    local function handleTutorialNext()
+        TutorialService:NextStep()
+    end
+    
+    local function handleTutorialSkip()
+        TutorialService:StopTutorial()
+        setTutorialVisible(false)
+    end
+    
     -- Use shared rebirth cost calculation
     local RebirthUtils = require(ReplicatedStorage.utils.RebirthUtils)
     
     local currentRebirths = playerData.Resources.Rebirths or 0
     local rebirthCost = RebirthUtils.getRebirthCost(currentRebirths)
     local canRebirth = (playerData.Resources.Money or 0) >= rebirthCost
+    
+    -- Debug tutorial rendering
+    if tutorialVisible then
+        print("App: Rendering TutorialUI with data:", {
+            visible = tutorialVisible,
+            currentStep = tutorialData.currentStep,
+            stepsCount = tutorialData.steps and #tutorialData.steps or 0
+        })
+    end
     
     return React.createElement("ScreenGui", {
         Name = "PetGrowerApp",
@@ -232,6 +291,14 @@ local function App()
             canRebirth = canRebirth,
             onClose = handleRebirthClose,
             onRebirth = handleRebirth
+        }) or nil,
+        TutorialUI = tutorialVisible and React.createElement(TutorialUI.new, {
+            visible = tutorialVisible,
+            currentStep = tutorialData.currentStep or 1,
+            tutorialData = tutorialData,
+            onClose = handleTutorialClose,
+            onNext = handleTutorialNext,
+            onSkip = handleTutorialSkip
         }) or nil
     })
 end

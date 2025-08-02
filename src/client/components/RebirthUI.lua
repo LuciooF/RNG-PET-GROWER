@@ -64,8 +64,8 @@ function RebirthUI.new(props)
     }, {
         RebirthModal = React.createElement("Frame", {
             Name = "RebirthModal",
-            Size = ScreenUtils.udim2(0, 700, 0, 450), -- Even bigger UI
-            Position = ScreenUtils.udim2(0.5, -350, 0.5, -225), -- Center on screen
+            Size = ScreenUtils.udim2(0, 750, 0, 500), -- Even bigger UI to accommodate bigger panels
+            Position = ScreenUtils.udim2(0.5, -375, 0.5, -250), -- Center on screen for bigger modal
             BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
             BackgroundTransparency = 0,
             ZIndex = 1000,
@@ -179,8 +179,8 @@ function RebirthUI.new(props)
                 
                 -- Close button (right side)
                 CloseButton = React.createElement("ImageButton", {
-                    Size = ScreenUtils.udim2(0, 30, 0, 30),
-                    Position = ScreenUtils.udim2(1, -40, 0.5, -15),
+                    Size = ScreenUtils.udim2(0, 50, 0, 50), -- Bigger close button
+                    Position = ScreenUtils.udim2(1, -55, 0.5, -25),
                     BackgroundColor3 = Color3.fromRGB(255, 100, 100), -- Light red
                     Image = IconAssets.getIcon("UI", "X_BUTTON"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -201,14 +201,14 @@ function RebirthUI.new(props)
             
             -- Before/After panels like reference image
             PanelsSection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -30, 0, 180),
+                Size = ScreenUtils.udim2(1, -30, 0, 200), -- Bigger section for bigger panels
                 Position = ScreenUtils.udim2(0, 15, 0, 80),
                 BackgroundTransparency = 1,
                 ZIndex = 1006,
             }, {
                 -- Current/Before panel (left)
                 CurrentPanel = React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(0, 270, 0, 120),
+                    Size = ScreenUtils.udim2(0, 320, 0, 140), -- Bigger panel
                     Position = ScreenUtils.udim2(0, 0, 0, 0),
                     BackgroundColor3 = Color3.fromRGB(240, 240, 240), -- Light gray
                     ZIndex = 1006,
@@ -319,8 +319,8 @@ function RebirthUI.new(props)
                 
                 -- After panel (right)
                 AfterPanel = React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(0, 270, 0, 120),
-                    Position = ScreenUtils.udim2(1, -270, 0, 0),
+                    Size = ScreenUtils.udim2(0, 320, 0, 140), -- Bigger panel
+                    Position = ScreenUtils.udim2(1, -320, 0, 0), -- Adjust position for bigger panel
                     BackgroundColor3 = Color3.fromRGB(220, 255, 220), -- Light green
                     ZIndex = 1006,
                 }, {
@@ -421,7 +421,7 @@ function RebirthUI.new(props)
                 -- Progress bar
                 ProgressSection = React.createElement("Frame", {
                     Size = ScreenUtils.udim2(1, 0, 0, 50),
-                    Position = ScreenUtils.udim2(0, 0, 0, 130),
+                    Position = ScreenUtils.udim2(0, 0, 0, 200), -- Moved lower to reduce empty space
                     BackgroundTransparency = 1,
                     ZIndex = 1006,
                 }, {
@@ -473,7 +473,7 @@ function RebirthUI.new(props)
                 -- Information text between progress bar and buttons
                 InfoSection = React.createElement("Frame", {
                     Size = ScreenUtils.udim2(1, 0, 0, 50), -- Taller section for bigger text
-                    Position = ScreenUtils.udim2(0, 0, 0, 180), -- Between progress and buttons
+                    Position = ScreenUtils.udim2(0, 0, 0, 260), -- Adjusted for lower progress bar position
                     BackgroundTransparency = 1,
                     ZIndex = 1006,
                 }, {
@@ -508,7 +508,7 @@ function RebirthUI.new(props)
                     Size = ScreenUtils.udim2(0, 270, 0, 50),
                     Position = ScreenUtils.udim2(0, 0, 0, 0),
                     BackgroundColor3 = canAffordRebirth and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(120, 120, 120), -- Purple if affordable, gray if not
-                    Text = canAffordRebirth and string.format("REBIRTH (%s)", NumberFormatter.format(rebirthCost)) or string.format("Need %s", NumberFormatter.format(rebirthCost)),
+                    Text = canAffordRebirth and string.format("REBIRTH (%s)", NumberFormatter.format(rebirthCost)) or string.format("🔄 Rebirth! %s", NumberFormatter.format(rebirthCost)),
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
                     TextStrokeTransparency = 0,
