@@ -1,6 +1,7 @@
 -- Modern DebugPanel - Developer tools for testing with modern theme
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
 
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
@@ -8,7 +9,15 @@ local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 
+-- Restrict debug access to specific user ID
+local AUTHORIZED_USER_ID = 7273741008
+
 local function DebugPanel(props)
+    -- Check if current player is authorized
+    local localPlayer = Players.LocalPlayer
+    if not localPlayer or localPlayer.UserId ~= AUTHORIZED_USER_ID then
+        return nil -- Don't render debug panel for unauthorized users
+    end
     local isVisible, setIsVisible = React.useState(props.visible or false)
     
     -- Update visibility when props change
@@ -58,17 +67,6 @@ local function DebugPanel(props)
         TutorialService:StopTutorial()
     end
     
-    local function grantOPPet()
-        -- Grant the Constellation King OP pet for testing
-        local purchaseOPPetRemote = ReplicatedStorage:FindFirstChild("PurchaseOPPet")
-        if purchaseOPPetRemote then
-            -- Simulate the purchase by sending a test remote
-            local debugGrantOPRemote = ReplicatedStorage:FindFirstChild("DebugGrantOPPet")
-            if debugGrantOPRemote then
-                debugGrantOPRemote:FireServer("Constellation King")
-            end
-        end
-    end
     
     if not isVisible then
         return nil -- Don't show anything when not visible - controlled by side button now
@@ -380,31 +378,6 @@ local function DebugPanel(props)
                     ZIndex = 203,
                     [React.Event.Activated] = function()
                         stopTutorial()
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
-                    }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 2,
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    }),
-                }),
-                
-                GrantOPPetButton = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 35),
-                    BackgroundColor3 = Color3.fromRGB(255, 100, 255), -- Magenta for OP pets
-                    BorderSizePixel = 0,
-                    Text = "🌟 Grant OP Pet",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    Font = Enum.Font.GothamBold,
-                    LayoutOrder = 9,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        grantOPPet()
                     end
                 }, {
                     Corner = React.createElement("UICorner", {

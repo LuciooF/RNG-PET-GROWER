@@ -444,7 +444,7 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
     end
     
     -- Check if player has enough money
-    local plotCost = self:GetPlotCost(plotNumber)
+    local plotCost = self:GetPlotCost(plotNumber, playerRebirths)
     if playerData.Resources.Money < plotCost then
         -- Not enough money
         return false
@@ -513,7 +513,7 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     end
     
     -- Check if player has enough money
-    local tubePlotCost = self:GetTubePlotCost(tubePlotNumber)
+    local tubePlotCost = self:GetTubePlotCost(tubePlotNumber, playerRebirths)
     if playerData.Resources.Money < tubePlotCost then
         -- Not enough money
         return false
@@ -560,20 +560,56 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     return false
 end
 
-function PlotService:GetPlotCost(plotNumber)
-    -- First plot is free, then each plot costs 2x the previous one
+function PlotService:GetPlotCost(plotNumber, playerRebirths)
+    -- First plot is free
     if plotNumber == 1 then
         return 0
     end
-    return PLOT_BASE_COST * (2 ^ (plotNumber - 2))
+    
+    -- Start at 25 for second plot, increment by 70% (1.7x) for each subsequent plot
+    local baseCost = 25
+    local scalingFactor = 1.7 -- 70% increment per plot
+    
+    -- Apply rebirth-based multipliers to the base cost
+    playerRebirths = playerRebirths or 0
+    local rebirthMultiplier = 1.0
+    
+    if playerRebirths <= 1 then
+        -- Easier for first two rebirths (20% cheaper)
+        rebirthMultiplier = 0.8
+    elseif playerRebirths <= 3 then
+        -- Normal pricing for rebirths 2-3
+        rebirthMultiplier = 1.0
+    else
+        -- 50% more expensive after rebirth 4+
+        rebirthMultiplier = 1.5
+    end
+    
+    local finalCost = baseCost * (scalingFactor ^ (plotNumber - 2)) * rebirthMultiplier
+    return math.floor(finalCost)
 end
 
-function PlotService:GetTubePlotCost(tubePlotNumber)
-    -- First tubeplot is free, then each tubeplot costs 2x the previous one
+function PlotService:GetTubePlotCost(tubePlotNumber, playerRebirths)
+    -- First tubeplot is free, then make it quite hard as requested
     if tubePlotNumber == 1 then
         return 0
     end
-    return TUBEPLOT_BASE_COST * (2 ^ (tubePlotNumber - 2))
+    
+    -- Make tube plots quite hard with aggressive scaling
+    playerRebirths = playerRebirths or 0
+    local baseCost = 50 -- Much higher base cost than regular plots
+    local scalingFactor = 3.5 -- Aggressive 3.5x scaling instead of 2x
+    
+    -- Even harder scaling for higher rebirths to maintain challenge
+    if playerRebirths >= 4 then
+        baseCost = 100
+        scalingFactor = 4.0
+    elseif playerRebirths >= 2 then
+        baseCost = 75
+        scalingFactor = 3.8
+    end
+    
+    return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))
 end
 
 function PlotService:PlayerOwnsArea(player, areaNumber)
@@ -1108,8 +1144,8 @@ function PlotService:StartPetSpawningForDoor(door)
         self:SpawnPetBall(door)
         
         while door and door.Parent do
-            -- Wait 7.5 seconds before next spawn (50% slower than 5 seconds)
-            wait(7.5)
+            -- Wait 5 seconds before next spawn (faster spawn rate)
+            wait(5)
             
             -- Check if door still exists
             if door and door.Parent then
@@ -2267,7 +2303,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                     local costLabel = billboard:FindFirstChild("CostLabel")
                     if costLabel then
                         local requiredRebirths = getPlotRebirthRequirement(plotNumber)
-                        local plotCost = self:GetPlotCost(plotNumber)
+                        local plotCost = self:GetPlotCost(plotNumber, playerRebirths)
                         
                         if ownedPlotsSet[plotNumber] then
                             -- White text for purchased plots
@@ -2315,7 +2351,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                 local costLabel = billboard:FindFirstChild("CostLabel")
                 if costLabel then
                     local requiredRebirths = getTubePlotRebirthRequirement(tubeNumber)
-                    local tubePlotCost = self:GetTubePlotCost(tubeNumber)
+                    local tubePlotCost = self:GetTubePlotCost(tubeNumber, playerRebirths)
                     
                     if ownedTubesSet[tubeNumber] then
                         -- Orange text for purchased tubeplots

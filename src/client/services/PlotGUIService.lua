@@ -26,9 +26,9 @@ local function getPlotRebirthRequirement(plotNumber)
     elseif plotNumber >= 15 and plotNumber <= 21 then
         return 2
     elseif plotNumber >= 22 and plotNumber <= 28 then
-        return 3
+        return 4 -- Skip rebirth 3
     elseif plotNumber >= 29 and plotNumber <= 35 then
-        return 4
+        return 5
     else
         return 999 -- Invalid plot numbers (6, 7)
     end
@@ -39,18 +39,54 @@ local function getTubePlotRebirthRequirement(tubePlotNumber)
 end
 
 -- Plot cost functions (matches server)
-local function getPlotCost(plotNumber)
+local function getPlotCost(plotNumber, playerRebirths)
     if plotNumber == 1 then
         return 0 -- First plot is free
     end
-    return 5 * (2 ^ (plotNumber - 2))  -- Increased from 2 to 5 for more challenge
+    
+    -- Start at 25 for second plot, increment by 70% (1.7x) for each subsequent plot (matches server)
+    local baseCost = 25
+    local scalingFactor = 1.7 -- 70% increment per plot
+    
+    -- Apply rebirth-based multipliers to the base cost
+    playerRebirths = playerRebirths or 0
+    local rebirthMultiplier = 1.0
+    
+    if playerRebirths <= 1 then
+        -- Easier for first two rebirths (20% cheaper)
+        rebirthMultiplier = 0.8
+    elseif playerRebirths <= 3 then
+        -- Normal pricing for rebirths 2-3
+        rebirthMultiplier = 1.0
+    else
+        -- 50% more expensive after rebirth 4+
+        rebirthMultiplier = 1.5
+    end
+    
+    local finalCost = baseCost * (scalingFactor ^ (plotNumber - 2)) * rebirthMultiplier
+    return math.floor(finalCost)
 end
 
-local function getTubePlotCost(tubePlotNumber)
+local function getTubePlotCost(tubePlotNumber, playerRebirths)
     if tubePlotNumber == 1 then
         return 0 -- First tubeplot is free
     end
-    return 10 * (2 ^ (tubePlotNumber - 2))  -- Increased from 5 to 10 for more challenge
+    
+    -- Make tube plots quite hard with aggressive scaling (matches server)
+    playerRebirths = playerRebirths or 0
+    local baseCost = 50 -- Much higher base cost than regular plots
+    local scalingFactor = 3.5 -- Aggressive 3.5x scaling instead of 2x
+    
+    -- Even harder scaling for higher rebirths to maintain challenge
+    if playerRebirths >= 4 then
+        baseCost = 100
+        scalingFactor = 4.0
+    elseif playerRebirths >= 2 then
+        baseCost = 75
+        scalingFactor = 3.8
+    end
+    
+    return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))
 end
 
 -- Helper function to check if plot is middle of row (for rebirth text display)
@@ -293,7 +329,7 @@ end
 function PlotGUIService:UpdatePlotGUI(guiData, playerMoney, playerRebirths, ownedPlotsSet)
     local plotNumber = guiData.plotNumber
     local requiredRebirths = getPlotRebirthRequirement(plotNumber)
-    local plotCost = getPlotCost(plotNumber)
+    local plotCost = getPlotCost(plotNumber, playerRebirths)
     
     local moneyIcon = guiData.moneyIcon
     local rebirthIcon = guiData.rebirthIcon
@@ -364,7 +400,7 @@ end
 function PlotGUIService:UpdateTubePlotGUI(guiData, playerMoney, playerRebirths, ownedTubesSet)
     local tubePlotNumber = guiData.tubePlotNumber
     local requiredRebirths = getTubePlotRebirthRequirement(tubePlotNumber)
-    local tubePlotCost = getTubePlotCost(tubePlotNumber)
+    local tubePlotCost = getTubePlotCost(tubePlotNumber, playerRebirths)
     
     local moneyIcon = guiData.moneyIcon
     local rebirthIcon = guiData.rebirthIcon

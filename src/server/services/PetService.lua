@@ -573,21 +573,26 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
         gamepasses[gamepassName] = true
     end
     
-    -- Apply multipliers based on reward type
+    -- Apply multipliers based on reward type (all additive to match client calculation)
     if rewardType == "Money" then
-        -- Check for 2x Money gamepass
+        -- Calculate gamepass multiplier (multiplicative for gamepasses themselves)
+        local gamepassMultiplier = 1
         if gamepasses.TwoXMoney then
-            multiplier = multiplier * 2
+            gamepassMultiplier = gamepassMultiplier * 2
         end
-        
-        -- Check for VIP gamepass (stacks with other gamepasses)
         if gamepasses.VIP then
-            multiplier = multiplier * 2
+            gamepassMultiplier = gamepassMultiplier * 2
         end
         
-        -- Apply equipped pet and OP pet boost (additive - add boost amounts together)
+        -- Apply equipped pet and OP pet boost
         local petBoostMultiplier = self:GetEquippedPetBoostMultiplier(player)
-        multiplier = multiplier + petBoostMultiplier - 1 -- Subtract 1 to avoid double-counting base multiplier
+        
+        -- Apply rebirth bonus
+        local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
+        local rebirthMultiplier = 1 + (playerRebirths * 0.5)
+        
+        -- Total calculation matches client: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus
+        multiplier = 1 + (petBoostMultiplier - 1) + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
     elseif rewardType == "Diamonds" then
         -- Check for 2x Diamonds gamepass
         if gamepasses.TwoXDiamonds then

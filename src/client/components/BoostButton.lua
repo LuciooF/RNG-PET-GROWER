@@ -34,11 +34,8 @@ local function BoostButton(props)
         end
     end, {})
     
-    -- Calculate total boost
-    local totalBoostMultiplier = 1
-    
     -- Pet boost calculation
-    local petBoostMultiplier = 1
+    local petBoostMultiplier = 0 -- Start at 0, not 1
     for _, pet in pairs(playerData.EquippedPets or {}) do
         if pet.FinalBoost then
             petBoostMultiplier = petBoostMultiplier + (pet.FinalBoost - 1)
@@ -46,7 +43,7 @@ local function BoostButton(props)
     end
     
     -- OP Pet boost calculation
-    local opPetBoostMultiplier = 1
+    local opPetBoostMultiplier = 0 -- Start at 0, not 1
     for _, opPet in pairs(playerData.OPPets or {}) do
         if opPet.FinalBoost then
             opPetBoostMultiplier = opPetBoostMultiplier + (opPet.FinalBoost - 1)
@@ -71,8 +68,13 @@ local function BoostButton(props)
         gamepassMultiplier = gamepassMultiplier * 2
     end
     
-    -- Total boost (simple addition - pet boost + OP pet boost + gamepass boost) 
-    totalBoostMultiplier = petBoostMultiplier + opPetBoostMultiplier + gamepassMultiplier - 1 -- Subtract 1 to avoid double counting base
+    -- Calculate rebirth multiplier (0.5x per rebirth: 0 rebirths = 1x, 1 rebirth = 1.5x, 2 rebirths = 2x, etc.)
+    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
+    local rebirthMultiplier = 1 + (playerRebirths * 0.5)
+    
+    -- Total boost calculation: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus (all additive)
+    local totalBoostMultiplier = 1 + petBoostMultiplier + opPetBoostMultiplier + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
+    
     
     -- Use same mobile DPI compensation as SideBar
     local screenSize = ScreenUtils.getScreenSize()

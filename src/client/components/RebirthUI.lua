@@ -201,14 +201,14 @@ function RebirthUI.new(props)
             
             -- Before/After panels like reference image
             PanelsSection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -30, 0, 200), -- Bigger section for bigger panels
+                Size = ScreenUtils.udim2(1, -30, 0, 220), -- Even bigger section for multiplier info
                 Position = ScreenUtils.udim2(0, 15, 0, 80),
                 BackgroundTransparency = 1,
                 ZIndex = 1006,
             }, {
                 -- Current/Before panel (left)
                 CurrentPanel = React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(0, 320, 0, 140), -- Bigger panel
+                    Size = ScreenUtils.udim2(0, 320, 0, 160), -- Even bigger for multiplier
                     Position = ScreenUtils.udim2(0, 0, 0, 0),
                     BackgroundColor3 = Color3.fromRGB(240, 240, 240), -- Light gray
                     ZIndex = 1006,
@@ -305,6 +305,30 @@ function RebirthUI.new(props)
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
+                    
+                    -- Current Multiplier icon and text
+                    CurrentMultiplierIcon = React.createElement("ImageLabel", {
+                        Size = ScreenUtils.udim2(0, 20, 0, 20),
+                        Position = ScreenUtils.udim2(0, 10, 0, 102),
+                        BackgroundTransparency = 1,
+                        Image = "rbxassetid://118906329469728", -- Multiplier icon
+                        ScaleType = Enum.ScaleType.Fit,
+                        ImageColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
+                        ZIndex = 1007,
+                    }),
+                    CurrentMultiplierText = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, -40, 0, 20),
+                        Position = ScreenUtils.udim2(0, 35, 0, 102),
+                        BackgroundTransparency = 1,
+                        Text = string.format("Multiplier: %sx", NumberFormatter.formatBoost(1 + (currentRebirths * 0.5))),
+                        TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
+                        TextStrokeTransparency = 0, -- Black outline
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.GothamBold, -- Bold
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 1007,
+                    }),
                 }),
                 
                 -- Arrow (using asset)
@@ -319,7 +343,7 @@ function RebirthUI.new(props)
                 
                 -- After panel (right)
                 AfterPanel = React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(0, 320, 0, 140), -- Bigger panel
+                    Size = ScreenUtils.udim2(0, 320, 0, 160), -- Even bigger for multiplier
                     Position = ScreenUtils.udim2(1, -320, 0, 0), -- Adjust position for bigger panel
                     BackgroundColor3 = Color3.fromRGB(220, 255, 220), -- Light green
                     ZIndex = 1006,
@@ -416,12 +440,36 @@ function RebirthUI.new(props)
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
+                    
+                    -- After Multiplier icon and text
+                    AfterMultiplierIcon = React.createElement("ImageLabel", {
+                        Size = ScreenUtils.udim2(0, 20, 0, 20),
+                        Position = ScreenUtils.udim2(0, 10, 0, 102),
+                        BackgroundTransparency = 1,
+                        Image = "rbxassetid://118906329469728", -- Multiplier icon
+                        ScaleType = Enum.ScaleType.Fit,
+                        ImageColor3 = Color3.fromRGB(0, 255, 100), -- Green color to show improvement
+                        ZIndex = 1007,
+                    }),
+                    AfterMultiplierText = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, -40, 0, 20),
+                        Position = ScreenUtils.udim2(0, 35, 0, 102),
+                        BackgroundTransparency = 1,
+                        Text = string.format("Multiplier: %sx", NumberFormatter.formatBoost(1 + ((currentRebirths + 1) * 0.5))),
+                        TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
+                        TextStrokeTransparency = 0, -- Black outline
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.GothamBold, -- Bold
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 1007,
+                    }),
                 }),
                 
                 -- Progress bar
                 ProgressSection = React.createElement("Frame", {
                     Size = ScreenUtils.udim2(1, 0, 0, 50),
-                    Position = ScreenUtils.udim2(0, 0, 0, 200), -- Moved lower to reduce empty space
+                    Position = ScreenUtils.udim2(0, 0, 0, 220), -- Moved lower for taller panels
                     BackgroundTransparency = 1,
                     ZIndex = 1006,
                 }, {

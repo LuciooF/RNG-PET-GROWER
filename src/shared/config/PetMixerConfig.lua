@@ -11,16 +11,15 @@ local PetMixerConfig = {}
 --     claimed = false -- Whether the output has been claimed
 -- }
 
--- Base mixing times in seconds
-PetMixerConfig.BASE_MIX_TIME = 30 -- Base time for mixing 1 pet (30 seconds)
-PetMixerConfig.TIME_PER_ADDITIONAL_PET = 10 -- Additional time per extra pet
+-- Base mixing times in seconds - 1 minute per pet
+PetMixerConfig.BASE_MIX_TIME = 60 -- Base time for mixing 1 pet (60 seconds = 1 minute)
+PetMixerConfig.TIME_PER_ADDITIONAL_PET = 60 -- 60 seconds per additional pet (1 minute each)
 PetMixerConfig.MIN_PETS_PER_MIX = 2 -- Minimum pets required for mixing
 PetMixerConfig.MAX_PETS_PER_MIX = 20 -- Maximum pets that can be mixed at once
 PetMixerConfig.MAX_ACTIVE_MIXERS = 3 -- Maximum number of mixers running at once
 
--- Diamond costs for mixing (adjusted for 2+ pets)
-PetMixerConfig.BASE_DIAMOND_COST = 3 -- Base cost for mixing 2 pets
-PetMixerConfig.DIAMONDS_PER_ADDITIONAL_PET = 2 -- Additional cost per extra pet
+-- Diamond costs for mixing - 100 diamonds per pet
+PetMixerConfig.DIAMONDS_PER_PET = 100 -- 100 diamonds per pet (2 pets = 200, 10 pets = 1000, etc.)
 
 -- Calculate mixing time based on number of pets
 function PetMixerConfig.calculateMixTime(petCount)
@@ -29,8 +28,8 @@ function PetMixerConfig.calculateMixTime(petCount)
         petCount = PetMixerConfig.MAX_PETS_PER_MIX
     end
     
-    -- Base time + additional time for extra pets
-    return PetMixerConfig.BASE_MIX_TIME + ((petCount - 1) * PetMixerConfig.TIME_PER_ADDITIONAL_PET)
+    -- Simple calculation: 1 minute (60 seconds) per pet
+    return petCount * 60
 end
 
 -- Calculate diamond cost based on number of pets
@@ -40,8 +39,8 @@ function PetMixerConfig.calculateDiamondCost(petCount)
         petCount = PetMixerConfig.MAX_PETS_PER_MIX
     end
     
-    -- Base cost for 2 pets + additional cost for extra pets
-    return PetMixerConfig.BASE_DIAMOND_COST + ((petCount - 2) * PetMixerConfig.DIAMONDS_PER_ADDITIONAL_PET)
+    -- Simple calculation: 100 diamonds per pet
+    return petCount * PetMixerConfig.DIAMONDS_PER_PET
 end
 
 -- Rarity upgrade chances (when mixing same rarity pets)

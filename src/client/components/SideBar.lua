@@ -48,11 +48,9 @@ local function SideBar(props)
         petCountText = tostring(petCount)
     end
     
-    -- Calculate total boost for boost button
-    local totalBoostMultiplier = 1
-    
+    -- Calculate total boost for boost button (matches BoostPanel calculation)
     -- Pet boost calculation
-    local petBoostMultiplier = 1
+    local petBoostMultiplier = 0 -- Start at 0, not 1
     for _, pet in pairs(playerData.EquippedPets or {}) do
         if pet.FinalBoost then
             petBoostMultiplier = petBoostMultiplier + (pet.FinalBoost - 1)
@@ -60,7 +58,7 @@ local function SideBar(props)
     end
     
     -- OP Pet boost calculation
-    local opPetBoostMultiplier = 1
+    local opPetBoostMultiplier = 0 -- Start at 0, not 1
     for _, opPet in pairs(playerData.OPPets or {}) do
         if opPet.FinalBoost then
             opPetBoostMultiplier = opPetBoostMultiplier + (opPet.FinalBoost - 1)
@@ -76,15 +74,19 @@ local function SideBar(props)
         gamepasses[gamepassName] = true
     end
     
-    if gamepasses["2X_MONEY"] then
+    if gamepasses["TwoXMoney"] then
         gamepassMultiplier = gamepassMultiplier * 2
     end
     if gamepasses["VIP"] then
         gamepassMultiplier = gamepassMultiplier * 2
     end
     
-    -- Total boost (simple addition - pet boost + OP pet boost + gamepass boost) 
-    totalBoostMultiplier = petBoostMultiplier + opPetBoostMultiplier + gamepassMultiplier - 1 -- Subtract 1 to avoid double counting base
+    -- Calculate rebirth multiplier
+    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
+    local rebirthMultiplier = 1 + (playerRebirths * 0.5)
+    
+    -- Total boost calculation: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus (all additive)
+    local totalBoostMultiplier = 1 + petBoostMultiplier + opPetBoostMultiplier + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
     
     -- Responsive button setup
     local screenSize = ScreenUtils.getScreenSize()

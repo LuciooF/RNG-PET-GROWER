@@ -35,7 +35,7 @@ local function BoostPanel(props)
     end, {})
     
     -- Calculate boost breakdown
-    local petBoostMultiplier = 1
+    local petBoostMultiplier = 0 -- Start at 0, not 1
     local petCount = 0
     
     for _, pet in pairs(playerData.EquippedPets or {}) do
@@ -46,7 +46,7 @@ local function BoostPanel(props)
     end
     
     -- Calculate OP pet boost
-    local opPetBoostMultiplier = 1
+    local opPetBoostMultiplier = 0 -- Start at 0, not 1
     local opPetCount = 0
     
     for _, opPet in pairs(playerData.OPPets or {}) do
@@ -77,8 +77,12 @@ local function BoostPanel(props)
         table.insert(gamepassNames, "VIP")
     end
     
-    -- Total boost (simple addition - pet boost + OP pet boost + gamepass boost)
-    local totalMultiplier = petBoostMultiplier + opPetBoostMultiplier + gamepassMultiplier - 1 -- Subtract 1 to avoid double counting base
+    -- Calculate rebirth multiplier (0.5x per rebirth: 0 rebirths = 1x, 1 rebirth = 1.5x, 2 rebirths = 2x, etc.)
+    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
+    local rebirthMultiplier = 1 + (playerRebirths * 0.5)
+    
+    -- Total boost calculation: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus (all additive)
+    local totalMultiplier = 1 + petBoostMultiplier + opPetBoostMultiplier + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
     
     -- Don't render if not visible
     if not props.visible then
@@ -321,6 +325,34 @@ local function BoostPanel(props)
                     LayoutOrder = 4,
                 }),
                 
+                -- Rebirth boost display
+                RebirthBoostLabel = React.createElement("TextLabel", {
+                    Name = "RebirthBoostLabel",
+                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(40)), -- Same size as other boosts
+                    BackgroundTransparency = 1,
+                    Text = string.format("🔄 Rebirth Boost: %sx", NumberFormatter.formatBoost(rebirthMultiplier)),
+                    TextColor3 = rebirthMultiplier > 1 and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(120, 120, 120), -- Pink theme for rebirths
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3, -- Same size as other boosts
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    TextStrokeTransparency = 1, -- Remove outline
+                    ZIndex = 202,
+                    LayoutOrder = 5,
+                }, {
+                    -- Add multiplier icon
+                    MultiplierIcon = React.createElement("ImageLabel", {
+                        Size = UDim2.new(0, ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(30)),
+                        Position = UDim2.new(0, ScreenUtils.getProportionalSize(15), 0.5, -ScreenUtils.getProportionalSize(15)),
+                        AnchorPoint = Vector2.new(0, 0.5),
+                        BackgroundTransparency = 1,
+                        Image = "rbxassetid://118906329469728", -- Multiplier icon
+                        ScaleType = Enum.ScaleType.Fit,
+                        ImageColor3 = rebirthMultiplier > 1 and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(120, 120, 120),
+                        ZIndex = 203,
+                    })
+                }),
+                
                 -- Pet count display
                 PetCountLabel = React.createElement("TextLabel", {
                     Name = "PetCountLabel",
@@ -334,7 +366,7 @@ local function BoostPanel(props)
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 1, -- Remove outline
                     ZIndex = 202,
-                    LayoutOrder = 5,
+                    LayoutOrder = 6,
                 })
             })
         })

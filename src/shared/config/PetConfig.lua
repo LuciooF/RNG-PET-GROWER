@@ -23,141 +23,141 @@ PetConfig.PetsByLevel = {
     [1] = {
         -- 15 different rarities with incremental spawn chances
         -- Replaced boring cats/dogs with unique models from the 467 available
-        {Name = "Gecko", ModelName = "Gecko", Rarity = PetConstants.Rarity.COMMON, BaseValue = 1, BaseBoost = 1.01, SpawnChance = 20.0},        -- 1 in 5
-        {Name = "Red Panda", ModelName = "Red Panda", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 2, BaseBoost = 1.02, SpawnChance = 10.0},     -- 1 in 10
-        {Name = "Flamingo", ModelName = "Flamingo", Rarity = PetConstants.Rarity.RARE, BaseValue = 4, BaseBoost = 1.04, SpawnChance = 4.0},         -- 1 in 25
-        {Name = "Capybara", ModelName = "Capybara", Rarity = PetConstants.Rarity.EPIC, BaseValue = 8, BaseBoost = 1.08, SpawnChance = 2.0},      -- 1 in 50
-        {Name = "Sloth", ModelName = "Sloth", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 16, BaseBoost = 1.16, SpawnChance = 1.0},   -- 1 in 100
-        {Name = "Baby Dragon", ModelName = "Baby Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 32, BaseBoost = 1.32, SpawnChance = 0.4}, -- 1 in 250
-        {Name = "Narwhal", ModelName = "Narwhal", Rarity = PetConstants.Rarity.ANCIENT, BaseValue = 64, BaseBoost = 1.64, SpawnChance = 0.2},      -- 1 in 500
-        {Name = "Phoenix", ModelName = "Phoenix", Rarity = PetConstants.Rarity.CELESTIAL, BaseValue = 128, BaseBoost = 2.28, SpawnChance = 0.1}, -- 1 in 1k (Keep - already cool!)
-        {Name = "Dragon", ModelName = "Dragon", Rarity = PetConstants.Rarity.TRANSCENDENT, BaseValue = 256, BaseBoost = 2.56, SpawnChance = 0.04}, -- 1 in 2.5k (Keep - already cool!)
-        {Name = "Crystal Lord", ModelName = "Crystal Lord", Rarity = PetConstants.Rarity.OMNIPOTENT, BaseValue = 512, BaseBoost = 5.12, SpawnChance = 0.02}, -- 1 in 5k (Keep - already cool!)
-        {Name = "Octopus", ModelName = "Octopus", Rarity = PetConstants.Rarity.ETHEREAL, BaseValue = 1024, BaseBoost = 10.24, SpawnChance = 0.01},   -- 1 in 10k
-        {Name = "Pufferfish", ModelName = "Pufferfish", Rarity = PetConstants.Rarity.PRIMORDIAL, BaseValue = 2048, BaseBoost = 20.48, SpawnChance = 0.004}, -- 1 in 25k
-        {Name = "Stegosaurus", ModelName = "Stegosaurus", Rarity = PetConstants.Rarity.COSMIC, BaseValue = 4096, BaseBoost = 40.96, SpawnChance = 0.002}, -- 1 in 50k
-        {Name = "Grim Reaper", ModelName = "Grim Reaper", Rarity = PetConstants.Rarity.INFINITE, BaseValue = 8192, BaseBoost = 81.92, SpawnChance = 0.001}, -- 1 in 100k
-        {Name = "The Chosen One", ModelName = "The Chosen One", Rarity = PetConstants.Rarity.OMNISCIENT, BaseValue = 16384, BaseBoost = 163.84, SpawnChance = 0.0001} -- 1 in 1M (Keep - already cool!)
+        {Name = "Gecko", ModelName = "Gecko", Rarity = PetConstants.Rarity.COMMON, BaseValue = 1, BaseBoost = 0.76, SpawnChance = 20.0},        -- 1 in 5
+        {Name = "Red Panda", ModelName = "Red Panda", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 2, BaseBoost = 0.77, SpawnChance = 10.0},     -- 1 in 10
+        {Name = "Flamingo", ModelName = "Flamingo", Rarity = PetConstants.Rarity.RARE, BaseValue = 4, BaseBoost = 0.78, SpawnChance = 4.0},         -- 1 in 25
+        {Name = "Capybara", ModelName = "Capybara", Rarity = PetConstants.Rarity.EPIC, BaseValue = 8, BaseBoost = 0.81, SpawnChance = 2.0},      -- 1 in 50
+        {Name = "Sloth", ModelName = "Sloth", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 16, BaseBoost = 0.87, SpawnChance = 1.0},   -- 1 in 100
+        {Name = "Baby Dragon", ModelName = "Baby Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 32, BaseBoost = 0.99, SpawnChance = 0.4}, -- 1 in 250
+        {Name = "Narwhal", ModelName = "Narwhal", Rarity = PetConstants.Rarity.ANCIENT, BaseValue = 64, BaseBoost = 1.23, SpawnChance = 0.2},      -- 1 in 500
+        {Name = "Phoenix", ModelName = "Phoenix", Rarity = PetConstants.Rarity.CELESTIAL, BaseValue = 128, BaseBoost = 1.71, SpawnChance = 0.1}, -- 1 in 1k (Keep - already cool!)
+        {Name = "Dragon", ModelName = "Dragon", Rarity = PetConstants.Rarity.TRANSCENDENT, BaseValue = 256, BaseBoost = 1.92, SpawnChance = 0.04}, -- 1 in 2.5k (Keep - already cool!)
+        {Name = "Crystal Lord", ModelName = "Crystal Lord", Rarity = PetConstants.Rarity.OMNIPOTENT, BaseValue = 512, BaseBoost = 3.84, SpawnChance = 0.02}, -- 1 in 5k (Keep - already cool!)
+        {Name = "Octopus", ModelName = "Octopus", Rarity = PetConstants.Rarity.ETHEREAL, BaseValue = 1024, BaseBoost = 7.68, SpawnChance = 0.01},   -- 1 in 10k
+        {Name = "Pufferfish", ModelName = "Pufferfish", Rarity = PetConstants.Rarity.PRIMORDIAL, BaseValue = 2048, BaseBoost = 15.36, SpawnChance = 0.004}, -- 1 in 25k
+        {Name = "Stegosaurus", ModelName = "Stegosaurus", Rarity = PetConstants.Rarity.COSMIC, BaseValue = 4096, BaseBoost = 30.72, SpawnChance = 0.002}, -- 1 in 50k
+        {Name = "Grim Reaper", ModelName = "Grim Reaper", Rarity = PetConstants.Rarity.INFINITE, BaseValue = 8192, BaseBoost = 61.44, SpawnChance = 0.001}, -- 1 in 100k
+        {Name = "The Chosen One", ModelName = "The Chosen One", Rarity = PetConstants.Rarity.OMNISCIENT, BaseValue = 16384, BaseBoost = 122.88, SpawnChance = 0.0001} -- 1 in 1M (Keep - already cool!)
     },
     
     -- LEVEL 2 - Cyberpunk/Space Tier - Futuristic and alien themes
     [2] = {
         -- 15 different rarities with incremental spawn chances - Tech/space themed pets
-        {Name = "Vaporwave Cat", ModelName = "Vaporwave Cat", Rarity = PetConstants.Rarity.COMMON, BaseValue = 2, BaseBoost = 1.02, SpawnChance = 20.0},        -- 1 in 5
-        {Name = "Cyber Cat", ModelName = "Cyber Cat", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 4, BaseBoost = 1.04, SpawnChance = 10.0},     -- 1 in 10
-        {Name = "Fire Fox", ModelName = "Fire Fox", Rarity = PetConstants.Rarity.RARE, BaseValue = 8, BaseBoost = 1.08, SpawnChance = 4.0},         -- 1 in 25 (Keep - already cool!)
-        {Name = "Astronaut", ModelName = "Astronaut", Rarity = PetConstants.Rarity.EPIC, BaseValue = 16, BaseBoost = 1.16, SpawnChance = 2.0},      -- 1 in 50
-        {Name = "Matrix Doggy", ModelName = "Matrix Doggy", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 32, BaseBoost = 1.32, SpawnChance = 1.0},   -- 1 in 100
-        {Name = "Alien Dragon", ModelName = "Alien Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 64, BaseBoost = 1.64, SpawnChance = 0.4}, -- 1 in 250
-        {Name = "Mars Crawler", ModelName = "Mars Crawler", Rarity = PetConstants.Rarity.ANCIENT, BaseValue = 128, BaseBoost = 2.28, SpawnChance = 0.2},      -- 1 in 500
-        {Name = "Saturn Cat", ModelName = "Saturn Cat", Rarity = PetConstants.Rarity.CELESTIAL, BaseValue = 256, BaseBoost = 2.56, SpawnChance = 0.1}, -- 1 in 1k
-        {Name = "Cyber Dominus", ModelName = "Cyber Dominus", Rarity = PetConstants.Rarity.TRANSCENDENT, BaseValue = 512, BaseBoost = 5.12, SpawnChance = 0.04}, -- 1 in 2.5k (Keep - already cool!)
-        {Name = "Neptune Golem", ModelName = "Neptune Golem", Rarity = PetConstants.Rarity.OMNIPOTENT, BaseValue = 1024, BaseBoost = 10.24, SpawnChance = 0.02}, -- 1 in 5k
-        {Name = "Alien Hydra", ModelName = "Alien Hydra", Rarity = PetConstants.Rarity.ETHEREAL, BaseValue = 2048, BaseBoost = 20.48, SpawnChance = 0.01},   -- 1 in 10k  
-        {Name = "Mecha Spider", ModelName = "Mecha Spider", Rarity = PetConstants.Rarity.PRIMORDIAL, BaseValue = 4096, BaseBoost = 40.96, SpawnChance = 0.004}, -- 1 in 25k
-        {Name = "Cyber Robot", ModelName = "Cyber Robot", Rarity = PetConstants.Rarity.COSMIC, BaseValue = 8192, BaseBoost = 81.92, SpawnChance = 0.002}, -- 1 in 50k
-        {Name = "Constellation", ModelName = "Constellation", Rarity = PetConstants.Rarity.INFINITE, BaseValue = 16384, BaseBoost = 163.84, SpawnChance = 0.001}, -- 1 in 100k
-        {Name = "The Watcher", ModelName = "The Watcher", Rarity = PetConstants.Rarity.OMNISCIENT, BaseValue = 32768, BaseBoost = 327.68, SpawnChance = 0.0001} -- 1 in 1M (Keep - already cool!)
+        {Name = "Vaporwave Cat", ModelName = "Vaporwave Cat", Rarity = PetConstants.Rarity.COMMON, BaseValue = 2, BaseBoost = 0.77, SpawnChance = 20.0},        -- 1 in 5
+        {Name = "Cyber Cat", ModelName = "Cyber Cat", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 4, BaseBoost = 0.78, SpawnChance = 10.0},     -- 1 in 10
+        {Name = "Fire Fox", ModelName = "Fire Fox", Rarity = PetConstants.Rarity.RARE, BaseValue = 8, BaseBoost = 0.81, SpawnChance = 4.0},         -- 1 in 25 (Keep - already cool!)
+        {Name = "Astronaut", ModelName = "Astronaut", Rarity = PetConstants.Rarity.EPIC, BaseValue = 16, BaseBoost = 0.87, SpawnChance = 2.0},      -- 1 in 50
+        {Name = "Matrix Doggy", ModelName = "Matrix Doggy", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 32, BaseBoost = 0.99, SpawnChance = 1.0},   -- 1 in 100
+        {Name = "Alien Dragon", ModelName = "Alien Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 64, BaseBoost = 1.23, SpawnChance = 0.4}, -- 1 in 250
+        {Name = "Mars Crawler", ModelName = "Mars Crawler", Rarity = PetConstants.Rarity.ANCIENT, BaseValue = 128, BaseBoost = 1.71, SpawnChance = 0.2},      -- 1 in 500
+        {Name = "Saturn Cat", ModelName = "Saturn Cat", Rarity = PetConstants.Rarity.CELESTIAL, BaseValue = 256, BaseBoost = 1.92, SpawnChance = 0.1}, -- 1 in 1k
+        {Name = "Cyber Dominus", ModelName = "Cyber Dominus", Rarity = PetConstants.Rarity.TRANSCENDENT, BaseValue = 512, BaseBoost = 3.84, SpawnChance = 0.04}, -- 1 in 2.5k (Keep - already cool!)
+        {Name = "Neptune Golem", ModelName = "Neptune Golem", Rarity = PetConstants.Rarity.OMNIPOTENT, BaseValue = 1024, BaseBoost = 7.68, SpawnChance = 0.02}, -- 1 in 5k
+        {Name = "Alien Hydra", ModelName = "Alien Hydra", Rarity = PetConstants.Rarity.ETHEREAL, BaseValue = 2048, BaseBoost = 15.36, SpawnChance = 0.01},   -- 1 in 10k  
+        {Name = "Mecha Spider", ModelName = "Mecha Spider", Rarity = PetConstants.Rarity.PRIMORDIAL, BaseValue = 4096, BaseBoost = 30.72, SpawnChance = 0.004}, -- 1 in 25k
+        {Name = "Cyber Robot", ModelName = "Cyber Robot", Rarity = PetConstants.Rarity.COSMIC, BaseValue = 8192, BaseBoost = 61.44, SpawnChance = 0.002}, -- 1 in 50k
+        {Name = "Constellation", ModelName = "Constellation", Rarity = PetConstants.Rarity.INFINITE, BaseValue = 16384, BaseBoost = 122.88, SpawnChance = 0.001}, -- 1 in 100k
+        {Name = "The Watcher", ModelName = "The Watcher", Rarity = PetConstants.Rarity.OMNISCIENT, BaseValue = 32768, BaseBoost = 245.76, SpawnChance = 0.0001} -- 1 in 1M (Keep - already cool!)
     },
     
     -- LEVEL 3 - Mythical/Fantasy Tier - Dragons, demons, and legendary creatures
     [3] = {
         -- 15 different rarities with incremental spawn chances - Epic fantasy creatures
-        {Name = "Hell Dragon", ModelName = "Hell Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 4, BaseBoost = 1.04, SpawnChance = 20.0},        -- 1 in 5 (Keep - very cool!)
-        {Name = "Heaven Peacock", ModelName = "Heaven Peacock", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 8, BaseBoost = 1.08, SpawnChance = 10.0},     -- 1 in 10 (Keep - very cool!)
-        {Name = "Emerald Dragon", ModelName = "Emerald Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 16, BaseBoost = 1.16, SpawnChance = 4.0},         -- 1 in 25
-        {Name = "Sapphire Dragon", ModelName = "Sapphire Dragon", Rarity = PetConstants.Rarity.EPIC, BaseValue = 32, BaseBoost = 1.32, SpawnChance = 2.0},      -- 1 in 50
-        {Name = "Diamond Golem", ModelName = "Diamond Golem", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 64, BaseBoost = 1.64, SpawnChance = 1.0},   -- 1 in 100
-        {Name = "Kitsune", ModelName = "Kitsune", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 128, BaseBoost = 2.28, SpawnChance = 0.4}, -- 1 in 250
-        {Name = "Headless Horseman", ModelName = "Headless Horseman", Rarity = PetConstants.Rarity.ANCIENT, BaseValue = 256, BaseBoost = 2.56, SpawnChance = 0.2},      -- 1 in 500
-        {Name = "Cyber Dominus", ModelName = "Cyber Dominus", Rarity = PetConstants.Rarity.CELESTIAL, BaseValue = 512, BaseBoost = 5.12, SpawnChance = 0.1}, -- 1 in 1k
-        {Name = "Gingerbread Dominus", ModelName = "Gingerbread Dominus", Rarity = PetConstants.Rarity.TRANSCENDENT, BaseValue = 1024, BaseBoost = 10.24, SpawnChance = 0.04}, -- 1 in 2.5k (Keep - unique!)
-        {Name = "Soul Golem", ModelName = "Soul Golem", Rarity = PetConstants.Rarity.OMNIPOTENT, BaseValue = 2048, BaseBoost = 20.48, SpawnChance = 0.02}, -- 1 in 5k
-        {Name = "Demon", ModelName = "Demon", Rarity = PetConstants.Rarity.ETHEREAL, BaseValue = 4096, BaseBoost = 40.96, SpawnChance = 0.01},   -- 1 in 10k (Keep - classic!)
-        {Name = "Cyclops", ModelName = "Cyclops", Rarity = PetConstants.Rarity.PRIMORDIAL, BaseValue = 8192, BaseBoost = 81.92, SpawnChance = 0.004}, -- 1 in 25k
-        {Name = "Ban Hammer", ModelName = "Ban Hammer", Rarity = PetConstants.Rarity.COSMIC, BaseValue = 16384, BaseBoost = 163.84, SpawnChance = 0.002}, -- 1 in 50k
-        {Name = "Developer Pet", ModelName = "Developer Pet", Rarity = PetConstants.Rarity.INFINITE, BaseValue = 32768, BaseBoost = 327.68, SpawnChance = 0.001}, -- 1 in 100k
-        {Name = "1x1x1x1", ModelName = "1x1x1x1", Rarity = PetConstants.Rarity.OMNISCIENT, BaseValue = 65536, BaseBoost = 655.36, SpawnChance = 0.0001} -- 1 in 1M (Keep - legendary Roblox reference!)
+        {Name = "Hell Dragon", ModelName = "Hell Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 4, BaseBoost = 0.78, SpawnChance = 20.0},        -- 1 in 5 (Keep - very cool!)
+        {Name = "Heaven Peacock", ModelName = "Heaven Peacock", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 8, BaseBoost = 0.81, SpawnChance = 10.0},     -- 1 in 10 (Keep - very cool!)
+        {Name = "Emerald Dragon", ModelName = "Emerald Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 16, BaseBoost = 0.87, SpawnChance = 4.0},         -- 1 in 25
+        {Name = "Sapphire Dragon", ModelName = "Sapphire Dragon", Rarity = PetConstants.Rarity.EPIC, BaseValue = 32, BaseBoost = 0.99, SpawnChance = 2.0},      -- 1 in 50
+        {Name = "Diamond Golem", ModelName = "Diamond Golem", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 64, BaseBoost = 1.23, SpawnChance = 1.0},   -- 1 in 100
+        {Name = "Kitsune", ModelName = "Kitsune", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 128, BaseBoost = 1.71, SpawnChance = 0.4}, -- 1 in 250
+        {Name = "Headless Horseman", ModelName = "Headless Horseman", Rarity = PetConstants.Rarity.ANCIENT, BaseValue = 256, BaseBoost = 1.92, SpawnChance = 0.2},      -- 1 in 500
+        {Name = "Cyber Dominus", ModelName = "Cyber Dominus", Rarity = PetConstants.Rarity.CELESTIAL, BaseValue = 512, BaseBoost = 3.84, SpawnChance = 0.1}, -- 1 in 1k
+        {Name = "Gingerbread Dominus", ModelName = "Gingerbread Dominus", Rarity = PetConstants.Rarity.TRANSCENDENT, BaseValue = 1024, BaseBoost = 7.68, SpawnChance = 0.04}, -- 1 in 2.5k (Keep - unique!)
+        {Name = "Soul Golem", ModelName = "Soul Golem", Rarity = PetConstants.Rarity.OMNIPOTENT, BaseValue = 2048, BaseBoost = 15.36, SpawnChance = 0.02}, -- 1 in 5k
+        {Name = "Demon", ModelName = "Demon", Rarity = PetConstants.Rarity.ETHEREAL, BaseValue = 4096, BaseBoost = 30.72, SpawnChance = 0.01},   -- 1 in 10k (Keep - classic!)
+        {Name = "Cyclops", ModelName = "Cyclops", Rarity = PetConstants.Rarity.PRIMORDIAL, BaseValue = 8192, BaseBoost = 61.44, SpawnChance = 0.004}, -- 1 in 25k
+        {Name = "Ban Hammer", ModelName = "Ban Hammer", Rarity = PetConstants.Rarity.COSMIC, BaseValue = 16384, BaseBoost = 122.88, SpawnChance = 0.002}, -- 1 in 50k
+        {Name = "Developer Pet", ModelName = "Developer Pet", Rarity = PetConstants.Rarity.INFINITE, BaseValue = 32768, BaseBoost = 245.76, SpawnChance = 0.001}, -- 1 in 100k
+        {Name = "1x1x1x1", ModelName = "1x1x1x1", Rarity = PetConstants.Rarity.OMNISCIENT, BaseValue = 65536, BaseBoost = 491.52, SpawnChance = 0.0001} -- 1 in 1M (Keep - legendary Roblox reference!)
     },
     
     -- LEVEL 4 - Mystical/Food Tier - Magical creatures and themed pets
     [4] = {
-        {Name = "Hot Dog", ModelName = "Hot Dog", Rarity = PetConstants.Rarity.COMMON, BaseValue = 8, BaseBoost = 1.06, SpawnChance = 18.0},
-        {Name = "Ice Cream Cone", ModelName = "Ice Cream Cone", Rarity = PetConstants.Rarity.COMMON, BaseValue = 8, BaseBoost = 1.06, SpawnChance = 16.0},
-        {Name = "Mystic Fox", ModelName = "Mystic Fox", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 16, BaseBoost = 1.12, SpawnChance = 14.0}, -- Keep - unique!
-        {Name = "Popcorn Cat", ModelName = "Popcorn Cat", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 16, BaseBoost = 1.15, SpawnChance = 12.0},
-        {Name = "Chocolate Dragon", ModelName = "Chocolate Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 32, BaseBoost = 1.18, SpawnChance = 10.0},
-        {Name = "Donut Doggy", ModelName = "Donut Doggy", Rarity = PetConstants.Rarity.RARE, BaseValue = 40, BaseBoost = 1.2, SpawnChance = 8.0},
-        {Name = "Enchanted Golem", ModelName = "Enchanted Golem", Rarity = PetConstants.Rarity.EPIC, BaseValue = 64, BaseBoost = 1.25, SpawnChance = 6.0},
-        {Name = "Enchanted Bunny", ModelName = "Enchanted Bunny", Rarity = PetConstants.Rarity.EPIC, BaseValue = 80, BaseBoost = 1.3, SpawnChance = 5.0},
-        {Name = "Ruby Golem", ModelName = "Ruby Golem", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 160, BaseBoost = 1.35, SpawnChance = 4.0},
-        {Name = "Sapphire Dragon", ModelName = "Sapphire Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 400, BaseBoost = 1.4, SpawnChance = 3.0},
+        {Name = "Hot Dog", ModelName = "Hot Dog", Rarity = PetConstants.Rarity.COMMON, BaseValue = 8, BaseBoost = 0.80, SpawnChance = 18.0},
+        {Name = "Ice Cream Cone", ModelName = "Ice Cream Cone", Rarity = PetConstants.Rarity.COMMON, BaseValue = 8, BaseBoost = 0.80, SpawnChance = 16.0},
+        {Name = "Mystic Fox", ModelName = "Mystic Fox", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 16, BaseBoost = 0.84, SpawnChance = 14.0}, -- Keep - unique!
+        {Name = "Popcorn Cat", ModelName = "Popcorn Cat", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 16, BaseBoost = 0.86, SpawnChance = 12.0},
+        {Name = "Chocolate Dragon", ModelName = "Chocolate Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 32, BaseBoost = 0.89, SpawnChance = 10.0},
+        {Name = "Donut Doggy", ModelName = "Donut Doggy", Rarity = PetConstants.Rarity.RARE, BaseValue = 40, BaseBoost = 0.90, SpawnChance = 8.0},
+        {Name = "Enchanted Golem", ModelName = "Enchanted Golem", Rarity = PetConstants.Rarity.EPIC, BaseValue = 64, BaseBoost = 0.94, SpawnChance = 6.0},
+        {Name = "Enchanted Bunny", ModelName = "Enchanted Bunny", Rarity = PetConstants.Rarity.EPIC, BaseValue = 80, BaseBoost = 0.98, SpawnChance = 5.0},
+        {Name = "Ruby Golem", ModelName = "Ruby Golem", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 160, BaseBoost = 1.01, SpawnChance = 4.0},
+        {Name = "Sapphire Dragon", ModelName = "Sapphire Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 400, BaseBoost = 1.05, SpawnChance = 3.0},
         -- 5 NEW PETS
-        {Name = "Kitsune", ModelName = "Kitsune", Rarity = PetConstants.Rarity.COMMON, BaseValue = 8, BaseBoost = 1.06, SpawnChance = 2.0},
-        {Name = "Owl", ModelName = "Chocolate Owl", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 24, BaseBoost = 1.18, SpawnChance = 1.5},
-        {Name = "Wizard Cat", ModelName = "Lucky Cat", Rarity = PetConstants.Rarity.RARE, BaseValue = 48, BaseBoost = 1.24, SpawnChance = 1.0},
-        {Name = "Cyclops", ModelName = "Cyclops", Rarity = PetConstants.Rarity.EPIC, BaseValue = 120, BaseBoost = 1.36, SpawnChance = 0.4},
-        {Name = "Developer Pet", ModelName = "Developer Pet", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 800, BaseBoost = 1.45, SpawnChance = 0.1} -- SUPER DUPER RARE
+        {Name = "Kitsune", ModelName = "Kitsune", Rarity = PetConstants.Rarity.COMMON, BaseValue = 8, BaseBoost = 0.80, SpawnChance = 2.0},
+        {Name = "Owl", ModelName = "Chocolate Owl", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 24, BaseBoost = 0.89, SpawnChance = 1.5},
+        {Name = "Wizard Cat", ModelName = "Lucky Cat", Rarity = PetConstants.Rarity.RARE, BaseValue = 48, BaseBoost = 0.93, SpawnChance = 1.0},
+        {Name = "Cyclops", ModelName = "Cyclops", Rarity = PetConstants.Rarity.EPIC, BaseValue = 120, BaseBoost = 1.02, SpawnChance = 0.4},
+        {Name = "Developer Pet", ModelName = "Developer Pet", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 800, BaseBoost = 1.09, SpawnChance = 0.1} -- SUPER DUPER RARE
     },
     
     -- LEVEL 5 - Galactic pets (16x value multiplier from Level 1)
     [5] = {
-        {Name = "Saturn Cat", ModelName = "Saturn Cat", Rarity = PetConstants.Rarity.COMMON, BaseValue = 16, BaseBoost = 1.08, SpawnChance = 18.0},
-        {Name = "Saturn Doggy", ModelName = "Saturn Doggy", Rarity = PetConstants.Rarity.COMMON, BaseValue = 16, BaseBoost = 1.08, SpawnChance = 16.0},
-        {Name = "Mars Crawler", ModelName = "Mars Crawler", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 32, BaseBoost = 1.16, SpawnChance = 14.0},
-        {Name = "Saturn Floppa", ModelName = "Saturn Floppa", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 32, BaseBoost = 1.2, SpawnChance = 12.0},
-        {Name = "Martian Cat", ModelName = "Martian Cat", Rarity = PetConstants.Rarity.RARE, BaseValue = 64, BaseBoost = 1.24, SpawnChance = 10.0},
-        {Name = "Martian Doggy", ModelName = "Martian Doggy", Rarity = PetConstants.Rarity.RARE, BaseValue = 80, BaseBoost = 1.28, SpawnChance = 8.0},
-        {Name = "Neptune Golem", ModelName = "Neptune Golem", Rarity = PetConstants.Rarity.EPIC, BaseValue = 128, BaseBoost = 1.32, SpawnChance = 6.0},
-        {Name = "Lunar Golem", ModelName = "Lunar Golem", Rarity = PetConstants.Rarity.EPIC, BaseValue = 160, BaseBoost = 1.36, SpawnChance = 5.0},
-        {Name = "Neptunian Dragon", ModelName = "Neptunian Dragon", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 320, BaseBoost = 1.4, SpawnChance = 4.0},
-        {Name = "Constellation", ModelName = "Constellation", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 800, BaseBoost = 1.45, SpawnChance = 3.0},
+        {Name = "Saturn Cat", ModelName = "Saturn Cat", Rarity = PetConstants.Rarity.COMMON, BaseValue = 16, BaseBoost = 0.81, SpawnChance = 18.0},
+        {Name = "Saturn Doggy", ModelName = "Saturn Doggy", Rarity = PetConstants.Rarity.COMMON, BaseValue = 16, BaseBoost = 0.81, SpawnChance = 16.0},
+        {Name = "Mars Crawler", ModelName = "Mars Crawler", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 32, BaseBoost = 0.87, SpawnChance = 14.0},
+        {Name = "Saturn Floppa", ModelName = "Saturn Floppa", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 32, BaseBoost = 0.90, SpawnChance = 12.0},
+        {Name = "Martian Cat", ModelName = "Martian Cat", Rarity = PetConstants.Rarity.RARE, BaseValue = 64, BaseBoost = 0.93, SpawnChance = 10.0},
+        {Name = "Martian Doggy", ModelName = "Martian Doggy", Rarity = PetConstants.Rarity.RARE, BaseValue = 80, BaseBoost = 0.96, SpawnChance = 8.0},
+        {Name = "Neptune Golem", ModelName = "Neptune Golem", Rarity = PetConstants.Rarity.EPIC, BaseValue = 128, BaseBoost = 0.99, SpawnChance = 6.0},
+        {Name = "Lunar Golem", ModelName = "Lunar Golem", Rarity = PetConstants.Rarity.EPIC, BaseValue = 160, BaseBoost = 1.02, SpawnChance = 5.0},
+        {Name = "Neptunian Dragon", ModelName = "Neptunian Dragon", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 320, BaseBoost = 1.05, SpawnChance = 4.0},
+        {Name = "Constellation", ModelName = "Constellation", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 800, BaseBoost = 1.09, SpawnChance = 3.0},
         -- 5 NEW PETS
-        {Name = "Alien", ModelName = "Alien", Rarity = PetConstants.Rarity.COMMON, BaseValue = 16, BaseBoost = 1.08, SpawnChance = 2.0},
-        {Name = "Astronaut", ModelName = "Astronaut", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 48, BaseBoost = 1.24, SpawnChance = 1.5},
-        {Name = "Space Golem", ModelName = "Space Golem", Rarity = PetConstants.Rarity.RARE, BaseValue = 96, BaseBoost = 1.30, SpawnChance = 1.0},
-        {Name = "Venus Overlord", ModelName = "Venus Overlord", Rarity = PetConstants.Rarity.EPIC, BaseValue = 240, BaseBoost = 1.42, SpawnChance = 0.4},
-        {Name = "Robux Fiend", ModelName = "Robux Fiend", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 1600, BaseBoost = 1.50, SpawnChance = 0.1} -- SUPER DUPER RARE
+        {Name = "Alien", ModelName = "Alien", Rarity = PetConstants.Rarity.COMMON, BaseValue = 16, BaseBoost = 0.81, SpawnChance = 2.0},
+        {Name = "Astronaut", ModelName = "Astronaut", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 48, BaseBoost = 0.93, SpawnChance = 1.5},
+        {Name = "Space Golem", ModelName = "Space Golem", Rarity = PetConstants.Rarity.RARE, BaseValue = 96, BaseBoost = 0.98, SpawnChance = 1.0},
+        {Name = "Venus Overlord", ModelName = "Venus Overlord", Rarity = PetConstants.Rarity.EPIC, BaseValue = 240, BaseBoost = 1.07, SpawnChance = 0.4},
+        {Name = "Robux Fiend", ModelName = "Robux Fiend", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 1600, BaseBoost = 1.13, SpawnChance = 0.1} -- SUPER DUPER RARE
     },
     
     -- LEVEL 6 - Divine pets (32x value multiplier from Level 1)
     [6] = {
-        {Name = "Angel", ModelName = "Angel", Rarity = PetConstants.Rarity.COMMON, BaseValue = 32, BaseBoost = 1.1, SpawnChance = 18.0},
-        {Name = "Angel Bee", ModelName = "Angel Bee", Rarity = PetConstants.Rarity.COMMON, BaseValue = 32, BaseBoost = 1.1, SpawnChance = 16.0},
-        {Name = "Angel Crab", ModelName = "Angel Crab", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 64, BaseBoost = 1.2, SpawnChance = 14.0},
-        {Name = "Cactus Angel", ModelName = "Cactus Angel", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 64, BaseBoost = 1.25, SpawnChance = 12.0},
-        {Name = "Heart Phoenix", ModelName = "Heart Phoenix", Rarity = PetConstants.Rarity.RARE, BaseValue = 128, BaseBoost = 1.3, SpawnChance = 10.0},
-        {Name = "Heart Unicorn", ModelName = "Heart Unicorn", Rarity = PetConstants.Rarity.RARE, BaseValue = 160, BaseBoost = 1.35, SpawnChance = 8.0},
-        {Name = "Heart Dominus", ModelName = "Heart Dominus", Rarity = PetConstants.Rarity.EPIC, BaseValue = 256, BaseBoost = 1.4, SpawnChance = 6.0},
-        {Name = "Crystal Bunny 2.0", ModelName = "Crystal Bunny 2.0", Rarity = PetConstants.Rarity.EPIC, BaseValue = 320, BaseBoost = 1.45, SpawnChance = 5.0},
-        {Name = "Diamond Golem", ModelName = "Diamond Golem", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 640, BaseBoost = 1.5, SpawnChance = 4.0},
-        {Name = "Emerald Golem", ModelName = "Emerald Golem", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 1600, BaseBoost = 1.55, SpawnChance = 3.0},
+        {Name = "Angel", ModelName = "Angel", Rarity = PetConstants.Rarity.COMMON, BaseValue = 32, BaseBoost = 0.83, SpawnChance = 18.0},
+        {Name = "Angel Bee", ModelName = "Angel Bee", Rarity = PetConstants.Rarity.COMMON, BaseValue = 32, BaseBoost = 0.83, SpawnChance = 16.0},
+        {Name = "Angel Crab", ModelName = "Angel Crab", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 64, BaseBoost = 0.90, SpawnChance = 14.0},
+        {Name = "Cactus Angel", ModelName = "Cactus Angel", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 64, BaseBoost = 0.94, SpawnChance = 12.0},
+        {Name = "Heart Phoenix", ModelName = "Heart Phoenix", Rarity = PetConstants.Rarity.RARE, BaseValue = 128, BaseBoost = 0.98, SpawnChance = 10.0},
+        {Name = "Heart Unicorn", ModelName = "Heart Unicorn", Rarity = PetConstants.Rarity.RARE, BaseValue = 160, BaseBoost = 1.01, SpawnChance = 8.0},
+        {Name = "Heart Dominus", ModelName = "Heart Dominus", Rarity = PetConstants.Rarity.EPIC, BaseValue = 256, BaseBoost = 1.05, SpawnChance = 6.0},
+        {Name = "Crystal Bunny 2.0", ModelName = "Crystal Bunny 2.0", Rarity = PetConstants.Rarity.EPIC, BaseValue = 320, BaseBoost = 1.09, SpawnChance = 5.0},
+        {Name = "Diamond Golem", ModelName = "Diamond Golem", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 640, BaseBoost = 1.13, SpawnChance = 4.0},
+        {Name = "Emerald Golem", ModelName = "Emerald Golem", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 1600, BaseBoost = 1.16, SpawnChance = 3.0},
         -- 5 NEW PETS
-        {Name = "Angel Mushroom", ModelName = "Angel Mushroom", Rarity = PetConstants.Rarity.COMMON, BaseValue = 32, BaseBoost = 1.1, SpawnChance = 2.0},
-        {Name = "Heart Floppa", ModelName = "Heart Floppa", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 96, BaseBoost = 1.30, SpawnChance = 1.5},
-        {Name = "Heart Husky", ModelName = "Heart Husky", Rarity = PetConstants.Rarity.RARE, BaseValue = 192, BaseBoost = 1.36, SpawnChance = 1.0},
-        {Name = "Headless Horseman", ModelName = "Headless Horseman", Rarity = PetConstants.Rarity.EPIC, BaseValue = 480, BaseBoost = 1.48, SpawnChance = 0.4},
-        {Name = "Ban Hammer", ModelName = "Ban Hammer", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 3200, BaseBoost = 1.60, SpawnChance = 0.1} -- SUPER DUPER RARE
+        {Name = "Angel Mushroom", ModelName = "Angel Mushroom", Rarity = PetConstants.Rarity.COMMON, BaseValue = 32, BaseBoost = 0.83, SpawnChance = 2.0},
+        {Name = "Heart Floppa", ModelName = "Heart Floppa", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 96, BaseBoost = 0.98, SpawnChance = 1.5},
+        {Name = "Heart Husky", ModelName = "Heart Husky", Rarity = PetConstants.Rarity.RARE, BaseValue = 192, BaseBoost = 1.02, SpawnChance = 1.0},
+        {Name = "Headless Horseman", ModelName = "Headless Horseman", Rarity = PetConstants.Rarity.EPIC, BaseValue = 480, BaseBoost = 1.11, SpawnChance = 0.4},
+        {Name = "Ban Hammer", ModelName = "Ban Hammer", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 3200, BaseBoost = 1.20, SpawnChance = 0.1} -- SUPER DUPER RARE
     },
     
     -- LEVEL 7 - Legendary pets (64x value multiplier from Level 1)
     [7] = {
-        {Name = "Rainbow Aqua Dragon", ModelName = "Rainbow Aqua Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 64, BaseBoost = 1.12, SpawnChance = 18.0},
-        {Name = "Cyberpunk Dragon", ModelName = "Cyberpunk Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 64, BaseBoost = 1.12, SpawnChance = 16.0},
-        {Name = "Cyborg Dragon", ModelName = "Cyborg Dragon", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 128, BaseBoost = 1.24, SpawnChance = 14.0},
-        {Name = "Partner Dragon", ModelName = "Partner Dragon", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 128, BaseBoost = 1.3, SpawnChance = 12.0},
-        {Name = "Hat Trick Dragon", ModelName = "Hat Trick Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 256, BaseBoost = 1.36, SpawnChance = 10.0},
-        {Name = "Circus Hat Trick Dragon", ModelName = "Circus Hat Trick Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 320, BaseBoost = 1.4, SpawnChance = 8.0},
-        {Name = "Guard Dragon", ModelName = "Guard Dragon", Rarity = PetConstants.Rarity.EPIC, BaseValue = 512, BaseBoost = 1.45, SpawnChance = 6.0},
-        {Name = "Nerdy Dragon", ModelName = "Nerdy Dragon", Rarity = PetConstants.Rarity.EPIC, BaseValue = 640, BaseBoost = 1.5, SpawnChance = 5.0},
-        {Name = "Elf Dragon", ModelName = "Elf Dragon", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 1280, BaseBoost = 1.55, SpawnChance = 4.0},
-        {Name = "Chocolate Dragon", ModelName = "Chocolate Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 3200, BaseBoost = 1.6, SpawnChance = 3.0},
+        {Name = "Rainbow Aqua Dragon", ModelName = "Rainbow Aqua Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 64, BaseBoost = 0.84, SpawnChance = 18.0},
+        {Name = "Cyberpunk Dragon", ModelName = "Cyberpunk Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 64, BaseBoost = 0.84, SpawnChance = 16.0},
+        {Name = "Cyborg Dragon", ModelName = "Cyborg Dragon", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 128, BaseBoost = 0.93, SpawnChance = 14.0},
+        {Name = "Partner Dragon", ModelName = "Partner Dragon", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 128, BaseBoost = 0.98, SpawnChance = 12.0},
+        {Name = "Hat Trick Dragon", ModelName = "Hat Trick Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 256, BaseBoost = 1.02, SpawnChance = 10.0},
+        {Name = "Circus Hat Trick Dragon", ModelName = "Circus Hat Trick Dragon", Rarity = PetConstants.Rarity.RARE, BaseValue = 320, BaseBoost = 1.05, SpawnChance = 8.0},
+        {Name = "Guard Dragon", ModelName = "Guard Dragon", Rarity = PetConstants.Rarity.EPIC, BaseValue = 512, BaseBoost = 1.09, SpawnChance = 6.0},
+        {Name = "Nerdy Dragon", ModelName = "Nerdy Dragon", Rarity = PetConstants.Rarity.EPIC, BaseValue = 640, BaseBoost = 1.13, SpawnChance = 5.0},
+        {Name = "Elf Dragon", ModelName = "Elf Dragon", Rarity = PetConstants.Rarity.LEGENDARY, BaseValue = 1280, BaseBoost = 1.16, SpawnChance = 4.0},
+        {Name = "Chocolate Dragon", ModelName = "Chocolate Dragon", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 3200, BaseBoost = 1.20, SpawnChance = 3.0},
         -- 5 NEW PETS
-        {Name = "Summer Dragon", ModelName = "Summer Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 64, BaseBoost = 1.12, SpawnChance = 2.0},
-        {Name = "Valentines Dragon", ModelName = "Valentines Dragon", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 192, BaseBoost = 1.36, SpawnChance = 1.5},
-        {Name = "Time Traveller Doggy", ModelName = "Time Traveller Doggy", Rarity = PetConstants.Rarity.RARE, BaseValue = 384, BaseBoost = 1.42, SpawnChance = 1.0},
-        {Name = "Witch Dominus", ModelName = "Witch Dominus", Rarity = PetConstants.Rarity.EPIC, BaseValue = 960, BaseBoost = 1.54, SpawnChance = 0.4},
-        {Name = "Dominus Empyreus", ModelName = "White Dominus", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 6400, BaseBoost = 1.65, SpawnChance = 0.1} -- SUPER DUPER RARE
+        {Name = "Summer Dragon", ModelName = "Summer Dragon", Rarity = PetConstants.Rarity.COMMON, BaseValue = 64, BaseBoost = 0.84, SpawnChance = 2.0},
+        {Name = "Valentines Dragon", ModelName = "Valentines Dragon", Rarity = PetConstants.Rarity.UNCOMMON, BaseValue = 192, BaseBoost = 1.02, SpawnChance = 1.5},
+        {Name = "Time Traveller Doggy", ModelName = "Time Traveller Doggy", Rarity = PetConstants.Rarity.RARE, BaseValue = 384, BaseBoost = 1.07, SpawnChance = 1.0},
+        {Name = "Witch Dominus", ModelName = "Witch Dominus", Rarity = PetConstants.Rarity.EPIC, BaseValue = 960, BaseBoost = 1.16, SpawnChance = 0.4},
+        {Name = "Dominus Empyreus", ModelName = "White Dominus", Rarity = PetConstants.Rarity.MYTHIC, BaseValue = 6400, BaseBoost = 1.24, SpawnChance = 0.1} -- SUPER DUPER RARE
     }
 }
 
