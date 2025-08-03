@@ -109,11 +109,13 @@ end
 local function PetInventoryUI(props)
     local playerData, setPlayerData = React.useState({
         Pets = {},
-        EquippedPets = {}
+        EquippedPets = {},
+        OPPets = {}
     })
     local isVisible, setIsVisible = React.useState(props.visible or false)
     local hoveredPet, setHoveredPet = React.useState(nil)
     local tooltipPosition, setTooltipPosition = React.useState(UDim2.new(0, 0, 0, 0))
+    local equippedTab, setEquippedTab = React.useState("Regular") -- "Regular" or "OP"
     
     -- Update visibility when props change
     React.useEffect(function()
@@ -163,28 +165,42 @@ local function PetInventoryUI(props)
 
     local pets = playerData and playerData.Pets or {}
     local equippedPets = playerData and playerData.EquippedPets or {}
+    local opPets = playerData and playerData.OPPets or {}
     
     -- Group pets by name, rarity, and variation for inventory
     local function groupPets(petList)
         local groups = {}
         
         for _, pet in ipairs(petList) do
-            if pet and pet.Name and pet.Rarity and pet.Variation then
-                local key = string.format("%s_%s_%s", pet.Name, pet.Rarity, pet.Variation)
-                
-                if not groups[key] then
-                    groups[key] = {
-                        Name = pet.Name,
-                        Rarity = pet.Rarity,
-                        Variation = pet.Variation,
-                        BaseValue = pet.BaseValue or 100,
-                        BaseBoost = pet.BaseBoost or 1,
-                        FinalBoost = pet.FinalBoost or pet.BaseBoost or 1,
-                        Quantity = 0,
-                        SamplePet = pet
-                    }
+            if pet and pet.Name then
+                -- Extract rarity and variation names from either string or table format
+                local rarityName = pet.Rarity
+                if type(pet.Rarity) == "table" and pet.Rarity.RarityName then
+                    rarityName = pet.Rarity.RarityName
                 end
-                groups[key].Quantity = groups[key].Quantity + 1
+                
+                local variationName = pet.Variation
+                if type(pet.Variation) == "table" and pet.Variation.VariationName then
+                    variationName = pet.Variation.VariationName
+                end
+                
+                if rarityName and variationName then
+                    local key = string.format("%s_%s_%s", pet.Name, rarityName, variationName)
+                    
+                    if not groups[key] then
+                        groups[key] = {
+                            Name = pet.Name,
+                            Rarity = rarityName,
+                            Variation = variationName,
+                            BaseValue = pet.BaseValue or 100,
+                            BaseBoost = pet.BaseBoost or 1,
+                            FinalBoost = pet.FinalBoost or pet.BaseBoost or 1,
+                            Quantity = 0,
+                            SamplePet = pet
+                        }
+                    end
+                    groups[key].Quantity = groups[key].Quantity + 1
+                end
             end
         end
         
@@ -208,6 +224,7 @@ local function PetInventoryUI(props)
     end
     
     local equippedGroups = groupPets(equippedPets)
+    local opGroups = groupPets(opPets)
     local inventoryGroups = groupPets(pets)
     
     -- Create pet card component
@@ -218,6 +235,10 @@ local function PetInventoryUI(props)
         end
         local variationColor = PetConstants.getVariationColor(petGroup.Variation)
         local rarityColor = PetConstants.getRarityColor(petGroup.Rarity)
+        
+        -- Check if this is an OP pet
+        local isOPPet = petGroup.Rarity == "OP" or petGroup.Rarity == PetConstants.Rarity.OP or 
+                        (petGroup.SamplePet and petGroup.SamplePet.IsOPPet)
         
         -- Calculate final value
         local baseValue = petGroup.BaseValue or 100
@@ -246,7 +267,7 @@ local function PetInventoryUI(props)
                 AnchorPoint = Vector2.new(0.5, 0.5),
                 BackgroundTransparency = 1, -- Transparent background
                 Image = IconAssets.getIcon("UI", "SQUIGGLE"),
-                ImageColor3 = variationColor, -- Apply rarity color to squiggle
+                ImageColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or variationColor, -- White for OP pets to show gradient
                 ImageTransparency = 0.3, -- Slightly transparent
                 ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 9, -- Behind viewport
@@ -254,6 +275,19 @@ local function PetInventoryUI(props)
                 Corner = React.createElement("UICorner", {
                     CornerRadius = ScreenUtils.udim(0, 58) -- Circular clipping
                 }),
+                -- Rainbow gradient for OP pets
+                RainbowGradient = isOPPet and React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
+                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
+                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
+                    }),
+                    Rotation = 45 -- Diagonal gradient
+                }) or nil
             }),
             
             -- Pet model viewport (takes most of the card space)
@@ -350,7 +384,7 @@ local function PetInventoryUI(props)
                 Size = ScreenUtils.udim2(1, -10, 0, 25), -- Bigger height
                 Position = ScreenUtils.udim2(0, 5, 1, -55), -- Adjust position for bigger card
                 BackgroundTransparency = 1,
-                Text = string.format("x%.2f", finalBoost),
+                Text = "x" .. NumberFormatter.formatBoost(finalBoost),
                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient overlay
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
                 Font = Enum.Font.GothamBold,
@@ -373,13 +407,13 @@ local function PetInventoryUI(props)
                 })
             }),
             
-            -- Pet name at bottom (with rarity color)
+            -- Pet name at bottom (with rarity color or rainbow for OP)
             PetName = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, -10, 0, 25), -- Bigger height
                 Position = ScreenUtils.udim2(0, 5, 1, -25), -- Adjust position
                 BackgroundTransparency = 1, -- No background
                 Text = petGroup.Name,
-                TextColor3 = rarityColor, -- Use rarity color instead of white
+                TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or rarityColor, -- White for OP pets to show gradient
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Increased from MEDIUM
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center,
@@ -388,6 +422,20 @@ local function PetInventoryUI(props)
                 TextStrokeTransparency = 0, -- Black stroke for visibility
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 ZIndex = 14,
+            }, {
+                -- Rainbow gradient for OP pet names
+                RainbowGradient = isOPPet and React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
+                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
+                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
+                    }),
+                    Rotation = 0 -- Horizontal gradient
+                }) or nil
             }),
             
             -- Hover detection for tooltip
@@ -414,6 +462,11 @@ local function PetInventoryUI(props)
         
         local variationColor = PetConstants.getVariationColor(hoveredPet.Variation)
         local rarityColor = PetConstants.getRarityColor(hoveredPet.Rarity)
+        
+        -- Check if this is an OP pet
+        local isOPPet = hoveredPet.Rarity == "OP" or hoveredPet.Rarity == PetConstants.Rarity.OP or 
+                        (hoveredPet.SamplePet and hoveredPet.SamplePet.IsOPPet) or
+                        hoveredPet.IsOPPet
         
         -- Calculate final value
         local baseValue = hoveredPet.BaseValue or 100
@@ -463,30 +516,58 @@ local function PetInventoryUI(props)
                 ZIndex = 1001,
             }),
             
-            -- Rarity (with color)
+            -- Rarity (with color or rainbow for OP)
             Rarity = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, -20, 0, 25),
                 Position = ScreenUtils.udim2(0, 10, 0, 45),
                 BackgroundTransparency = 1,
                 Text = "Rarity: " .. hoveredPet.Rarity,
-                TextColor3 = rarityColor,
+                TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or rarityColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
+            }, {
+                -- Rainbow gradient for OP pet rarity
+                RainbowGradient = isOPPet and React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
+                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
+                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
+                    }),
+                    Rotation = 0 -- Horizontal gradient
+                }) or nil
             }),
             
-            -- Variation (with color, no outline)
+            -- Variation (with color or rainbow for OP)
             Variation = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, -20, 0, 25),
                 Position = ScreenUtils.udim2(0, 10, 0, 75),
                 BackgroundTransparency = 1,
                 Text = "Variation: " .. hoveredPet.Variation,
-                TextColor3 = variationColor,
+                TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or variationColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
+            }, {
+                -- Rainbow gradient for OP pet variation
+                RainbowGradient = isOPPet and React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
+                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
+                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
+                    }),
+                    Rotation = 0 -- Horizontal gradient
+                }) or nil
             }),
             
             -- Rarity chance (1 in xxx format)
@@ -553,7 +634,7 @@ local function PetInventoryUI(props)
                     Size = ScreenUtils.udim2(1, -25, 1, 0),
                     Position = ScreenUtils.udim2(0, 25, 0, 0),
                     BackgroundTransparency = 1,
-                    Text = string.format("x%.2f", finalBoost),
+                    Text = "x" .. NumberFormatter.formatBoost(finalBoost),
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
                     Font = Enum.Font.GothamBold,
@@ -589,23 +670,9 @@ local function PetInventoryUI(props)
         ResetOnSpawn = false,
         IgnoreGuiInset = true,
     }, {
-        -- Background overlay
-        Background = React.createElement("TextButton", {
-            Size = ScreenUtils.udim2(1, 0, 1, 0),
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            BackgroundTransparency = 0.5,
-            BorderSizePixel = 0,
-            Text = "",
-            AutoButtonColor = false,
-            ZIndex = 1,
-            [React.Event.Activated] = function()
-                setIsVisible(false)
-                if props.onClose then props.onClose() end
-            end
-        }),
         
         -- Main panel (smaller and more centered)
-        MainPanel = React.createElement("Frame", {
+        MainPanel = React.createElement("TextButton", {
             Size = ScreenUtils.udim2(0.6, 0, 0.75, 0), -- Even smaller overall UI
             Position = ScreenUtils.udim2(0.5, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -613,6 +680,11 @@ local function PetInventoryUI(props)
             BorderSizePixel = 3,
             BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
             ZIndex = 5,
+            Text = "", -- No text
+            AutoButtonColor = false, -- Don't change color on hover
+            [React.Event.Activated] = function()
+                -- Do nothing to prevent closing when clicking inside
+            end
         }, {
             Corner = React.createElement("UICorner", {
                 CornerRadius = ScreenUtils.udim(0, 12)
@@ -686,7 +758,7 @@ local function PetInventoryUI(props)
             
             -- Equipped pets section
             EquippedSection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 0, 320), -- Even bigger height for better visibility
+                Size = ScreenUtils.udim2(1, -40, 0, 380), -- Increased height to show pet names better
                 Position = ScreenUtils.udim2(0.5, 0, 0, 60),
                 AnchorPoint = Vector2.new(0.5, 0),
                 BackgroundTransparency = 1, -- Remove background for image
@@ -703,17 +775,30 @@ local function PetInventoryUI(props)
                     Thickness = 2,
                 }),
                 
-                -- White background
+                -- White background (or rainbow for OP)
                 WhiteBackground = React.createElement("Frame", {
                     Size = ScreenUtils.udim2(1, 0, 1, 0),
                     Position = ScreenUtils.udim2(0, 0, 0, 0),
-                    BackgroundColor3 = Color3.fromRGB(245, 245, 245), -- Light grey background
+                    BackgroundColor3 = equippedTab == "OP" and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(245, 245, 245), -- White for gradient base
                     BorderSizePixel = 0,
                     ZIndex = 4, -- Behind everything
                 }, {
                     Corner = React.createElement("UICorner", {
                         CornerRadius = ScreenUtils.udim(0, 8)
                     }),
+                    -- Rainbow gradient for OP pets
+                    RainbowGradient = equippedTab == "OP" and React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),     -- Light Red
+                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 200, 100)), -- Light Orange
+                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 150)), -- Light Yellow
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 255, 150)),   -- Light Green
+                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(150, 150, 255)),  -- Light Blue
+                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(200, 150, 255)), -- Light Indigo
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 255))    -- Light Violet
+                        }),
+                        Rotation = 45 -- Diagonal gradient
+                    }) or nil
                 }),
                 
                 -- Background image for equipped pets section
@@ -733,26 +818,78 @@ local function PetInventoryUI(props)
                     }),
                 }),
                 
-                EquippedTitle = React.createElement("TextLabel", {
-                    Size = ScreenUtils.udim2(1, -10, 0, 30),
+                -- Tab container
+                TabContainer = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(1, -10, 0, 40),
                     Position = ScreenUtils.udim2(0.5, 0, 0, 5),
                     AnchorPoint = Vector2.new(0.5, 0),
                     BackgroundTransparency = 1,
-                    Text = string.format("Equipped Pets %d/3", #equippedPets),
-                    TextColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
-                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Much bigger section title
-                    TextStrokeTransparency = 0, -- Black outline
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
-                    TextXAlignment = Enum.TextXAlignment.Center,
-                    TextYAlignment = Enum.TextYAlignment.Center,
                     ZIndex = 7,
+                }, {
+                    -- Regular pets tab
+                    RegularTab = React.createElement("TextButton", {
+                        Size = ScreenUtils.udim2(0.5, -5, 1, 0),
+                        Position = ScreenUtils.udim2(0, 0, 0, 0),
+                        BackgroundColor3 = equippedTab == "Regular" and Color3.fromRGB(64, 224, 208) or Color3.fromRGB(200, 200, 200),
+                        BorderSizePixel = 2,
+                        BorderColor3 = Color3.fromRGB(0, 0, 0),
+                        Text = string.format("Equipped Pets %d/3", #equippedPets),
+                        TextColor3 = equippedTab == "Regular" and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100),
+                        TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2,
+                        TextStrokeTransparency = equippedTab == "Regular" and 0 or 0.5,
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.GothamBold,
+                        ZIndex = 8,
+                        [React.Event.Activated] = function()
+                            setEquippedTab("Regular")
+                        end
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = ScreenUtils.udim(0, 8)
+                        })
+                    }),
+                    
+                    -- OP pets tab
+                    OPTab = React.createElement("TextButton", {
+                        Size = ScreenUtils.udim2(0.5, -5, 1, 0),
+                        Position = ScreenUtils.udim2(0.5, 5, 0, 0),
+                        BackgroundColor3 = equippedTab == "OP" and Color3.fromRGB(255, 20, 147) or Color3.fromRGB(200, 200, 200),
+                        BorderSizePixel = 2,
+                        BorderColor3 = Color3.fromRGB(0, 0, 0),
+                        Text = string.format("OP Pets (%d)", #opPets),
+                        TextColor3 = equippedTab == "OP" and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100),
+                        TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2,
+                        TextStrokeTransparency = equippedTab == "OP" and 0 or 0.5,
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.GothamBold,
+                        ZIndex = 8,
+                        [React.Event.Activated] = function()
+                            setEquippedTab("OP")
+                        end
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = ScreenUtils.udim(0, 8)
+                        }),
+                        -- Rainbow gradient for OP tab when active
+                        Gradient = equippedTab == "OP" and React.createElement("UIGradient", {
+                            Color = ColorSequence.new({
+                                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                                ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)),
+                                ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
+                                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+                                ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+                                ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
+                                ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
+                            }),
+                            Rotation = 0
+                        }) or nil
+                    })
                 }),
                 
-                -- Auto-equip disclaimer with animation (top-left, tilted)
-                Disclaimer = React.createElement("TextLabel", {
+                -- Auto-equip disclaimer with animation (top-left, tilted) - conditional based on tab
+                Disclaimer = equippedTab == "Regular" and React.createElement("TextLabel", {
                     Size = ScreenUtils.udim2(0, 320, 0, 50), -- Even bigger to fit two lines
-                    Position = ScreenUtils.udim2(0, 20, 0, 10), -- Top-left corner
+                    Position = ScreenUtils.udim2(0, 20, 0, 50), -- Moved down to avoid tab overlap
                     AnchorPoint = Vector2.new(0, 0),
                     BackgroundTransparency = 1,
                     Text = "Best pets automatically get equipped!\nThe boost affects the money production!",
@@ -803,11 +940,11 @@ local function PetInventoryUI(props)
                         }),
                         Rotation = 0 -- Horizontal rainbow gradient
                     })
-                }),
+                }) or nil,
                 
                 EquippedGrid = React.createElement("ScrollingFrame", {
-                    Size = ScreenUtils.udim2(1, -10, 1, -50), -- More space since disclaimer is in corner
-                    Position = ScreenUtils.udim2(0.5, 0, 0, 45), -- Back to normal position
+                    Size = ScreenUtils.udim2(1, -10, 1, -70), -- More height for pet cards
+                    Position = ScreenUtils.udim2(0.5, 0, 0, 65), -- Moved up slightly
                     AnchorPoint = Vector2.new(0.5, 0),
                     BackgroundTransparency = 1,
                     BorderSizePixel = 2,
@@ -815,7 +952,7 @@ local function PetInventoryUI(props)
                     ScrollBarThickness = 6,
                     ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
                     ScrollingDirection = Enum.ScrollingDirection.X, -- Horizontal scroll
-                    CanvasSize = ScreenUtils.udim2(0, math.max(500, #equippedGroups * 160), 1, 0), -- Bigger spacing for bigger cards
+                    CanvasSize = ScreenUtils.udim2(0, math.max(500, (equippedTab == "Regular" and #equippedGroups or #opGroups) * 200), 1, 0), -- Dynamic based on tab
                     ZIndex = 7,
                 }, {
                     Layout = React.createElement("UIListLayout", {
@@ -832,19 +969,25 @@ local function PetInventoryUI(props)
                         PaddingTop = ScreenUtils.udim(0, 5),
                         PaddingBottom = ScreenUtils.udim(0, 5)
                     })
-                }, #equippedGroups > 0 and React.createElement(React.Fragment, nil, (function()
+                }, (equippedTab == "Regular" and #equippedGroups > 0) and React.createElement(React.Fragment, nil, (function()
                     local equippedElements = {}
                     for i, petGroup in ipairs(equippedGroups) do
                         equippedElements["EquippedPet_" .. i] = createPetCard(petGroup, i, true, true) -- true for inEquippedSection
                     end
                     return equippedElements
+                end)()) or (equippedTab == "OP" and #opGroups > 0) and React.createElement(React.Fragment, nil, (function()
+                    local opElements = {}
+                    for i, petGroup in ipairs(opGroups) do
+                        opElements["OPPet_" .. i] = createPetCard(petGroup, i, true, true) -- OP pets are always "equipped"
+                    end
+                    return opElements
                 end)()) or nil)
             }),
             
-            -- Inventory pets section
-            InventorySection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 1, -400), -- Adjust for even bigger equipped section
-                Position = ScreenUtils.udim2(0.5, 0, 0, 390), -- Move down more to accommodate bigger equipped section
+            -- Inventory pets section (only show for Regular tab)
+            InventorySection = equippedTab == "Regular" and React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -40, 1, -460), -- Adjust for even bigger equipped section
+                Position = ScreenUtils.udim2(0.5, 0, 0, 450), -- Move down more to accommodate bigger equipped section
                 AnchorPoint = Vector2.new(0.5, 0),
                 BackgroundTransparency = 1, -- Remove background for image
                 BorderSizePixel = 2,
@@ -953,12 +1096,43 @@ local function PetInventoryUI(props)
                     end
                     return inventoryElements
                 end)()) or nil)
-            })
+            }) or nil,
+            
+            -- OP Pets static text (shown under OP pets section when OP tab is selected)
+            OPStaticText = equippedTab == "OP" and React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(0.8, 0, 0, 80),
+                Position = ScreenUtils.udim2(0.5, 0, 0, 445), -- Below the equipped section
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundTransparency = 1,
+                Text = "OP (Robux) Pets do not occupy equipped pets slots!\nThey provide boosts without taking regular pet slots!",
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.3, -- Even bigger text
+                Font = Enum.Font.GothamBold, -- Bold for emphasis
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                ZIndex = 8,
+            }, {
+                -- Rainbow gradient overlay
+                RainbowGradient = React.createElement("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
+                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
+                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
+                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
+                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
+                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
+                    }),
+                    Rotation = 0 -- Horizontal rainbow gradient
+                })
+            }) or nil
         }),
         
         -- Tooltip (rendered on top)
         Tooltip = createTooltip()
     })
 end
+
 
 return PetInventoryUI

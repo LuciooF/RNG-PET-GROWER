@@ -43,4 +43,37 @@ function NumberFormatter.formatCompact(num)
     end
 end
 
+-- Format boost multipliers (handles decimal values)
+function NumberFormatter.formatBoost(num)
+    if not num or num ~= num then -- Check for nil or NaN
+        return "1"
+    end
+    
+    -- For boost values >= 1000, use K/M/B format
+    if num >= 1000000000 then
+        return string.format("%.1fB", num / 1000000000)
+    elseif num >= 1000000 then
+        return string.format("%.1fM", num / 1000000)
+    elseif num >= 1000 then
+        return string.format("%.1fK", num / 1000)
+    elseif num >= 100 then
+        -- For values 100-999, show as integer
+        return string.format("%.0f", num)
+    elseif num >= 10 then
+        -- For values 10-99, show one decimal if needed
+        if num == math.floor(num) then
+            return string.format("%.0f", num)
+        else
+            return string.format("%.1f", num)
+        end
+    else
+        -- For values < 10, show up to 2 decimals if needed
+        if num == math.floor(num) then
+            return string.format("%.0f", num)
+        else
+            return string.format("%.2f", num)
+        end
+    end
+end
+
 return NumberFormatter
