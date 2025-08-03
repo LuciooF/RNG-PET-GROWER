@@ -185,7 +185,8 @@ function PetConfig.createPet(basePetData, variation, id)
         BaseValue = basePetData.BaseValue,
         BaseBoost = basePetData.BaseBoost,
         FinalValue = math.floor(basePetData.BaseValue * multiplier),
-        FinalBoost = basePetData.BaseBoost * multiplier
+        FinalBoost = basePetData.BaseBoost * multiplier,
+        SpawnChance = basePetData.SpawnChance -- Include SpawnChance for tutorial logic
     }
     
     return pet

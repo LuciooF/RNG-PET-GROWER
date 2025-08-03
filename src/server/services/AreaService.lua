@@ -22,13 +22,23 @@ function AreaService:Initialize()
         return
     end
     
+    -- Wait for TycoonMap
+    local tycoonMap = Workspace:WaitForChild("Center", 10)
+    if tycoonMap then
+        tycoonMap = tycoonMap:WaitForChild("TycoonMap", 10)
+    end
+    if not tycoonMap then
+        warn("AreaService: TycoonMap not found in Workspace.Center after 10 seconds!")
+        return
+    end
+    
     -- Create container for all areas
     local areasContainer = Instance.new("Folder")
     areasContainer.Name = "PlayerAreas"
     areasContainer.Parent = Workspace
     
-    -- Create 6 areas in circular formation
-    self:CreateCircularAreas(areaTemplate, areasContainer)
+    -- Create 6 areas aligned with TycoonMap entrances
+    self:CreateAlignedAreas(areaTemplate, areasContainer, tycoonMap)
     
     -- Remove the template after creating all areas to clean up workspace
     areaTemplate:Destroy()
@@ -36,6 +46,45 @@ function AreaService:Initialize()
     
     -- Set up player assignment system
     self:SetupPlayerAssignment()
+end
+
+function AreaService:CreateAlignedAreas(template, container, tycoonMap)
+    for i = 1, MAX_PLAYERS do
+        -- Find the corresponding entrance part in TycoonMap
+        local entrancePart = tycoonMap:FindFirstChild("Entrance" .. i)
+        if not entrancePart then
+            warn("AreaService: Entrance" .. i .. " not found in TycoonMap!")
+            continue
+        end
+        
+        -- Clone and position area
+        local area = template:Clone()
+        area.Name = "PlayerArea" .. i
+        area.Parent = container
+        
+        -- Position area so its entrance aligns with the TycoonMap entrance
+        self:PositionAreaWithEntrance(area, entrancePart, i)
+        
+        -- Remove any TycoonMap parts that intersect with this area (disabled to preserve floor)
+        -- self:RemoveConflictingParts(area, tycoonMap, i)
+        
+        -- Store reference (get position after positioning)
+        local areaPosition = Vector3.new(0, 0, 0)
+        if area.PrimaryPart then
+            areaPosition = area.PrimaryPart.Position
+        else
+            areaPosition = area:GetBoundingBox().Position
+        end
+        
+        playerAreas[i] = {
+            model = area,
+            assignedPlayer = nil,
+            position = areaPosition
+        }
+        
+        -- Create initial "Unassigned Area" nameplate
+        self:UpdateAreaNameplate(i)
+    end
 end
 
 function AreaService:CreateCircularAreas(template, container)
@@ -64,6 +113,199 @@ function AreaService:CreateCircularAreas(template, container)
         -- Create initial "Unassigned Area" nameplate
         self:UpdateAreaNameplate(i)
     end
+end
+
+function AreaService:PositionAreaWithEntrance(area, tycoonEntrancePart, areaNumber)
+    -- Find the Entrance part in the area template
+    local areaEntrance = area:FindFirstChild("Entrance", true) -- Recursive search
+    if not areaEntrance then
+        warn("AreaService: Entrance part not found in PlayerArea" .. areaNumber .. "! Using SpawnPoint fallback.")
+        -- Fallback to SpawnPoint positioning
+        local spawnPoint = area:FindFirstChild("SpawnPoint", true)
+        if spawnPoint then
+            local offset = tycoonEntrancePart.Position - spawnPoint.Position
+            area:MoveTo(area:GetPrimaryPartCFrame().Position + offset)
+        else
+            -- Last resort: just move to TycoonMap entrance position
+            area:MoveTo(tycoonEntrancePart.Position)
+        end
+        return
+    end
+    
+    -- Get current positions
+    local currentEntrancePosition = areaEntrance.Position
+    local targetEntrancePosition = tycoonEntrancePart.Position
+    
+    -- Calculate offset needed to align entrances
+    local offset = targetEntrancePosition - currentEntrancePosition
+    
+    -- Add manual correction: Based on the debug logs, we need to go down an additional ~14.5 studs
+    local heightCorrection = -14.5 -- Force area lower to compensate for positioning issues
+    offset = Vector3.new(offset.X, offset.Y + heightCorrection, offset.Z)
+    
+    -- Move the entire area using the corrected offset
+    if area.PrimaryPart then
+        area:SetPrimaryPartCFrame(area.PrimaryPart.CFrame + offset)
+    else
+        area:MoveTo(area:GetBoundingBox().Position + offset)
+    end
+    
+    -- Wait for positioning to settle
+    task.wait(0.1)
+    
+    -- Now rotate the area to face toward the center
+    self:RotateAreaTowardCenter(area, tycoonEntrancePart, areaNumber)
+    
+    -- Re-align entrances after rotation (rotation moves the entrance part)
+    local newEntrancePosition = areaEntrance.Position
+    local finalOffset = tycoonEntrancePart.Position - newEntrancePosition
+    
+    -- Apply the same height correction as before (rotation broke the Y alignment)
+    local heightCorrection = -14.5
+    finalOffset = Vector3.new(finalOffset.X, finalOffset.Y + heightCorrection, finalOffset.Z)
+    
+    -- Apply final correction to get entrances touching again
+    if area.PrimaryPart then
+        area:SetPrimaryPartCFrame(area.PrimaryPart.CFrame + finalOffset)
+    else
+        area:MoveTo(area:GetBoundingBox().Position + finalOffset)
+    end
+end
+
+function AreaService:RotateAreaTowardCenter(area, tycoonEntrancePart, areaNumber)
+    -- Find the center of the TycoonMap (approximate center point)
+    local tycoonMap = tycoonEntrancePart.Parent
+    local centerPosition = Vector3.new(0, 0, 0) -- Assume center is at origin, adjust if needed
+    
+    -- You can also calculate center from TycoonMap bounds if needed:
+    -- local cf, size = tycoonMap:GetBoundingBox()
+    -- local centerPosition = cf.Position
+    
+    -- Get current area position after alignment
+    local areaPosition
+    if area.PrimaryPart then
+        areaPosition = area.PrimaryPart.Position
+    else
+        areaPosition = area:GetBoundingBox().Position
+    end
+    
+    -- Calculate direction from area to center
+    local directionToCenter = (centerPosition - areaPosition).Unit
+    
+    -- Calculate rotation angle (Y-axis rotation to face center)
+    -- Add math.pi (180 degrees) to flip the direction
+    local angle = math.atan2(directionToCenter.X, directionToCenter.Z) + math.pi
+    
+    
+    -- Create rotation CFrame around Y-axis
+    local rotationCFrame = CFrame.Angles(0, angle, 0)
+    
+    -- Apply rotation to the area
+    if area.PrimaryPart then
+        -- Rotate around area's position
+        local currentCFrame = area.PrimaryPart.CFrame
+        local rotatedCFrame = CFrame.new(currentCFrame.Position) * rotationCFrame
+        area:SetPrimaryPartCFrame(rotatedCFrame)
+    else
+        -- For areas without PrimaryPart, rotate all parts around area center
+        local areaBounds = area:GetBoundingBox()
+        local areaCenter = areaBounds.Position
+        
+        -- Get all parts and rotate them around area center
+        local function rotateParts(parent)
+            for _, child in pairs(parent:GetChildren()) do
+                if child:IsA("BasePart") then
+                    -- Calculate offset from area center
+                    local offset = child.Position - areaCenter
+                    -- Rotate the offset
+                    local rotatedOffset = rotationCFrame * offset
+                    -- Set new position
+                    child.Position = areaCenter + rotatedOffset
+                    -- Rotate the part's orientation
+                    child.CFrame = CFrame.new(child.Position) * rotationCFrame * (child.CFrame - child.Position)
+                end
+                rotateParts(child)
+            end
+        end
+        rotateParts(area)
+    end
+    
+end
+
+function AreaService:RemoveConflictingParts(area, tycoonMap, areaNumber)
+    -- Get all parts in the area (recursively)
+    local areaParts = {}
+    local function collectParts(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("BasePart") then
+                table.insert(areaParts, child)
+            end
+            collectParts(child)
+        end
+    end
+    collectParts(area)
+    
+    -- Get all parts in TycoonMap that could conflict
+    local tycoonParts = {}
+    local function collectTycoonParts(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("BasePart") and child.CanCollide then -- Only check collidable parts
+                -- Skip entrance parts (we don't want to remove those)
+                if not child.Name:match("Entrance%d+") then
+                    table.insert(tycoonParts, child)
+                end
+            end
+            collectTycoonParts(child)
+        end
+    end
+    collectTycoonParts(tycoonMap)
+    
+    local removedCount = 0
+    
+    -- Check each TycoonMap part against each area part for overlap
+    for _, tycoonPart in pairs(tycoonParts) do
+        local shouldRemove = false
+        
+        for _, areaPart in pairs(areaParts) do
+            if self:PartsOverlap(areaPart, tycoonPart) then
+                shouldRemove = true
+                break
+            end
+        end
+        
+        if shouldRemove then
+            -- Remove the conflicting part and its parent model if it becomes empty
+            local parent = tycoonPart.Parent
+            tycoonPart:Destroy()
+            removedCount = removedCount + 1
+            
+            -- If parent is a model and now empty, remove it too
+            if parent and parent:IsA("Model") and #parent:GetChildren() == 0 then
+                parent:Destroy()
+            end
+        end
+    end
+    
+end
+
+
+function AreaService:PartsOverlap(part1, part2)
+    -- Get bounding boxes of both parts
+    local cf1, size1 = part1.CFrame, part1.Size
+    local cf2, size2 = part2.CFrame, part2.Size
+    
+    -- Convert to Region3-like bounds for easier calculation
+    local min1 = cf1.Position - size1/2
+    local max1 = cf1.Position + size1/2
+    local min2 = cf2.Position - size2/2
+    local max2 = cf2.Position + size2/2
+    
+    -- Check if bounding boxes overlap in all 3 dimensions
+    local overlapX = (min1.X <= max2.X) and (max1.X >= min2.X)
+    local overlapY = (min1.Y <= max2.Y) and (max1.Y >= min2.Y)
+    local overlapZ = (min1.Z <= max2.Z) and (max1.Z >= min2.Z)
+    
+    return overlapX and overlapY and overlapZ
 end
 
 function AreaService:PositionAreaWithSpawnPointAtBaseplate(area, targetPosition)
@@ -214,9 +456,9 @@ function AreaService:CreateAreaNameplate(assignedPlayer, areaNumber)
     namePart.CanCollide = false
     namePart.Anchored = true
     
-    -- Position above the area
+    -- Position much higher above the area
     local areaPosition = playerAreas[areaNumber].position
-    namePart.Position = areaPosition + Vector3.new(0, 50, 0) -- 50 studs above area
+    namePart.Position = areaPosition + Vector3.new(0, 120, 0) -- Much higher above area
     
     -- Create BillboardGui
     local billboard = Instance.new("BillboardGui")

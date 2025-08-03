@@ -87,7 +87,7 @@ local function TopStatsUI()
         -- No background frame - just the stats directly using Roblox reserved space
         Container = React.createElement("Frame", {
             Name = "Container",
-            Size = ScreenUtils.udim2(0, 800, 0, 100), -- BIGGER responsive size
+            Size = ScreenUtils.udim2(0, 1200, 0, 150), -- 50% bigger (800 -> 1200, 100 -> 150)
             Position = UDim2.new(0.5, 0, 0, 5), -- Very top, just 5px from absolute top
             AnchorPoint = Vector2.new(0.5, 0),
             BackgroundTransparency = 1, -- No background
@@ -97,25 +97,25 @@ local function TopStatsUI()
                 FillDirection = Enum.FillDirection.Horizontal,
                 HorizontalAlignment = Enum.HorizontalAlignment.Center,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
-                Padding = ScreenUtils.udim(0, 50) -- BIGGER padding between stats
+                Padding = ScreenUtils.udim(0, 75) -- 50% bigger padding (50 -> 75)
             }),
             
-            -- Diamonds Display (BIGGER, left side)
+            -- Diamonds Display (50% BIGGER, left side)
             DiamondsFrame = React.createElement("Frame", {
                 Name = "DiamondsFrame",
-                Size = ScreenUtils.udim2(0, 180, 0, 80), -- BIGGER size
+                Size = ScreenUtils.udim2(0, 270, 0, 120), -- 50% bigger (180 -> 270, 80 -> 120)
                 BackgroundTransparency = 1
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = ScreenUtils.udim(0, 12)
+                    Padding = ScreenUtils.udim(0, 18) -- 50% bigger (12 -> 18)
                 }),
                 
                 DiamondsIcon = React.createElement("ImageLabel", {
                     Name = "DiamondsIcon",
-                    Size = ScreenUtils.udim2(0, 55, 0, 55), -- Even bigger icon
+                    Size = ScreenUtils.udim2(0, 82, 0, 82), -- 50% bigger icon (55 -> 82)
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("CURRENCY", "DIAMONDS"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -124,10 +124,10 @@ local function TopStatsUI()
                 
                 DiamondsLabel = React.createElement("TextLabel", {
                     Name = "DiamondsLabel",
-                    Size = ScreenUtils.udim2(0, 120, 0, 55),
+                    Size = ScreenUtils.udim2(0, 180, 0, 82), -- 50% bigger (120 -> 180, 55 -> 82)
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = ScreenUtils.TEXT_SIZES.TITLE() + 4, -- Even bigger text
+                    TextSize = math.floor((ScreenUtils.TEXT_SIZES.TITLE() + 4) * 1.5), -- 50% bigger text
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -149,22 +149,22 @@ local function TopStatsUI()
                 } or nil)
             }),
             
-            -- Money Display (LARGEST, center)
+            -- Money Display (50% BIGGER THAN LARGEST, center)
             MoneyFrame = React.createElement("Frame", {
                 Name = "MoneyFrame",
-                Size = ScreenUtils.udim2(0, 220, 0, 100), -- LARGEST size for main currency
+                Size = ScreenUtils.udim2(0, 330, 0, 150), -- 50% bigger (220 -> 330, 100 -> 150)
                 BackgroundTransparency = 1
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = ScreenUtils.udim(0, 15)
+                    Padding = ScreenUtils.udim(0, 22) -- 50% bigger (15 -> 22)
                 }),
                 
                 MoneyIcon = React.createElement("ImageLabel", {
                     Name = "MoneyIcon",
-                    Size = ScreenUtils.udim2(0, 70, 0, 70), -- Even larger icon
+                    Size = ScreenUtils.udim2(0, 105, 0, 105), -- 50% bigger icon (70 -> 105)
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("CURRENCY", "MONEY"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -173,10 +173,10 @@ local function TopStatsUI()
                 
                 MoneyLabel = React.createElement("TextLabel", {
                     Name = "MoneyLabel",
-                    Size = ScreenUtils.udim2(0, 145, 0, 70),
+                    Size = ScreenUtils.udim2(0, 217, 0, 105), -- 50% bigger (145 -> 217, 70 -> 105)
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = math.max(32, ScreenUtils.TEXT_SIZES.TITLE() * 1.5), -- Even bigger text for main currency
+                    TextSize = math.floor(math.max(32, ScreenUtils.TEXT_SIZES.TITLE() * 1.5) * 1.5), -- 50% bigger text
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -198,22 +198,22 @@ local function TopStatsUI()
                 } or nil)
             }),
             
-            -- Rebirths Display (BIGGER, right side)
+            -- Rebirths Display (50% BIGGER, right side)
             RebirthsFrame = React.createElement("Frame", {
                 Name = "RebirthsFrame",
-                Size = ScreenUtils.udim2(0, 180, 0, 80), -- BIGGER size
+                Size = ScreenUtils.udim2(0, 270, 0, 120), -- 50% bigger (180 -> 270, 80 -> 120)
                 BackgroundTransparency = 1
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = ScreenUtils.udim(0, 12)
+                    Padding = ScreenUtils.udim(0, 18) -- 50% bigger (12 -> 18)
                 }),
                 
                 RebirthsIcon = React.createElement("ImageLabel", {
                     Name = "RebirthsIcon",
-                    Size = ScreenUtils.udim2(0, 55, 0, 55), -- Even bigger icon
+                    Size = ScreenUtils.udim2(0, 82, 0, 82), -- 50% bigger icon (55 -> 82)
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("UI", "REBIRTH"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -222,10 +222,10 @@ local function TopStatsUI()
                 
                 RebirthsLabel = React.createElement("TextLabel", {
                     Name = "RebirthsLabel",
-                    Size = ScreenUtils.udim2(0, 120, 0, 55),
+                    Size = ScreenUtils.udim2(0, 180, 0, 82), -- 50% bigger (120 -> 180, 55 -> 82)
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = ScreenUtils.TEXT_SIZES.TITLE() + 4, -- Even bigger text
+                    TextSize = math.floor((ScreenUtils.TEXT_SIZES.TITLE() + 4) * 1.5), -- 50% bigger text
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),

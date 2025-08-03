@@ -181,14 +181,26 @@ function PetService:AutoEquipBestPets(player, maxEquipped)
     return true
 end
 
--- Calculate total boost from equipped pets
+-- Calculate total boost from equipped pets AND OP pets
 function PetService:GetEquippedBoost(player)
     local playerData = DataService:GetPlayerData(player)
     if not playerData then
         return 1.0
     end
     
-    return PetUtils.calculateTotalBoost(playerData.EquippedPets)
+    -- Calculate boost from regular equipped pets
+    local regularBoost = PetUtils.calculateTotalBoost(playerData.EquippedPets)
+    
+    -- Calculate boost from OP pets (they're always active)
+    local opBoost = 0
+    if playerData.OPPets then
+        for _, opPet in ipairs(playerData.OPPets) do
+            opBoost = opBoost + (opPet.FinalBoost or opPet.BaseBoost or 0)
+        end
+    end
+    
+    -- Return combined boost (additive)
+    return regularBoost + opBoost
 end
 
 -- Calculate total value from equipped pets
@@ -323,10 +335,23 @@ function PetService:StartHeavenProcessing(player)
         equippedPetIds[equippedPet.ID] = true
     end
     
-    -- Add only unequipped pets from main Pets array
+    -- Add only unequipped pets from main Pets array (excluding OP pets)
     for _, pet in pairs(playerData.Pets or {}) do
         if not equippedPetIds[pet.ID] then
-            table.insert(petsToProcess, pet)
+            -- Check if this is an OP pet (by rarity)
+            local isOPPet = false
+            if pet.Rarity then
+                local rarityName = pet.Rarity
+                if type(pet.Rarity) == "table" then
+                    rarityName = pet.Rarity.RarityName
+                end
+                isOPPet = (rarityName == "OP")
+            end
+            
+            -- Only add non-OP pets to processing
+            if not isOPPet then
+                table.insert(petsToProcess, pet)
+            end
         end
     end
     
@@ -560,7 +585,7 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
             multiplier = multiplier * 2
         end
         
-        -- Apply equipped pet boost (additive - add boost amounts together)
+        -- Apply equipped pet and OP pet boost (additive - add boost amounts together)
         local petBoostMultiplier = self:GetEquippedPetBoostMultiplier(player)
         multiplier = multiplier + petBoostMultiplier - 1 -- Subtract 1 to avoid double-counting base multiplier
     elseif rewardType == "Diamonds" then
@@ -578,20 +603,28 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
     return math.floor(baseValue * multiplier)
 end
 
--- Calculate total boost multiplier from equipped pets
+-- Calculate total boost multiplier from equipped pets AND OP pets
 function PetService:GetEquippedPetBoostMultiplier(player)
     local playerData = DataService:GetPlayerData(player)
-    if not playerData or not playerData.EquippedPets then
-        return 1 -- No boost if no equipped pets
+    if not playerData then
+        return 1 -- No boost if no player data
     end
     
     local totalBoostMultiplier = 1 -- Start with 1 (no boost)
     
     -- Add boost from each equipped pet (use BaseBoost, not FinalBoost to avoid double-multiplying)
-    for _, equippedPet in pairs(playerData.EquippedPets) do
+    for _, equippedPet in pairs(playerData.EquippedPets or {}) do
         local petBoost = equippedPet.BaseBoost or 1
         -- Convert boost to multiplier (e.g., 1.1 boost = 0.1 = 10% boost)
         local boostPercentage = petBoost - 1 -- 1.1 becomes 0.1 (10%)
+        totalBoostMultiplier = totalBoostMultiplier + boostPercentage
+    end
+    
+    -- Add boost from OP pets (they're always active)
+    for _, opPet in pairs(playerData.OPPets or {}) do
+        local petBoost = opPet.FinalBoost or opPet.BaseBoost or 1
+        -- Convert boost to multiplier (e.g., 1000 boost = 999 = 99900% boost)
+        local boostPercentage = petBoost - 1 -- 1000 becomes 999 (99900%)
         totalBoostMultiplier = totalBoostMultiplier + boostPercentage
     end
     

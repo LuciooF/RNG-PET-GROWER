@@ -149,13 +149,29 @@ function PetMixerService:CalculateOutputPet(inputPets)
         return nil
     end
     
-    -- Get the first pet as base for name
-    local basePet = inputPets[1]
+    -- 10 Exclusive mixing-only pets (same as client UI)
+    local exclusiveMixingPets = {
+        "Witch Dominus",              -- Magical themed
+        "Time Traveller Doggy",       -- Sci-fi themed
+        "Valentines Dragon",          -- Holiday themed  
+        "Summer Dragon",              -- Season themed
+        "Elf Dragon",                 -- Fantasy themed
+        "Nerdy Dragon",               -- Character themed
+        "Guard Dragon",               -- Professional themed
+        "Circus Hat Trick Dragon",    -- Entertainment themed
+        "Partner Dragon",             -- Relationship themed
+        "Cyborg Dragon"               -- Tech themed
+    }
+    
+    -- Select random exclusive pet for mixing output
+    local randomIndex = math.random(1, #exclusiveMixingPets)
+    local selectedExclusivePet = exclusiveMixingPets[randomIndex]
     
     -- Create mixed pet - always "Mixed" rarity and variation
     local outputPet = {
         ID = HttpService:GenerateGUID(false),
-        Name = basePet.Name .. " Mix", -- Add "Mix" suffix to indicate it's mixed
+        Name = selectedExclusivePet, -- Use exclusive pet name instead of "Mix"
+        ModelName = selectedExclusivePet, -- Set ModelName to match Name for proper asset loading
         Rarity = {
             RarityName = "Mixed",
             RarityChance = 50,
@@ -211,9 +227,16 @@ function PetMixerService:ClaimMixer(player, mixerId)
         return false, "Mixer not ready yet (" .. timeLeft .. " seconds remaining)"
     end
     
-    -- Add output pet to inventory
+    -- Add output pet to inventory with auto-equip logic
     if mixer.outputPet then
-        table.insert(profile.Data.Pets, mixer.outputPet)
+        -- Use DataService:AddPetToPlayer for consistent auto-equip behavior
+        local DataService = require(script.Parent.DataService)
+        local success, result = DataService:AddPetToPlayer(player, mixer.outputPet)
+        
+        if not success then
+            -- If failed to add pet (e.g., inventory full), don't mark as claimed
+            return false, result or "Failed to add pet to inventory"
+        end
     end
     
     -- Mark as claimed
@@ -222,7 +245,7 @@ function PetMixerService:ClaimMixer(player, mixerId)
     -- Remove claimed mixer
     table.remove(profile.Data.Mixers, mixerIndex)
     
-    -- Sync data to client
+    -- Sync data to client (this is also done by AddPetToPlayer, but ensure it's called)
     StateService:BroadcastPlayerDataUpdate(player)
     
     

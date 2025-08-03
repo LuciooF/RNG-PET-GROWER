@@ -12,12 +12,16 @@ local PetService = require(ServerScriptService.services.PetService)
 local PlotService = require(ServerScriptService.services.PlotService)
 local GamepassService = require(ServerScriptService.services.GamepassService)
 local PetMixerService = require(ServerScriptService.services.PetMixerService)
+local LeaderboardService = require(ServerScriptService.services.LeaderboardService)
+local OPPetService = require(ServerScriptService.services.OPPetService)
 
 DataService:Initialize()
 StateService:Initialize()
 PetService:Initialize()
 GamepassService:Initialize()
 PetMixerService:Initialize()
+LeaderboardService:Initialize()
+OPPetService:Initialize()
 
 -- Rebirth function (shared by both money and Robux rebirth)
 local function performRebirth(player, skipMoneyCheck)
@@ -49,6 +53,7 @@ local function performRebirth(player, skipMoneyCheck)
     local currentRebirths = playerData.Resources.Rebirths or 0
     local currentDiamonds = playerData.Resources.Diamonds or 0 -- Keep diamonds
     local currentEquippedPets = playerData.EquippedPets or {} -- Keep equipped pets
+    local currentOPPets = playerData.OPPets or {} -- Keep OP pets (premium purchases)
     
     profile.Data.Resources = {
         Diamonds = currentDiamonds, -- Keep diamonds through rebirth
@@ -57,6 +62,7 @@ local function performRebirth(player, skipMoneyCheck)
     }
     profile.Data.Pets = currentEquippedPets -- Only keep equipped pets
     profile.Data.EquippedPets = currentEquippedPets -- Keep equipped pets
+    profile.Data.OPPets = currentOPPets -- Keep OP pets (they're premium purchases)
     profile.Data.ProcessingPets = {} -- Clear processing pets
     profile.Data.OwnedTubes = {}
     profile.Data.OwnedPlots = {}
@@ -73,6 +79,14 @@ local function performRebirth(player, skipMoneyCheck)
     -- Re-initialize the player's area to update visuals
     PlotService:ReinitializePlayerArea(player)
     
+    -- Update leaderboard with new rebirth count
+    task.spawn(function()
+        local updatedData = DataService:GetPlayerData(player)
+        if updatedData then
+            LeaderboardService:UpdateLeaderstats(player, updatedData)
+        end
+    end)
+    
     print("Main: Rebirth completed for", player.Name, "- now has", currentRebirths + 1, "rebirths")
     return true
 end
@@ -88,13 +102,17 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             -- Perform rebirth (skip money check since they paid Robux)
             local success = performRebirth(player, true)
             if success then
-                print("Main: Processed Robux rebirth for", player.Name)
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             else
-                warn("Main: Failed to process Robux rebirth for", player.Name)
                 return Enum.ProductPurchaseDecision.NotProcessedYet
             end
         end
+    end
+    
+    -- Check if this is an OP pet purchase
+    local result = OPPetService:ProcessReceipt(receiptInfo)
+    if result ~= Enum.ProductPurchaseDecision.NotProcessedYet then
+        return result
     end
     
     -- If we don't handle this product, don't grant it
@@ -124,6 +142,14 @@ DataService.OnPlayerDataLoaded = function(player)
             print("Main: Resuming pet processing for", player.Name, "with", #playerData.ProcessingPets, "pets")
             -- Use StartHeavenProcessingLoop directly since pets are already in ProcessingPets
             PetService:StartHeavenProcessingLoop(player)
+        end
+    end)
+    
+    -- Update leaderboard with initial player data
+    task.spawn(function()
+        local playerData = DataService:GetPlayerData(player)
+        if playerData then
+            LeaderboardService:UpdateLeaderstats(player, playerData)
         end
     end)
 end
@@ -225,6 +251,35 @@ if not requestDataRemote then
     requestDataRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote events for OP pet system
+local purchaseOPPetRemote = ReplicatedStorage:FindFirstChild("PurchaseOPPet")
+if not purchaseOPPetRemote then
+    purchaseOPPetRemote = Instance.new("RemoteEvent")
+    purchaseOPPetRemote.Name = "PurchaseOPPet"
+    purchaseOPPetRemote.Parent = ReplicatedStorage
+end
+
+local opPetPurchaseSuccessRemote = ReplicatedStorage:FindFirstChild("OPPetPurchaseSuccess")
+if not opPetPurchaseSuccessRemote then
+    opPetPurchaseSuccessRemote = Instance.new("RemoteEvent")
+    opPetPurchaseSuccessRemote.Name = "OPPetPurchaseSuccess"
+    opPetPurchaseSuccessRemote.Parent = ReplicatedStorage
+end
+
+local opPetPurchaseErrorRemote = ReplicatedStorage:FindFirstChild("OPPetPurchaseError")
+if not opPetPurchaseErrorRemote then
+    opPetPurchaseErrorRemote = Instance.new("RemoteEvent")
+    opPetPurchaseErrorRemote.Name = "OPPetPurchaseError"
+    opPetPurchaseErrorRemote.Parent = ReplicatedStorage
+end
+
+local debugGrantOPPetRemote = ReplicatedStorage:FindFirstChild("DebugGrantOPPet")
+if not debugGrantOPPetRemote then
+    debugGrantOPPetRemote = Instance.new("RemoteEvent")
+    debugGrantOPPetRemote.Name = "DebugGrantOPPet"
+    debugGrantOPPetRemote.Parent = ReplicatedStorage
+end
+
 -- Create debug remote event for resetting player data
 local resetPlayerDataRemote = ReplicatedStorage:FindFirstChild("ResetPlayerData")
 if not resetPlayerDataRemote then
@@ -323,6 +378,7 @@ if not updateTutorialProgressRemote then
     updateTutorialProgressRemote.Name = "UpdateTutorialProgress"
     updateTutorialProgressRemote.Parent = ReplicatedStorage
 end
+
 
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
@@ -528,5 +584,46 @@ updateTutorialProgressRemote.OnServerEvent:Connect(function(player, tutorialProg
     -- Sync to client
     StateService:BroadcastPlayerDataUpdate(player)
 end)
+
+-- Handle OP pet purchase from client
+purchaseOPPetRemote.OnServerEvent:Connect(function(player, opPetName)
+    print("Main.server: Received OP pet purchase request from", player.Name, "for pet:", opPetName)
+    
+    if not opPetName then
+        warn("Main.server: No OP pet name provided")
+        return
+    end
+    
+    -- Delegate to OP pet service
+    print("Main.server: Delegating to OPPetService:PromptOPPetPurchase")
+    OPPetService:PromptOPPetPurchase(player, opPetName)
+end)
+
+-- Handle debug OP pet grant from client (for testing)
+debugGrantOPPetRemote.OnServerEvent:Connect(function(player, opPetName)
+    if not opPetName then
+        return
+    end
+    
+    -- Get OP pet config
+    local OPPetConfig = require(ReplicatedStorage.config.OPPetConfig)
+    local opPetData = OPPetConfig.getOPPetByName(opPetName)
+    if not opPetData then
+        return
+    end
+    
+    -- Create and grant the OP pet directly (bypassing payment)
+    local opPet = OPPetConfig.createOPPet(opPetData, player.UserId)
+    local success = OPPetService:AddOPPetToPlayer(player, opPet)
+    
+    if success then
+        -- Send success notification to client
+        local successRemote = ReplicatedStorage:FindFirstChild("OPPetPurchaseSuccess")
+        if successRemote then
+            successRemote:FireClient(player, opPet)
+        end
+    end
+end)
+
 
 -- StateService handles the other remote events, we just need pet collection here

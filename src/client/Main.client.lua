@@ -66,23 +66,6 @@ task.spawn(function()
     local VIPButtonService = require(script.Parent.services.VIPButtonService)
     VIPButtonService:Initialize()
     
-    -- Initialize pet boost display service - DISABLED, now using React component
-    --[[
-    local PetBoostDisplayService = require(script.Parent.services.PetBoostDisplayService)
-    PetBoostDisplayService:Initialize()
-    --]]
-    
-    -- Initialize boost icon service (bottom left boost icon) - DISABLED, now using React component
-    --[[
-    local BoostIconService = require(script.Parent.services.BoostIconService)
-    BoostIconService:Initialize()
-    
-    -- Connect boost icon click to toggle boost display
-    BoostIconService:SetClickCallback(function()
-        PetBoostDisplayService:ToggleVisibility()
-    end)
-    --]]
-    
     -- Initialize plot GUI service (creates client-side plot GUIs with icons)
     local PlotGUIService = require(script.Parent.services.PlotGUIService)
     PlotGUIService:Initialize()
@@ -99,12 +82,33 @@ task.spawn(function()
     local PetDiscoveryService = require(script.Parent.services.PetDiscoveryService)
     PetDiscoveryService:Initialize()
     
-    print("Main.client: All services initialized after data sync ready")
+    -- Initialize coming soon GUI service
+    local ComingSoonGUIService = require(script.Parent.services.ComingSoonGUIService)
+    ComingSoonGUIService:Initialize()
+    
+    -- Initialize area nameplate enhancement service
+    local AreaNameplateService = require(script.Parent.services.AreaNameplateService)
+    AreaNameplateService:Initialize()
+    
+    -- Initialize player enhancement service (speed boost + trail)
+    local PlayerEnhancementService = require(script.Parent.services.PlayerEnhancementService)
+    PlayerEnhancementService:Initialize()
 end)
+
+-- Create a dedicated ScreenGui for React (fixed mobile controls issue)
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local reactContainer = Instance.new("ScreenGui")
+reactContainer.Name = "ReactContainer"
+reactContainer.ResetOnSpawn = false
+reactContainer.IgnoreGuiInset = true
+reactContainer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+reactContainer.Parent = playerGui
 
 -- Initialize React app
 local App = require(script.Parent.components.App)
-local root = ReactRoblox.createRoot(Players.LocalPlayer:WaitForChild("PlayerGui"))
+local root = ReactRoblox.createRoot(reactContainer)
 root:render(React.createElement(App))
 
 -- Wait for PlayerAreas to be created by server

@@ -1,7 +1,7 @@
 -- Pet system constants and enums
 local PetConstants = {}
 
--- Pet Rarity Enum - 15 Different Rarities with Incremental Chances
+-- Pet Rarity Enum - 15 Different Rarities with Incremental Chances + OP
 PetConstants.Rarity = {
     COMMON = "Common",              -- 1 in 5
     UNCOMMON = "Uncommon",          -- 1 in 10
@@ -17,10 +17,11 @@ PetConstants.Rarity = {
     PRIMORDIAL = "Primordial",      -- 1 in 25,000
     COSMIC = "Cosmic",              -- 1 in 50,000
     INFINITE = "Infinite",          -- 1 in 100,000
-    OMNISCIENT = "Omniscient"       -- 1 in 1,000,000
+    OMNISCIENT = "Omniscient",      -- 1 in 1,000,000
+    OP = "OP"                       -- Dev Product Only
 }
 
--- Pet Variation Enum (15 variations total)
+-- Pet Variation Enum (15 variations total + OP)
 PetConstants.Variation = {
     BRONZE = "Bronze",
     SILVER = "Silver", 
@@ -36,7 +37,8 @@ PetConstants.Variation = {
     RAINBOW = "Rainbow",
     COSMIC = "Cosmic",
     VOID = "Void",
-    DIVINE = "Divine"
+    DIVINE = "Divine",
+    OP = "OP"                   -- Dev Product Only
 }
 
 -- Rarity Colors (for UI display) - 15 Different Colors
@@ -55,7 +57,8 @@ PetConstants.RarityColors = {
     [PetConstants.Rarity.PRIMORDIAL] = Color3.fromRGB(128, 0, 128),    -- Purple
     [PetConstants.Rarity.COSMIC] = Color3.fromRGB(75, 0, 130),         -- Indigo
     [PetConstants.Rarity.INFINITE] = Color3.fromRGB(255, 255, 255),    -- White
-    [PetConstants.Rarity.OMNISCIENT] = Color3.fromRGB(255, 255, 0)     -- Pure Yellow
+    [PetConstants.Rarity.OMNISCIENT] = Color3.fromRGB(255, 255, 0),    -- Pure Yellow
+    [PetConstants.Rarity.OP] = Color3.fromRGB(255, 0, 255)             -- Magenta/Rainbow
 }
 
 -- Variation Colors (for UI display) - 15 variations
@@ -74,7 +77,8 @@ PetConstants.VariationColors = {
     [PetConstants.Variation.RAINBOW] = Color3.fromRGB(255, 100, 255),   -- Rainbow
     [PetConstants.Variation.COSMIC] = Color3.fromRGB(138, 43, 226),     -- Cosmic
     [PetConstants.Variation.VOID] = Color3.fromRGB(25, 25, 25),         -- Void
-    [PetConstants.Variation.DIVINE] = Color3.fromRGB(255, 255, 100)     -- Divine
+    [PetConstants.Variation.DIVINE] = Color3.fromRGB(255, 255, 100),    -- Divine
+    [PetConstants.Variation.OP] = Color3.fromRGB(255, 0, 255)           -- Magenta/Rainbow
 }
 
 -- Base multipliers for variations (affects BaseValue and BaseBoost) - 15 variations with increasing rarity
@@ -94,7 +98,8 @@ PetConstants.VariationMultipliers = {
     [PetConstants.Variation.RAINBOW] = 3.6,
     [PetConstants.Variation.COSMIC] = 4.0,
     [PetConstants.Variation.VOID] = 4.5,
-    [PetConstants.Variation.DIVINE] = 5.0       -- Rarest (5x instead of 250x!)
+    [PetConstants.Variation.DIVINE] = 5.0,      -- Rarest (5x instead of 250x!)
+    [PetConstants.Variation.OP] = 100.0         -- OP pets get 100x multiplier!
 }
 
 -- Helper functions

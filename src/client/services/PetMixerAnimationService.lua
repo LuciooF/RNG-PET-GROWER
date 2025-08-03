@@ -225,7 +225,164 @@ function PetMixerAnimationService:StartMixingAnimation(mixer)
 end
 
 function PetMixerAnimationService:CreateAnimatedPetBall(pet, centerPosition)
-    -- Create a part to represent the pet ball
+    -- Create pet model FIRST (like ClientPetBallService)
+    local petModel = self:CreatePetModel(pet)
+    if not petModel then
+        warn("PetMixerAnimationService: Failed to create pet model")
+        return self:CreateFallbackPetBall(pet)
+    end
+    
+    -- Calculate appropriate ball size based on pet model (like ClientPetBallService)
+    local modelSize = petModel:GetExtentsSize()
+    local ballSize = math.min(2.0, math.max(modelSize.X, modelSize.Y, modelSize.Z) * 0.8)
+    
+    -- Create pet ball sized appropriately around the model
+    local petBall = Instance.new("Part")
+    petBall.Name = "AnimatedPetBall_" .. (pet.Name or "Unknown")
+    petBall.Shape = Enum.PartType.Ball
+    petBall.Size = Vector3.new(ballSize, ballSize, ballSize)
+    
+    -- Get variation color (like ClientPetBallService)
+    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+    local variation = pet.Variation
+    if type(variation) == "table" then
+        variation = variation.VariationName or "Bronze"
+    elseif type(variation) ~= "string" then
+        variation = "Bronze"
+    end
+    local variationColor = PetConstants.getVariationColor(variation)
+    petBall.Color = variationColor
+    
+    petBall.Material = Enum.Material.Neon
+    petBall.Transparency = 0.87 -- Very transparent with hint of color (like ClientPetBallService)
+    petBall.CanCollide = false
+    petBall.Anchored = true
+    
+    -- Position the ball at center position
+    petBall.Position = centerPosition
+    
+    -- Parent pet model to ball and position it (like ClientPetBallService)
+    petModel.Parent = petBall
+    
+    -- Position all pet parts at the ball center and weld them properly (like ClientPetBallService)
+    for _, descendant in pairs(petModel:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            -- Position the part at the ball center
+            descendant.Position = petBall.Position
+            
+            -- Set physics properties to follow ball animation
+            descendant.Anchored = true -- Keep anchored so they follow ball position exactly
+            descendant.CanCollide = false
+            descendant.Massless = true
+            descendant.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            descendant.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            
+            -- Create a robust weld (like ClientPetBallService)
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = petBall
+            weld.Part1 = descendant
+            weld.Parent = petBall
+            
+            -- Store reference to prevent garbage collection
+            descendant:SetAttribute("WeldedToBall", true)
+            
+            -- Custom physical properties (like ClientPetBallService)
+            descendant.CustomPhysicalProperties = PhysicalProperties.new(
+                0.01, -- Density (very light)
+                0.5,  -- Friction
+                0,    -- Elasticity
+                1,    -- FrictionWeight
+                1     -- ElasticityWeight
+            )
+        end
+    end
+    
+    -- Add pet name GUI above the ball (like ClientPetBallService)
+    self:CreatePetNameGUI(petBall, pet)
+    
+    -- Add glowing effect
+    local pointLight = Instance.new("PointLight")
+    pointLight.Brightness = 1
+    pointLight.Range = 5
+    pointLight.Color = variationColor
+    pointLight.Parent = petBall
+    
+    return petBall
+end
+
+function PetMixerAnimationService:CreatePetModel(petData)
+    -- Try to get actual pet model from ReplicatedStorage.Pets (like ClientPetBallService)
+    local petsFolder = ReplicatedStorage:FindFirstChild("Pets")
+    
+    if petsFolder then
+        -- Use the actual model name from pet data, or fall back to first available pet
+        local modelName = petData.ModelName or petData.Name or "Acid Rain Doggy"
+        
+        local petModelTemplate = petsFolder:FindFirstChild(modelName)
+        if not petModelTemplate then
+            petModelTemplate = petsFolder:GetChildren()[1]
+        end
+        
+        if petModelTemplate then
+            local clonedModel = petModelTemplate:Clone()
+            clonedModel.Name = "PetModel"
+            
+            -- Process all parts in the model (like ClientPetBallService)
+            local scaleFactor = 0.15 -- Even smaller to fit inside the smaller ball
+            
+            for _, descendant in pairs(clonedModel:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    descendant.Size = descendant.Size * scaleFactor
+                    descendant.CanCollide = false
+                    descendant.Anchored = false
+                    descendant.Massless = true
+                    -- Make parts visible (like ClientPetBallService)
+                    descendant.Transparency = math.min(descendant.Transparency, 0.5) -- Max 50% transparent
+                    descendant.Material = Enum.Material.Neon -- Make them glow to be more visible
+                end
+            end
+            
+            -- Find or create PrimaryPart (like ClientPetBallService)
+            if not clonedModel.PrimaryPart then
+                local primaryPart = clonedModel:FindFirstChild("HumanoidRootPart") 
+                    or clonedModel:FindFirstChild("RootPart")
+                    or clonedModel:FindFirstChild("Torso")
+                    or clonedModel:FindFirstChild("Head")
+                    or clonedModel:FindFirstChildOfClass("BasePart")
+                
+                if primaryPart then
+                    clonedModel.PrimaryPart = primaryPart
+                end
+            end
+            
+            -- If still no PrimaryPart, try to find one (like ClientPetBallService)
+            if not clonedModel.PrimaryPart then
+                for _, child in pairs(clonedModel:GetChildren()) do
+                    if child:IsA("BasePart") then
+                        clonedModel.PrimaryPart = child
+                        break
+                    end
+                end
+                
+                if not clonedModel.PrimaryPart then
+                    for _, descendant in pairs(clonedModel:GetDescendants()) do
+                        if descendant:IsA("BasePart") then
+                            clonedModel.PrimaryPart = descendant
+                            break
+                        end
+                    end
+                end
+            end
+            
+            return clonedModel
+        end
+    end
+    
+    return nil -- No fallback here, will be handled by CreateFallbackPetBall
+end
+
+function PetMixerAnimationService:CreateFallbackPetBall(pet)
+    -- Fallback: create original simple colored ball (like old CreateAnimatedPetBall)
     local petBall = Instance.new("Part")
     petBall.Name = "AnimatedPetBall_" .. (pet.Name or "Unknown")
     petBall.Size = PET_BALL_SIZE
@@ -234,17 +391,69 @@ function PetMixerAnimationService:CreateAnimatedPetBall(pet, centerPosition)
     petBall.CanCollide = false
     petBall.Anchored = true
     
-    -- Set color based on pet rarity
-    petBall.Color = PetUtils.arrayToColor(pet.Rarity and pet.Rarity.RarityColor)
+    -- Set color based on pet variation
+    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+    local variation = pet.Variation
+    if type(variation) == "table" then
+        variation = variation.VariationName or "Bronze"
+    elseif type(variation) ~= "string" then
+        variation = "Bronze"
+    end
+    local variationColor = PetConstants.getVariationColor(variation)
+    petBall.Color = variationColor
     
     -- Add glowing effect
     local pointLight = Instance.new("PointLight")
     pointLight.Brightness = 1
     pointLight.Range = 5
-    pointLight.Color = petBall.Color
+    pointLight.Color = variationColor
     pointLight.Parent = petBall
     
     return petBall
+end
+
+function PetMixerAnimationService:CreatePetNameGUI(petBall, petData)
+    -- Create BillboardGui (like ClientPetBallService)
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "PetNameGUI"
+    billboardGui.Size = UDim2.new(0, 35, 0, 35) -- Small size for mixing animation
+    billboardGui.StudsOffset = Vector3.new(0, 2.5, 0) -- Above ball
+    billboardGui.LightInfluence = 0
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Enabled = true -- Always visible during mixing
+    billboardGui.Parent = petBall
+    
+    -- Create TextLabel (like ClientPetBallService)
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1 -- No background
+    -- Create text with variation and pet name
+    local variationName = petData.Variation
+    if type(variationName) == "table" then
+        variationName = variationName.VariationName or "Bronze"
+    elseif type(variationName) ~= "string" then
+        variationName = "Bronze"
+    end
+    
+    local petName = petData.Name or "Unknown Pet"
+    nameLabel.Text = variationName .. "\\n" .. petName
+    nameLabel.TextScaled = true
+    nameLabel.Font = Enum.Font.SourceSansBold
+    
+    -- Get variation color (like ClientPetBallService)
+    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+    local variationColor = PetConstants.getVariationColor(variationName)
+    nameLabel.TextColor3 = variationColor
+    
+    -- Add black outline (like ClientPetBallService)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
+    
+    nameLabel.Parent = billboardGui
+    
+    return billboardGui
 end
 
 function PetMixerAnimationService:CreateMixingParticles(anchorPart, parentFolder)
@@ -398,11 +607,25 @@ function PetMixerAnimationService:StartBounceAnimation(petBall, basePosition, ti
         local bouncePhase = (elapsed % BOUNCE_DURATION) / BOUNCE_DURATION
         local bounceHeight = math.sin(bouncePhase * math.pi) * BOUNCE_HEIGHT
         
-        -- Update position
-        petBall.Position = basePosition + Vector3.new(0, bounceHeight, 0)
+        -- Calculate new position and rotation
+        local newPosition = basePosition + Vector3.new(0, bounceHeight, 0)
+        local newCFrame = CFrame.new(newPosition) * CFrame.Angles(0, elapsed * 2, 0)
         
-        -- Add subtle rotation
-        petBall.CFrame = CFrame.new(petBall.Position) * CFrame.Angles(0, elapsed * 2, 0)
+        -- Update ball position and rotation
+        petBall.Position = newPosition
+        petBall.CFrame = newCFrame
+        
+        -- Update all pet model parts to follow the ball exactly
+        local petModel = petBall:FindFirstChild("PetModel")
+        if petModel then
+            for _, descendant in pairs(petModel:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    -- Move pet parts to follow ball position exactly
+                    descendant.Position = newPosition
+                    descendant.CFrame = newCFrame -- Also apply rotation to pet parts
+                end
+            end
+        end
     end)
     
     return connection
@@ -600,11 +823,25 @@ function PetMixerAnimationService:CreateCraftedPetBall(mixer, anchorPart, mixerM
         local bouncePhase = (elapsed % BOUNCE_DURATION) / BOUNCE_DURATION
         local bounceHeight = math.sin(bouncePhase * math.pi) * BOUNCE_HEIGHT
         
-        -- Update position
-        craftedBall.Position = basePosition + Vector3.new(0, bounceHeight, 0)
+        -- Calculate new position and rotation
+        local newPosition = basePosition + Vector3.new(0, bounceHeight, 0)
+        local newCFrame = CFrame.new(newPosition) * CFrame.Angles(0, elapsed * 0.5, 0)
         
-        -- Add gentle rotation
-        craftedBall.CFrame = CFrame.new(craftedBall.Position) * CFrame.Angles(0, elapsed * 0.5, 0)
+        -- Update ball position and rotation
+        craftedBall.Position = newPosition
+        craftedBall.CFrame = newCFrame
+        
+        -- Update all pet model parts to follow the ball exactly
+        local petModel = craftedBall:FindFirstChild("PetModel")
+        if petModel then
+            for _, descendant in pairs(petModel:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    -- Move pet parts to follow ball position exactly
+                    descendant.Position = newPosition
+                    descendant.CFrame = newCFrame -- Also apply rotation to pet parts
+                end
+            end
+        end
     end)
     
     -- Clean up after 10 seconds or when mixer is claimed

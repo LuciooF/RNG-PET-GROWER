@@ -1,6 +1,7 @@
 -- App - Main client application component
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local ReactRoblox = require(ReplicatedStorage.Packages["react-roblox"])
@@ -18,6 +19,7 @@ local SideBar = require(script.Parent.SideBar)
 local BoostButton = require(script.Parent.BoostButton)
 local BoostPanel = require(script.Parent.BoostPanel)
 local TutorialUI = require(script.Parent.TutorialUI)
+local OPPetButton = require(script.Parent.OPPetButton)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
@@ -163,10 +165,23 @@ local function App()
             end
         end)
         
+        -- Also update periodically to catch tutorial state changes
+        local lastUpdateTime = 0
+        local updateConnection = RunService.Heartbeat:Connect(function()
+            -- Throttle to once per second
+            if tick() - lastUpdateTime > 1 then
+                lastUpdateTime = tick()
+                updateTutorial()
+            end
+        end)
+        
         return function()
             TutorialService:Cleanup()
             if tutorialConnection then
                 tutorialConnection()
+            end
+            if updateConnection then
+                updateConnection:Disconnect()
             end
         end
     end, {})
@@ -210,21 +225,14 @@ local function App()
     local rebirthCost = RebirthUtils.getRebirthCost(currentRebirths)
     local canRebirth = (playerData.Resources.Money or 0) >= rebirthCost
     
-    -- Debug tutorial rendering
-    if tutorialVisible then
-        print("App: Rendering TutorialUI with data:", {
-            visible = tutorialVisible,
-            currentStep = tutorialData.currentStep,
-            stepsCount = tutorialData.steps and #tutorialData.steps or 0
-        })
-    end
+    -- TutorialUI rendering handled below
     
     return React.createElement("ScreenGui", {
         Name = "PetGrowerApp",
         ResetOnSpawn = false,
-        IgnoreGuiInset = true -- Back to ignoring inset for true mathematical center
+        IgnoreGuiInset = true
     }, {
-        -- Unified SideBar with all navigation buttons
+        -- Unified SideBar with all navigation buttons including boost
         SideBar = React.createElement(SideBar, {
             onGamepassClick = function()
                 setGamepassVisible(function(prev) return not prev end)
@@ -240,6 +248,9 @@ local function App()
             end,
             onDebugClick = function()
                 setDebugVisible(function(prev) return not prev end)
+            end,
+            onBoostClick = function()
+                setBoostPanelVisible(not boostPanelVisible)
             end
         }),
         
@@ -259,30 +270,24 @@ local function App()
             onVisibilityChange = setDebugVisible
         }),
         ErrorMessage = React.createElement(ErrorMessage),
-        PlotVisual = React.createElement(PlotVisual), -- Reactive plot color management
+        PlotVisual = React.createElement(PlotVisual),
         GamepassUI = React.createElement(GamepassUI, {
             visible = gamepassVisible,
             onClose = function()
                 setGamepassVisible(false)
             end
-        }), -- Gamepass shop
-        PetMixerUI = React.createElement(PetMixerUI), -- Pet mixer system
+        }),
+        PetMixerUI = React.createElement(PetMixerUI),
         PetIndexUI = React.createElement(PetIndexUI, {
             visible = petIndexVisible,
             setVisible = setPetIndexVisible
-        }), -- Pet collection index
-        BoostButton = React.createElement(BoostButton, {
-            onClick = function()
-                -- Toggle boost display panel using React state
-                setBoostPanelVisible(not boostPanelVisible)
-            end
-        }), -- Boost display button
+        }),
         BoostPanel = React.createElement(BoostPanel, {
             visible = boostPanelVisible,
             onClose = function()
                 setBoostPanelVisible(false)
             end
-        }), -- Boost info panel
+        }),
         RebirthUI = rebirthUIVisible and React.createElement(RebirthUI.new, {
             visible = rebirthUIVisible,
             playerMoney = playerData.Resources.Money or 0,
@@ -299,7 +304,10 @@ local function App()
             onClose = handleTutorialClose,
             onNext = handleTutorialNext,
             onSkip = handleTutorialSkip
-        }) or nil
+        }) or nil,
+        
+        -- OP Pet Purchase Button (always visible on top right)
+        OPPetButton = React.createElement(OPPetButton)
     })
 end
 

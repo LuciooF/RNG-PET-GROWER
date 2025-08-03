@@ -22,6 +22,7 @@ local PROFILE_TEMPLATE = {
     Pets = {}, -- Array of pet objects
     EquippedPets = {}, -- Array of equipped pets
     ProcessingPets = {}, -- Array of pets being processed (sent to heaven)
+    OPPets = {}, -- Array of OP pets (premium pets bought with Robux)
     OwnedTubes = {}, -- Array of tube numbers
     OwnedPlots = {}, -- Array of plot numbers
     OwnedGamepasses = {}, -- Array of owned gamepass names (e.g., {"PetMagnet"})
@@ -305,6 +306,7 @@ function DataService:ResetPlayerData(player)
         profile.Data.Pets = {}
         profile.Data.EquippedPets = {}
         profile.Data.ProcessingPets = {}
+        profile.Data.OPPets = {} -- Reset OP pets (they'll need to be repurchased)
         profile.Data.OwnedTubes = {}
         profile.Data.OwnedPlots = {}
         profile.Data.CollectedPets = {} -- Reset pet index/discovery data

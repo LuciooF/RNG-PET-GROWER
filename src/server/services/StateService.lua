@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local DataService = require(script.Parent.DataService)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local StateService = {}
 StateService.__index = StateService
@@ -103,6 +104,14 @@ end
 function StateService:BroadcastPlayerDataUpdate(player)
     -- Called when server updates player data and needs to sync to client
     self:SyncPlayerDataToClient(player)
+    
+    -- Also update leaderboard
+    task.spawn(function()
+        local playerData = DataService:GetPlayerData(player)
+        if playerData then
+            LeaderboardService:UpdateLeaderstats(player, playerData)
+        end
+    end)
 end
 
 -- Helper methods for common state updates

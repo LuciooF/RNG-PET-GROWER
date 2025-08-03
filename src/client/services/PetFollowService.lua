@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local PetConfig = require(ReplicatedStorage.config.PetConfig)
@@ -18,6 +19,7 @@ local SMOOTH_FACTOR = 0.2 -- How quickly pets catch up (0.1 = slow, 1 = instant)
 local FLOAT_AMPLITUDE = 0.3 -- How much pets float up/down (very small)
 local FLOAT_SPEED = 2 -- Speed of floating animation
 
+
 -- Tracking
 local equippedPetModels = {} -- petId -> model
 local lastUpdateTime = 0
@@ -29,14 +31,32 @@ function PetFollowService:Initialize()
     
     -- Get initial data
     local initialData = DataSyncService:GetPlayerData()
-    if initialData and initialData.EquippedPets then
-        self:UpdateEquippedPets(initialData.EquippedPets)
+    if initialData then
+        local allFollowingPets = {}
+        -- Add equipped pets
+        for _, pet in ipairs(initialData.EquippedPets or {}) do
+            table.insert(allFollowingPets, pet)
+        end
+        -- Add OP pets (they always follow)
+        for _, opPet in ipairs(initialData.OPPets or {}) do
+            table.insert(allFollowingPets, opPet)
+        end
+        self:UpdateEquippedPets(allFollowingPets)
     end
     
     -- Subscribe to player data changes
     DataSyncService:Subscribe(function(newState)
-        if newState.player and newState.player.EquippedPets then
-            self:UpdateEquippedPets(newState.player.EquippedPets)
+        if newState.player then
+            local allFollowingPets = {}
+            -- Add equipped pets
+            for _, pet in ipairs(newState.player.EquippedPets or {}) do
+                table.insert(allFollowingPets, pet)
+            end
+            -- Add OP pets (they always follow)
+            for _, opPet in ipairs(newState.player.OPPets or {}) do
+                table.insert(allFollowingPets, opPet)
+            end
+            self:UpdateEquippedPets(allFollowingPets)
         end
     end)
     
@@ -119,7 +139,13 @@ function PetFollowService:CreatePetModel(petData, position)
     
     -- Get variation color (same as other balls) 
     local PetConstants = require(ReplicatedStorage.constants.PetConstants)
-    local variationColor = PetConstants.getVariationColor(petData.Variation or "Bronze")
+    local variationName = "Bronze" -- Default
+    if type(petData.Variation) == "string" then
+        variationName = petData.Variation
+    elseif type(petData.Variation) == "table" and petData.Variation.VariationName then
+        variationName = petData.Variation.VariationName
+    end
+    local variationColor = PetConstants.getVariationColor(variationName)
     ball.Color = variationColor
     
     ball.Material = Enum.Material.Neon
@@ -286,7 +312,13 @@ function PetFollowService:CreateActualPetModel(petData)
     
     -- Color by rarity
     local PetConstants = require(ReplicatedStorage.constants.PetConstants)
-    local rarityColor = PetConstants.getRarityColor(petData.Rarity or "Common")
+    local rarityName = "Common" -- Default
+    if type(petData.Rarity) == "string" then
+        rarityName = petData.Rarity
+    elseif type(petData.Rarity) == "table" and petData.Rarity.RarityName then
+        rarityName = petData.Rarity.RarityName
+    end
+    local rarityColor = PetConstants.getRarityColor(rarityName)
     local h, s, v = rarityColor:ToHSV()
     petPart.Color = Color3.fromHSV(h, s * 1.2, v * 0.6)
     
@@ -315,7 +347,13 @@ function PetFollowService:CreatePetNameGUI(petBall, petData)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)  
     nameLabel.BackgroundTransparency = 1 -- No background
     -- Create text with variation and pet name
-    local variationName = petData.Variation or "Bronze"
+    local variationName = "Bronze" -- Default variation
+    if type(petData.Variation) == "string" then
+        variationName = petData.Variation
+    elseif type(petData.Variation) == "table" and petData.Variation.VariationName then
+        variationName = petData.Variation.VariationName
+    end
+    
     local petName = petData.Name or "Unknown Pet"
     nameLabel.Text = variationName .. "\n" .. petName
     nameLabel.TextScaled = true
@@ -323,7 +361,8 @@ function PetFollowService:CreatePetNameGUI(petBall, petData)
     
     -- Get variation color (same as the ball color)
     local PetConstants = require(ReplicatedStorage.constants.PetConstants)
-    local variationColor = PetConstants.getVariationColor(petData.Variation or "Bronze")
+    -- Reuse the variationName from above
+    local variationColor = PetConstants.getVariationColor(variationName)
     nameLabel.TextColor3 = variationColor
     
     -- Add black outline
@@ -345,6 +384,7 @@ function PetFollowService:RemovePetModel(petId)
         petVelocities[petId] = nil
     end
 end
+
 
 function PetFollowService:StartFollowLoop()
     if connection then
@@ -434,6 +474,7 @@ function PetFollowService:UpdatePetPositions(deltaTime)
                 local floatVelocity = math.cos(currentTime * FLOAT_SPEED + index) * FLOAT_AMPLITUDE * FLOAT_SPEED
                 bodyVelocity.Velocity = bodyVelocity.Velocity + Vector3.new(0, floatVelocity, 0)
             end
+            
             
             -- Make the ball (and pet model) face the player (with 270 degree adjustment)
             local directionToPlayer = (playerPosition - currentPosition).Unit
