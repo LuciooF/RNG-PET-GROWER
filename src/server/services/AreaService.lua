@@ -200,6 +200,9 @@ function AreaService:RotateAreaTowardCenter(area, tycoonEntrancePart, areaNumber
     -- Create rotation CFrame around Y-axis
     local rotationCFrame = CFrame.Angles(0, angle, 0)
     
+    -- Store conveyor data before rotation
+    local conveyorData = self:CollectConveyorData(area)
+    
     -- Apply rotation to the area
     if area.PrimaryPart then
         -- Rotate around area's position
@@ -229,6 +232,9 @@ function AreaService:RotateAreaTowardCenter(area, tycoonEntrancePart, areaNumber
         end
         rotateParts(area)
     end
+    
+    -- Fix conveyor directions after rotation
+    self:FixConveyorDirections(conveyorData)
     
 end
 
@@ -494,6 +500,49 @@ function AreaService:CreateAreaNameplate(assignedPlayer, areaNumber)
     textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     
     return namePart
+end
+
+function AreaService:CollectConveyorData(area)
+    local conveyorData = {}
+    
+    -- Recursive function to find all LocalVelocity scripts in the area
+    local function findLocalVelocities(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child.Name == "LocalVelocity" and child:IsA("Script") then
+                -- Store the parent part (the conveyor)
+                table.insert(conveyorData, {
+                    part = child.Parent
+                })
+            end
+            
+            -- Recurse into children
+            if #child:GetChildren() > 0 then
+                findLocalVelocities(child)
+            end
+        end
+    end
+    
+    -- Search recursively through the entire area
+    findLocalVelocities(area)
+    
+    return conveyorData
+end
+
+function AreaService:FixConveyorDirections(conveyorData)
+    -- The LocalVelocity script sets velocity based on part.CFrame.LookVector * speed
+    -- After rotation, we need to update the velocity to use the NEW LookVector
+    for _, conveyorInfo in pairs(conveyorData) do
+        local part = conveyorInfo.part
+        
+        if part and part.Parent then
+            -- The LocalVelocity script uses speed = 20
+            local speed = 20
+            
+            -- Calculate the new velocity based on the part's CURRENT (rotated) orientation
+            local newVelocity = part.CFrame.LookVector * speed
+            part.AssemblyLinearVelocity = newVelocity
+        end
+    end
 end
 
 return AreaService
