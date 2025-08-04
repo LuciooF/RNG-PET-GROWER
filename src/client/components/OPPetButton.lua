@@ -190,7 +190,7 @@ local function OPPetButton(props)
         Position = UDim2.new(0, xPosition, 0, yPosition),
         BackgroundTransparency = 1, -- Transparent for custom design
         Text = "", -- No default text
-        ZIndex = 50, -- High z-index to appear above other UI
+        ZIndex = 5, -- Low z-index to stay behind panel UIs
         [React.Event.Activated] = handlePurchase,
     }, {
         -- Just the spinning squiggle background (no white background or border)
@@ -203,7 +203,7 @@ local function OPPetButton(props)
             ImageColor3 = Color3.fromRGB(255, 255, 255),
             ImageTransparency = 0.2,
             ScaleType = Enum.ScaleType.Fit,
-            ZIndex = 48,
+            ZIndex = 3,
             ref = squiggleRef, -- For spinning animation
         }, {
             Corner = React.createElement("UICorner", {
@@ -230,7 +230,7 @@ local function OPPetButton(props)
             Size = UDim2.new(1.9, 0, 1.9, 0), -- 2x bigger: 190% of button size!
             Position = UDim2.new(-0.45, 0, -0.45, 0), -- Centered with the larger size
             BackgroundTransparency = 1,
-            ZIndex = 49,
+            ZIndex = 4,
             ref = viewportRef,
             
             [React.Event.AncestryChanged] = function(rbx)
@@ -265,7 +265,7 @@ local function OPPetButton(props)
             Font = Enum.Font.GothamBold,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
-            ZIndex = 52,
+            ZIndex = 7,
         }, {
             -- Rainbow gradient for title text
             TitleGradient = React.createElement("UIGradient", {
@@ -295,7 +295,7 @@ local function OPPetButton(props)
             Font = Enum.Font.GothamBold,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
-            ZIndex = 52,
+            ZIndex = 7,
         }, {
             -- Rainbow gradient for boost text
             BoostGradient = React.createElement("UIGradient", {
@@ -317,7 +317,7 @@ local function OPPetButton(props)
             Size = UDim2.new(0, buttonSize + 60, 0, 35), -- Much bigger
             Position = UDim2.new(0, -30, 1, 15), -- Just below button
             BackgroundTransparency = 1,
-            ZIndex = 52,
+            ZIndex = 7,
         }, {
             -- Robux icon
             RobuxIcon = React.createElement("ImageLabel", {
@@ -326,7 +326,7 @@ local function OPPetButton(props)
                 BackgroundTransparency = 1,
                 Image = IconAssets.getIcon("CURRENCY", "ROBUX") or "rbxasset://textures/ui/Shell/Icons/Robux.png",
                 ScaleType = Enum.ScaleType.Fit,
-                ZIndex = 53,
+                ZIndex = 8,
             }),
             -- Price text
             PriceText = React.createElement("TextLabel", {
@@ -341,7 +341,7 @@ local function OPPetButton(props)
                 Font = Enum.Font.GothamBold,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Center,
-                ZIndex = 53,
+                ZIndex = 8,
             }, {
                 -- Rainbow gradient for price text
                 PriceGradient = React.createElement("UIGradient", {

@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.react)
 local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
 
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
@@ -11,6 +12,20 @@ local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 -- Load the current PetConfig and PetConstants
 local PetConfig = require(ReplicatedStorage.config.PetConfig)
 local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+
+-- Sound configuration
+local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Pre-create hover sound for instant playback
+local hoverSound = Instance.new("Sound")
+hoverSound.SoundId = HOVER_SOUND_ID
+hoverSound.Volume = 0.5
+hoverSound.Parent = SoundService
+
+-- Play hover sound instantly
+local function playHoverSound()
+    hoverSound:Play()
+end
 
 -- Helper function to create pet models for ViewportFrame (EXACT COPY from Pets UI)
 local function createPetModelForIndex(petName)
@@ -184,15 +199,31 @@ local function PetIndexUI(props)
             ZIndex = 110,
             
             [React.Event.MouseEnter] = function(rbx)
+                playHoverSound() -- Play hover sound
                 if not pinnedTooltip or pinnedTooltip.name ~= petName then
                     setHoveredPet({name = petName, index = cardIndex, level = selectedLevel}) -- Include level in hover state
-                    -- Calculate tooltip position
-                    if rbx and rbx.Parent then
-                        local success, _ = pcall(function()
+                    -- Calculate tooltip position with error handling
+                    local success, _ = pcall(function()
+                        if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
                             local absPos = rbx.AbsolutePosition
                             local absSize = rbx.AbsoluteSize
                             local responsiveOffset = ScreenUtils.getScaleFactor() * 15
                             setTooltipPosition(UDim2.new(0, absPos.X + absSize.X + responsiveOffset, 0, absPos.Y))
+                        end
+                    end)
+                    
+                    if not success then
+                        -- Fallback: try again after a brief delay
+                        task.spawn(function()
+                            task.wait(0.1)
+                            pcall(function()
+                                if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                                    local absPos = rbx.AbsolutePosition
+                                    local absSize = rbx.AbsoluteSize
+                                    local responsiveOffset = ScreenUtils.getScaleFactor() * 15
+                                    setTooltipPosition(UDim2.new(0, absPos.X + absSize.X + responsiveOffset, 0, absPos.Y))
+                                end
+                            end)
                         end)
                     end
                 end
@@ -200,7 +231,22 @@ local function PetIndexUI(props)
             
             [React.Event.MouseLeave] = function()
                 if not pinnedTooltip then
-                    setHoveredPet(nil)
+                    -- Store reference to current pet for delayed clearing
+                    local currentPetData = {name = petName, index = cardIndex, level = selectedLevel}
+                    task.spawn(function()
+                        task.wait(0.05) -- Very short delay (50ms)
+                        if not pinnedTooltip then -- Check again after delay
+                            -- Only clear if we're still on the same pet (haven't moved to another card)
+                            setHoveredPet(function(currentHoveredPet)
+                                if currentHoveredPet and currentHoveredPet.name == currentPetData.name and 
+                                   currentHoveredPet.index == currentPetData.index then
+                                    return nil -- Clear only if still the same pet
+                                else
+                                    return currentHoveredPet -- Keep current hovered pet
+                                end
+                            end)
+                        end
+                    end)
                 end
             end,
             

@@ -8,9 +8,25 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local TooltipUtils = require(ReplicatedStorage.utils.TooltipUtils)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+local SoundService = game:GetService("SoundService")
 
 -- Restrict debug access to specific user ID
 local AUTHORIZED_USER_ID = 7273741008
+
+-- Sound configuration
+local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Pre-create hover sound for instant playback
+local hoverSound = Instance.new("Sound")
+hoverSound.SoundId = HOVER_SOUND_ID
+hoverSound.Volume = 0.5
+hoverSound.Parent = SoundService
+
+-- Play hover sound instantly (no creation overhead)
+local function playHoverSound()
+    -- Just play the pre-created sound
+    hoverSound:Play()
+end
 
 local function SideBar(props)
     -- Subscribe to player data for pet count and boost calculation

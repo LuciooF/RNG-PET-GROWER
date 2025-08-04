@@ -444,7 +444,7 @@ function PetMixerButtonService:Cleanup()
     
     -- Clean up data subscriptions
     for mixerNumber, unsubscribe in pairs(dataSubscriptions) do
-        if unsubscribe then
+        if unsubscribe and type(unsubscribe) == "function" then
             unsubscribe()
         end
     end

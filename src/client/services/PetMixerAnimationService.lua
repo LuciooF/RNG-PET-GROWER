@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local PetUtils = require(ReplicatedStorage.utils.PetUtils)
@@ -22,6 +23,20 @@ local BOUNCE_HEIGHT = 5 -- Studs to bounce up (increased from 3)
 local BOUNCE_DURATION = 0.8 -- Time for one bounce cycle
 local SHINE_DURATION = 2 -- Duration of shine effect
 local PET_BALL_SIZE = Vector3.new(1, 1, 1) -- Size of animated pet balls
+
+-- Sound configuration
+local COMPLETION_SOUND_ID = "rbxassetid://6946986098"
+
+-- Pre-create completion sound for instant playback
+local completionSound = Instance.new("Sound")
+completionSound.SoundId = COMPLETION_SOUND_ID
+completionSound.Volume = 0.8 -- Celebratory volume
+completionSound.Parent = SoundService
+
+-- Play completion sound instantly
+local function playCompletionSound()
+    completionSound:Play()
+end
 
 function PetMixerAnimationService:Initialize()
     -- Animation service initialized
@@ -643,6 +658,9 @@ function PetMixerAnimationService:ShowCompletionEffect(mixer)
     
     local mixerModel = mixerData.mixerModel
     local anchorPart = mixerData.anchorPart
+    
+    -- Play completion sound at the start of the animation block
+    playCompletionSound()
     
     -- Stop just the mixing animation parts (balls and particles) but keep mixer tracked
     self:StopMixingAnimationOnly(mixer.id)

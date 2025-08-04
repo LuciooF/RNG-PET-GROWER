@@ -170,11 +170,11 @@ end
 
 -- Setup character references
 local function setupCharacter(newCharacter)
-    -- Clean up old connections
-    for _, connection in pairs(connections) do
-        connection:Disconnect()
+    -- Clean up old connections (but not the main trail update)
+    if connections.speedChanged then
+        connections.speedChanged:Disconnect()
+        connections.speedChanged = nil
     end
-    connections = {}
     
     character = newCharacter
     if not character then
@@ -196,6 +196,8 @@ local function setupCharacter(newCharacter)
     -- Reset trail system
     lastPosition = rootPart.Position
     lastTrailTime = tick()
+    
+    print("PlayerEnhancementService: Character setup complete for", player.Name)
 end
 
 function PlayerEnhancementService:Initialize()

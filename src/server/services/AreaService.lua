@@ -84,6 +84,13 @@ function AreaService:CreateAlignedAreas(template, container, tycoonMap)
         
         -- Create initial "Unassigned Area" nameplate
         self:UpdateAreaNameplate(i)
+        
+        -- Disable all SpawnLocations in this area to prevent auto-spawning
+        for _, spawn in pairs(area:GetDescendants()) do
+            if spawn:IsA("SpawnLocation") then
+                spawn.Enabled = false
+            end
+        end
     end
 end
 
@@ -112,6 +119,13 @@ function AreaService:CreateCircularAreas(template, container)
         
         -- Create initial "Unassigned Area" nameplate
         self:UpdateAreaNameplate(i)
+        
+        -- Disable all SpawnLocations in this area to prevent auto-spawning
+        for _, spawn in pairs(area:GetDescendants()) do
+            if spawn:IsA("SpawnLocation") then
+                spawn.Enabled = false
+            end
+        end
     end
 end
 
@@ -341,6 +355,18 @@ function AreaService:SetupPlayerAssignment()
     -- Handle player joining
     Players.PlayerAdded:Connect(function(player)
         self:AssignPlayerToArea(player)
+        
+        -- Handle respawning - teleport to assigned area
+        player.CharacterAdded:Connect(function(character)
+            -- Wait a moment for character to fully load
+            task.wait(0.1)
+            
+            -- Get assigned area and teleport
+            local areaNumber = self:GetPlayerAssignedArea(player)
+            if areaNumber then
+                self:TeleportPlayerToArea(player, areaNumber)
+            end
+        end)
     end)
     
     -- Handle player leaving
@@ -351,6 +377,15 @@ function AreaService:SetupPlayerAssignment()
     -- Handle players already in game
     for _, player in pairs(Players:GetPlayers()) do
         self:AssignPlayerToArea(player)
+        
+        -- Also setup respawn handler for existing players
+        player.CharacterAdded:Connect(function(character)
+            task.wait(0.1)
+            local areaNumber = self:GetPlayerAssignedArea(player)
+            if areaNumber then
+                self:TeleportPlayerToArea(player, areaNumber)
+            end
+        end)
     end
 end
 
@@ -410,6 +445,9 @@ function AreaService:TeleportPlayerToArea(player, areaNumber)
         -- Find the SpawnPoint in the area
         local spawnPoint = area:FindFirstChild("SpawnPoint", true)
         if spawnPoint and spawnPoint:IsA("SpawnLocation") then
+            -- Disable auto-spawning on this SpawnLocation
+            spawnPoint.Enabled = false
+            
             -- Teleport to SpawnPoint position
             humanoidRootPart.CFrame = CFrame.new(spawnPoint.Position + Vector3.new(0, 3, 0))
             -- Player teleported successfully

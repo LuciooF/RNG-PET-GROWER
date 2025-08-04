@@ -7,6 +7,22 @@ local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local SoundService = game:GetService("SoundService")
+
+-- Sound configuration
+local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Pre-create hover sound for instant playback
+local hoverSound = Instance.new("Sound")
+hoverSound.SoundId = HOVER_SOUND_ID
+hoverSound.Volume = 0.5
+hoverSound.Parent = SoundService
+
+-- Play hover sound instantly (no creation overhead)
+local function playHoverSound()
+    -- Just play the pre-created sound
+    hoverSound:Play()
+end
 
 local player = Players.LocalPlayer
 
@@ -104,7 +120,10 @@ local function TopStatsUI()
             DiamondsFrame = React.createElement("Frame", {
                 Name = "DiamondsFrame",
                 Size = ScreenUtils.udim2(0, 300, 0, 120),
-                BackgroundTransparency = 1
+                BackgroundTransparency = 1,
+                [React.Event.MouseEnter] = function()
+                    playHoverSound()
+                end
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
@@ -159,7 +178,10 @@ local function TopStatsUI()
             MoneyFrame = React.createElement("Frame", {
                 Name = "MoneyFrame",
                 Size = ScreenUtils.udim2(0, 375, 0, 150),
-                BackgroundTransparency = 1
+                BackgroundTransparency = 1,
+                [React.Event.MouseEnter] = function()
+                    playHoverSound()
+                end
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
@@ -214,7 +236,10 @@ local function TopStatsUI()
             RebirthsFrame = React.createElement("Frame", {
                 Name = "RebirthsFrame",
                 Size = ScreenUtils.udim2(0, 300, 0, 120),
-                BackgroundTransparency = 1
+                BackgroundTransparency = 1,
+                [React.Event.MouseEnter] = function()
+                    playHoverSound()
+                end
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,

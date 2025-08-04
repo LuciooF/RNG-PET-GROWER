@@ -4,9 +4,25 @@ local TooltipUtils = {}
 local React = require(game.ReplicatedStorage.Packages.react)
 local ScreenUtils = require(script.Parent.ScreenUtils)
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 -- Store active spin tweens to prevent overlapping animations
 local activeSpinTweens = {}
+
+-- Sound configuration
+local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Pre-create hover sound for instant playback
+local hoverSound = Instance.new("Sound")
+hoverSound.SoundId = HOVER_SOUND_ID
+hoverSound.Volume = 0.5
+hoverSound.Parent = SoundService
+
+-- Play hover sound instantly (no creation overhead)
+local function playHoverSound()
+    -- Just play the pre-created sound
+    hoverSound:Play()
+end
 
 -- Create a 360-degree spin animation for buttons
 local function spinButton(button)
@@ -102,10 +118,11 @@ function TooltipUtils.createHoverButton(buttonProps, tooltipText)
         enhancedProps[key] = value
     end
     
-    -- Add hover detection with spin animation
+    -- Add hover detection with spin animation and sound
     enhancedProps[React.Event.MouseEnter] = function(rbx)
         setShowTooltip(true)
         spinButton(rbx) -- Trigger 360-degree spin animation
+        playHoverSound() -- Play hover click sound
         if buttonProps[React.Event.MouseEnter] then
             buttonProps[React.Event.MouseEnter](rbx)
         end

@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
@@ -14,6 +15,20 @@ local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 -- Pet inventory limit
 local MAX_PET_INVENTORY = 1000
+
+-- Sound configuration
+local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Pre-create hover sound for instant playback
+local hoverSound = Instance.new("Sound")
+hoverSound.SoundId = HOVER_SOUND_ID
+hoverSound.Volume = 0.5
+hoverSound.Parent = SoundService
+
+-- Play hover sound instantly
+local function playHoverSound()
+    hoverSound:Play()
+end
 
 -- Helper function to create pet models for ViewportFrame (same pattern as ClientPetBallService)
 local function createPetModelForInventory(petData, rotationIndex)
@@ -445,12 +460,44 @@ local function PetInventoryUI(props)
                 Text = "",
                 ZIndex = 15,
                 [React.Event.MouseEnter] = function(rbx)
+                    playHoverSound() -- Play hover sound
                     setHoveredPet(petGroup)
-                    local responsiveOffset = ScreenUtils.getScaleFactor() * 10
-                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
+                    
+                    -- Calculate tooltip position with error handling
+                    local success, _ = pcall(function()
+                        if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                            local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                            setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
+                        end
+                    end)
+                    
+                    if not success then
+                        -- Fallback: try again after a brief delay
+                        task.spawn(function()
+                            task.wait(0.1)
+                            pcall(function()
+                                if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                                    local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
+                                end
+                            end)
+                        end)
+                    end
                 end,
                 [React.Event.MouseLeave] = function()
-                    setHoveredPet(nil)
+                    -- Store reference to current pet for delayed clearing
+                    local currentPet = petGroup
+                    task.spawn(function()
+                        task.wait(0.05) -- Very short delay (50ms)
+                        -- Only clear if we're still on the same pet (haven't moved to another card)
+                        setHoveredPet(function(currentHoveredPet)
+                            if currentHoveredPet == currentPet then
+                                return nil -- Clear only if still the same pet
+                            else
+                                return currentHoveredPet -- Keep current hovered pet
+                            end
+                        end)
+                    end)
                 end,
             })
         })
@@ -677,7 +724,7 @@ local function PetInventoryUI(props)
             Position = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 1,
             Text = "",
-            ZIndex = 10, -- Behind the main panel
+            ZIndex = 0, -- Lowest - behind everything
             [React.Event.MouseButton1Click] = function()
                 -- Close inventory when clicking outside
                 setIsVisible(false)
@@ -693,7 +740,7 @@ local function PetInventoryUI(props)
             BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
             BorderSizePixel = 3,
             BorderColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
-            ZIndex = 5,
+            ZIndex = 1, -- Background should be lowest
             Text = "", -- No text
             AutoButtonColor = false, -- Don't change color on hover
             [React.Event.Activated] = function()
@@ -913,7 +960,7 @@ local function PetInventoryUI(props)
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Rotation = -15, -- Tilted 15 degrees
+                    Rotation = 0, -- Straight text (no tilt)
                     ZIndex = 8,
                     
                     -- Animation setup

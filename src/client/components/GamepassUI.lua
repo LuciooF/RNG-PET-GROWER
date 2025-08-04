@@ -5,6 +5,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
 local DeveloperProductConfig = require(ReplicatedStorage.config.DeveloperProductConfig)
@@ -13,6 +14,20 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local player = Players.LocalPlayer
+
+-- Sound configuration
+local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Pre-create hover sound for instant playback
+local hoverSound = Instance.new("Sound")
+hoverSound.SoundId = HOVER_SOUND_ID
+hoverSound.Volume = 0.5
+hoverSound.Parent = SoundService
+
+-- Play hover sound instantly
+local function playHoverSound()
+    hoverSound:Play()
+end
 
 local function GamepassUI(props)
     local playerData, setPlayerData = React.useState({
@@ -275,6 +290,9 @@ local function GamepassUI(props)
                 BorderSizePixel = 0,
                 LayoutOrder = cardIndex,
                 ZIndex = 110,
+                [React.Event.MouseEnter] = function()
+                    playHoverSound()
+                end
             }, {
                 Corner = React.createElement("UICorner", {
                     CornerRadius = ScreenUtils.udim(0, 160) -- Half of 320 for circular

@@ -318,7 +318,7 @@ function RebirthButtonService:Cleanup()
         proximityCheckConnection:Disconnect()
         proximityCheckConnection = nil
     end
-    if self.dataSubscription then
+    if self.dataSubscription and type(self.dataSubscription) == "function" then
         self.dataSubscription()
         self.dataSubscription = nil
     end

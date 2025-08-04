@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
@@ -12,6 +13,9 @@ RebirthCelebrationService.__index = RebirthCelebrationService
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local connections = {}
+
+-- Sound configuration
+local REBIRTH_SOUND_ID = "rbxassetid://120672563582350"
 
 -- Track previous rebirth count to detect when player rebirths
 local previousRebirths = 0
@@ -48,6 +52,26 @@ function RebirthCelebrationService:CheckForRebirthIncrease(playerData)
 end
 
 function RebirthCelebrationService:PlayRebirthCelebration()
+    -- Play rebirth sound
+    local rebirthSound = Instance.new("Sound")
+    rebirthSound.SoundId = REBIRTH_SOUND_ID
+    rebirthSound.Volume = 0.7 -- Slightly louder for celebration
+    rebirthSound.Parent = SoundService
+    
+    -- Play sound and clean up
+    rebirthSound:Play()
+    rebirthSound.Ended:Connect(function()
+        rebirthSound:Destroy()
+    end)
+    
+    -- Fallback cleanup
+    task.spawn(function()
+        task.wait(10) -- Generous cleanup time for longer sounds
+        if rebirthSound and rebirthSound.Parent then
+            rebirthSound:Destroy()
+        end
+    end)
+    
     -- Create celebration GUI
     local celebrationGui = Instance.new("ScreenGui")
     celebrationGui.Name = "RebirthCelebrationGUI"

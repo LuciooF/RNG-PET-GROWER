@@ -27,6 +27,7 @@ local function PetMixerUI()
     local hoveredPet, setHoveredPet = React.useState(nil)
     local tooltipPosition, setTooltipPosition = React.useState(UDim2.new(0, 0, 0, 0))
     local selectedExclusivePet, setSelectedExclusivePet = React.useState(nil)
+    local loadedPetModels, setLoadedPetModels = React.useState({}) -- Track which pet models are loaded
     
     -- Store mouse connections to prevent memory leaks
     local mouseConnections = {}
@@ -100,6 +101,7 @@ local function PetMixerUI()
             setActiveMixerNumber(mixerNumber)
             setSelectedPets({}) -- Clear selection when opening
             setSelectedExclusivePet(nil) -- Clear exclusive pet
+            setLoadedPetModels({}) -- Clear loaded models cache when opening
         end)
         
         PetMixerButtonService:SetCloseCallback(function(mixerNumber)
@@ -272,23 +274,22 @@ local function PetMixerUI()
         if petsFolder then
             local modelName = petData.ModelName or petData.Name or "Acid Rain Doggy"
             
-            -- Debug log to help identify the issue
-            print("PetMixerUI: Loading model for pet:", petData.Name or "Unknown", "ModelName:", petData.ModelName or "None")
+            -- Debug logs removed for performance
             
             local petModelTemplate = petsFolder:FindFirstChild(modelName)
             if not petModelTemplate then
-                warn("PetMixerUI: Model not found:", modelName, "- trying exact pet name match")
+                -- Model not found, trying exact pet name match
                 
                 -- Try exact pet name match first (for mixed pets)
                 petModelTemplate = petsFolder:FindFirstChild(petData.Name or "")
                 
                 if not petModelTemplate then
-                    warn("PetMixerUI: Exact name match failed, trying partial match")
+                    -- Exact name match failed, trying partial match
                     -- Try to find a more appropriate fallback based on pet name
                     for _, model in pairs(petsFolder:GetChildren()) do
                         if model.Name:lower():find((petData.Name or ""):lower()) then
                             petModelTemplate = model
-                            print("PetMixerUI: Found matching model:", model.Name, "for pet:", petData.Name)
+                            -- Found matching model
                             break
                         end
                     end
@@ -297,12 +298,12 @@ local function PetMixerUI()
                 -- If still no match, use first available
                 if not petModelTemplate then
                     petModelTemplate = petsFolder:GetChildren()[1]
-                    warn("PetMixerUI: Using fallback model:", petModelTemplate and petModelTemplate.Name or "None", "for pet:", petData.Name)
+                    -- Using fallback model
                 else
-                    print("PetMixerUI: Successfully found model:", petModelTemplate.Name, "for pet:", petData.Name)
+                    -- Successfully found model
                 end
             else
-                print("PetMixerUI: Direct model match found:", petModelTemplate.Name, "for pet:", petData.Name)
+                -- Direct model match found
             end
             
             if petModelTemplate then
@@ -574,13 +575,24 @@ local function PetMixerUI()
                 
                 -- Load pet model when viewport is created
                 [React.Event.AncestryChanged] = function(rbx)
-                    if rbx.Parent then
-                        -- Delay to ensure viewport is ready
+                    if rbx.Parent and not loadedPetModels[pet.ID] then
+                        -- Mark as loaded to prevent duplicate loading
+                        setLoadedPetModels(function(current)
+                            local new = {}
+                            for k, v in pairs(current) do
+                                new[k] = v
+                            end
+                            new[pet.ID] = true
+                            return new
+                        end)
+                        
+                        -- Stagger model loading to prevent lag
                         task.spawn(function()
-                            task.wait(0.1)
+                            -- Add random delay based on index to stagger loading
+                            task.wait(0.1 + (index * 0.05))
                             
                             local petModel = createPetModelForMixer(pet, index)
-                            if petModel then
+                            if petModel and rbx.Parent then
                                 petModel.Parent = rbx
                                 setupPetViewportCamera(rbx, petModel)
                             end
@@ -1162,15 +1174,15 @@ local function PetMixerUI()
                                     BackgroundTransparency = 1, -- Transparent viewport
                                     ZIndex = 11, -- Above background
                                     
-                                    -- Load pet model when viewport is created
+                                    -- Load pet model when viewport is created (lazy loading)
                                     [React.Event.AncestryChanged] = function(rbx)
                                         if rbx.Parent then
-                                            -- Delay to ensure viewport is ready
+                                            -- Stagger loading to prevent lag
                                             task.spawn(function()
-                                                task.wait(0.1)
+                                                task.wait(0.3) -- Longer delay for mixer output pets
                                                 
                                                 local petModel = createPetModelForMixer(outputPet, 1)
-                                                if petModel then
+                                                if petModel and rbx.Parent then
                                                     petModel.Parent = rbx
                                                     setupPetViewportCamera(rbx, petModel)
                                                 end
@@ -1435,11 +1447,11 @@ local function PetMixerUI()
                             BackgroundTransparency = 1,
                             ZIndex = 9,
                             
-                            -- Load exclusive mixing pet model when viewport is created
+                            -- Load exclusive mixing pet model when viewport is created (lazy loading)
                             [React.Event.AncestryChanged] = function(rbx)
                                 if rbx.Parent and selectedExclusivePet then
                                     task.spawn(function()
-                                        task.wait(0.1)
+                                        task.wait(0.2) -- Stagger exclusive pet loading
                                         
                                         -- Use the already selected exclusive pet
                                         local exclusivePetData = {
@@ -1448,7 +1460,7 @@ local function PetMixerUI()
                                         }
                                         
                                         local petModel = createPetModelForMixer(exclusivePetData, 1)
-                                        if petModel then
+                                        if petModel and rbx.Parent then
                                             petModel.Parent = rbx
                                             setupPetViewportCamera(rbx, petModel)
                                             

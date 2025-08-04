@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
 
 local DataService = require(script.Parent.DataService)
 local StateService = require(script.Parent.StateService)
@@ -16,6 +17,48 @@ local TOTAL_PLOTS = 49
 local TUBEPLOT_BASE_COST = 10  -- Increased from 5 for better challenge
 local TOTAL_TUBEPLOTS = 10
 local UI_VISIBILITY_DISTANCE = 50 -- Distance to show plot UIs
+
+-- Sound configuration
+local PLOT_PURCHASE_SOUND_ID = "rbxassetid://1172510525"
+local TUBE_PURCHASE_SOUND_ID = "rbxassetid://98585875176475" 
+local SOUND_COOLDOWN = 0.5 -- Prevent spam by limiting sounds to every 0.5 seconds per player
+
+-- Track last sound time per player to prevent spam
+local lastSoundTime = {}
+
+-- Helper function to play purchase sounds with anti-spam protection
+local function playPurchaseSound(player, soundId)
+    local currentTime = tick()
+    local playerId = player.UserId
+    
+    -- Check if enough time has passed since last sound for this player
+    if lastSoundTime[playerId] and (currentTime - lastSoundTime[playerId]) < SOUND_COOLDOWN then
+        return -- Skip sound due to cooldown
+    end
+    
+    -- Update last sound time
+    lastSoundTime[playerId] = currentTime
+    
+    -- Play sound for the player
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = 0.5
+    sound.Parent = SoundService
+    
+    -- Play sound and clean up
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+    
+    -- Fallback cleanup in case Ended doesn't fire
+    task.spawn(function()
+        task.wait(5)
+        if sound and sound.Parent then
+            sound:Destroy()
+        end
+    end)
+end
 
 -- Level and door mapping
 local LEVEL_CONFIG = {
@@ -202,6 +245,11 @@ function PlotService:Initialize()
         -- Start proximity checking for UI visibility
         self:StartProximityChecking()
     end
+    
+    -- Clean up sound tracking when players leave to prevent memory leaks
+    Players.PlayerRemoving:Connect(function(player)
+        lastSoundTime[player.UserId] = nil
+    end)
 end
 
 function PlotService:SetupAreaPlots(area)
@@ -456,6 +504,9 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
         DataService:AddOwnedPlot(player, plotNumber)
         StateService:BroadcastPlayerDataUpdate(player)
         
+        -- Play plot purchase sound with anti-spam protection
+        playPurchaseSound(player, PLOT_PURCHASE_SOUND_ID)
+        
         -- Hide the UI for this plot
         self:HidePlotUI(player, plotNumber)
         
@@ -524,6 +575,9 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     if success then
         DataService:AddOwnedTube(player, tubePlotNumber)
         StateService:BroadcastPlayerDataUpdate(player)
+        
+        -- Play tube purchase sound with anti-spam protection
+        playPurchaseSound(player, TUBE_PURCHASE_SOUND_ID)
         
         -- Hide the UI for this TubePlot
         self:HideTubePlotUI(player, tubePlotNumber)

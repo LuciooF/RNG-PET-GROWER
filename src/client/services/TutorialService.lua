@@ -412,10 +412,106 @@ local function clearPathVisual()
     currentPathVisual = nil
 end
 
-local function updatePathMarkers(startPos, endPos)
-    local distance = (endPos - startPos).Magnitude
+-- Create NavigationBeams between waypoints
+local function createNavigationBeams(waypoints)
+    if #waypoints < 2 then return end
     
-    -- Always clear and recreate path to prevent accumulation
+    -- Create beams between consecutive waypoints
+    for i = 1, #waypoints - 1 do
+        local waypoint1 = waypoints[i]
+        local waypoint2 = waypoints[i + 1]
+        
+        -- Create invisible parts for attachments
+        local part1 = Instance.new("Part")
+        part1.Name = "BeamAnchor" .. i
+        part1.Anchored = true
+        part1.CanCollide = false
+        part1.Transparency = 1
+        part1.Size = Vector3.new(0.1, 0.1, 0.1)
+        part1.Position = waypoint1.Position + Vector3.new(0, 0.5, 0) -- Slightly elevated
+        part1.Parent = currentPathVisual
+        
+        local part2 = Instance.new("Part")
+        part2.Name = "BeamAnchor" .. (i + 1)
+        part2.Anchored = true
+        part2.CanCollide = false
+        part2.Transparency = 1
+        part2.Size = Vector3.new(0.1, 0.1, 0.1)
+        part2.Position = waypoint2.Position + Vector3.new(0, 0.5, 0) -- Slightly elevated
+        part2.Parent = currentPathVisual
+        
+        -- Create attachments
+        local attachment1 = Instance.new("Attachment")
+        attachment1.Parent = part1
+        
+        local attachment2 = Instance.new("Attachment")
+        attachment2.Parent = part2
+        
+        -- Create NavigationBeam with reversed attachments to flip arrow direction
+        local beam = Instance.new("Beam")
+        beam.Name = "NavigationBeam"
+        beam.Attachment0 = attachment2  -- Swap: end becomes start
+        beam.Attachment1 = attachment1  -- Swap: start becomes end
+        beam.FaceCamera = true -- Always visible from any angle
+        
+        -- Start with white, will be animated to rainbow
+        beam.Color = ColorSequence.new(Color3.new(1, 1, 1)) -- White base
+        
+        beam.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.4),
+            NumberSequenceKeypoint.new(0.5, 0.2),
+            NumberSequenceKeypoint.new(1, 0.4)
+        }
+        
+        -- Use the rainbow arrow texture
+        beam.Texture = "rbxassetid://138007024966757"
+        beam.TextureMode = Enum.TextureMode.Wrap
+        beam.TextureLength = 4 -- Length of each arrow segment
+        beam.TextureSpeed = -2 -- Negative speed to match flipped beam direction
+        
+        -- Make beam thicker and maintain arrow direction effect
+        beam.Width0 = 1.5 -- Start thicker
+        beam.Width1 = 2.0 -- End even thicker (creates arrow head effect)
+        
+        beam.Parent = part1
+        
+        -- Create rainbow color animation
+        local rainbowColors = {
+            Color3.fromRGB(255, 0, 0),      -- Red
+            Color3.fromRGB(255, 127, 0),    -- Orange
+            Color3.fromRGB(255, 255, 0),    -- Yellow
+            Color3.fromRGB(0, 255, 0),      -- Green
+            Color3.fromRGB(0, 255, 255),    -- Cyan
+            Color3.fromRGB(0, 0, 255),      -- Blue
+            Color3.fromRGB(255, 0, 255),    -- Magenta
+        }
+        
+        -- Start rainbow cycling animation
+        local colorIndex = 1
+        local function animateRainbow()
+            while beam and beam.Parent do
+                -- Set the current rainbow color directly
+                local currentColor = rainbowColors[colorIndex]
+                beam.Color = ColorSequence.new(currentColor)
+                
+                -- Move to next color
+                colorIndex = colorIndex % #rainbowColors + 1
+                
+                -- Wait before next color change
+                task.wait(0.5)
+            end
+        end
+        
+        -- Start the rainbow animation
+        task.spawn(animateRainbow)
+        
+        -- No visible markers - just clean arrow beams
+    end
+end
+
+-- Simple function: just create one beam from character to destination
+local function updatePathMarkers(startPos, endPos)
+    -- Always clear and recreate path
     clearPathVisual()
     
     -- Create folder for visual elements
@@ -424,206 +520,19 @@ local function updatePathMarkers(startPos, endPos)
     pathFolder.Parent = Workspace
     currentPathVisual = pathFolder
     
-    -- If distance is very small, don't create path markers but keep arrow
-    if distance < 3 then
-        
-        -- Just create the arrow
-        local targetPart = Instance.new("Part")
-        targetPart.Name = "TutorialTarget"
-        targetPart.Size = Vector3.new(1, 1, 1)
-        targetPart.Anchored = true
-        targetPart.CanCollide = false
-        targetPart.Transparency = 1
-        targetPart.Position = endPos
-        targetPart.Parent = currentPathVisual
-        
-        local billboardGui = Instance.new("BillboardGui")
-        billboardGui.Size = UDim2.new(0, 120, 0, 120)
-        billboardGui.StudsOffset = Vector3.new(0, 8, 0)
-        billboardGui.Parent = targetPart
-        
-        local arrowLabel = Instance.new("TextLabel")
-        arrowLabel.Size = UDim2.new(1, 0, 1, 0)
-        arrowLabel.BackgroundTransparency = 1
-        arrowLabel.Text = "⬇"
-        arrowLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green arrow
-        arrowLabel.TextScaled = true
-        arrowLabel.Font = Enum.Font.GothamBold
-        arrowLabel.TextStrokeTransparency = 0 -- Add stroke outline
-        arrowLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
-        arrowLabel.Parent = billboardGui
-        
-        local arrowTween = TweenService:Create(billboardGui,
-            TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-            {StudsOffset = Vector3.new(0, 10, 0)}
-        )
-        arrowTween:Play()
-        table.insert(activeTweens, arrowTween) -- Track for cleanup
-        
-        return
-    end
+    -- Create just two waypoints for a single straight beam
+    local waypoints = {
+        {Position = startPos},
+        {Position = endPos}
+    }
     
-    
-    -- Temporarily modify Boundary parts for pathfinding
-    local modifiedBoundaries = {}
-    for _, area in pairs(Workspace:GetDescendants()) do
-        if (area.Name == "Boundary1" or area.Name == "Boundary") and area:IsA("BasePart") then
-            if area.CanCollide then
-                area.CanCollide = false
-                table.insert(modifiedBoundaries, area)
-            end
-        end
-    end
-    
-    -- Use PathfindingService to get the optimal route
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        WaypointSpacing = 3
-    })
-    
-    local success, errorMessage = pcall(function()
-        path:ComputeAsync(startPos, endPos)
-    end)
-    
-    if success then
-        local waypoints = path:GetWaypoints()
-        -- If no waypoints or too few, use fallback
-        if #waypoints < 2 then
-            -- Force fallback by setting success to false
-            success = false
-            errorMessage = "Insufficient waypoints (" .. #waypoints .. ")"
-        else
-            -- Create visual path using the waypoints (but don't move player)
-            local markersCreated = 0
-            local maxMarkers = 12 -- Limit total markers to prevent lag
-            for i, waypoint in pairs(waypoints) do
-                if i > 1 and markersCreated < maxMarkers then -- Skip first waypoint, limit markers
-                    local position = waypoint.Position
-                    
-                    -- Create small glowing path marker
-                    local marker = Instance.new("Part")
-                    marker.Name = "PathMarker"
-                    marker.Size = Vector3.new(0.5, 0.5, 0.5)
-                    marker.Shape = Enum.PartType.Ball
-                    marker.Material = Enum.Material.Neon
-                    marker.BrickColor = BrickColor.new("Bright yellow")
-                    marker.Anchored = true
-                    marker.CanCollide = false
-                    marker.Position = Vector3.new(position.X, position.Y + 1, position.Z)
-                    marker.Parent = currentPathVisual
-                    
-                    -- Add glow effect
-                    local light = Instance.new("PointLight")
-                    light.Color = Color3.fromRGB(255, 255, 100)
-                    light.Brightness = 2
-                    light.Range = 5
-                    light.Parent = marker
-                    
-                    -- Pulse animation
-                    local tween = TweenService:Create(marker,
-                        TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-                        {Transparency = 0.3}
-                    )
-                    tween:Play()
-                    table.insert(activeTweens, tween) -- Track for cleanup
-                    
-                    markersCreated = markersCreated + 1
-                end
-            end
-        end
-        
-        -- Add destination arrow
-        local targetPart = Instance.new("Part")
-        targetPart.Name = "TutorialTarget"
-        targetPart.Size = Vector3.new(1, 1, 1)
-        targetPart.Anchored = true
-        targetPart.CanCollide = false
-        targetPart.Transparency = 1
-        targetPart.Position = endPos
-        targetPart.Parent = currentPathVisual
-        
-        local billboardGui = Instance.new("BillboardGui")
-        billboardGui.Size = UDim2.new(0, 120, 0, 120)
-        billboardGui.StudsOffset = Vector3.new(0, 8, 0)
-        billboardGui.Parent = targetPart
-        
-        local arrowLabel = Instance.new("TextLabel")
-        arrowLabel.Size = UDim2.new(1, 0, 1, 0)
-        arrowLabel.BackgroundTransparency = 1
-        arrowLabel.Text = "⬇"
-        arrowLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green arrow
-        arrowLabel.TextScaled = true
-        arrowLabel.Font = Enum.Font.GothamBold
-        arrowLabel.TextStrokeTransparency = 0 -- Add stroke outline
-        arrowLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
-        arrowLabel.Parent = billboardGui
-        
-        local arrowTween = TweenService:Create(billboardGui,
-            TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-            {StudsOffset = Vector3.new(0, 10, 0)}
-        )
-        arrowTween:Play()
-        table.insert(activeTweens, arrowTween) -- Track for cleanup
-        
-    end
-    
-    -- Restore Boundary parts to their original state
-    for _, boundary in pairs(modifiedBoundaries) do
-        if boundary and boundary.Parent then
-            boundary.CanCollide = true
-        end
-    end
-    
-    if not success then
-        -- Fallback: simple straight line with marker limit
-        local direction = (endPos - startPos).Unit
-        local distance = (endPos - startPos).Magnitude
-        local numPoints = math.min(8, math.floor(distance / 4)) -- Limit to 8 markers max
-        
-        for i = 1, numPoints do
-            local progress = i / numPoints
-            local position = startPos + direction * distance * progress
-            
-            local marker = Instance.new("Part")
-            marker.Name = "PathMarker"
-            marker.Size = Vector3.new(0.5, 0.5, 0.5)
-            marker.Shape = Enum.PartType.Ball
-            marker.Material = Enum.Material.Neon
-            marker.BrickColor = BrickColor.new("Bright yellow")
-            marker.Anchored = true
-            marker.CanCollide = false
-            marker.Position = Vector3.new(position.X, position.Y + 1, position.Z)
-            marker.Parent = currentPathVisual
-            
-            -- Add glow effect to fallback markers too
-            local light = Instance.new("PointLight")
-            light.Color = Color3.fromRGB(255, 255, 100)
-            light.Brightness = 2
-            light.Range = 5
-            light.Parent = marker
-            
-            -- Pulse animation for fallback markers
-            local tween = TweenService:Create(marker,
-                TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-                {Transparency = 0.3}
-            )
-            tween:Play()
-            table.insert(activeTweens, tween) -- Track for cleanup
-        end
-        
-        -- Restore Boundary parts to their original state (fallback case)
-        for _, boundary in pairs(modifiedBoundaries) do
-            if boundary and boundary.Parent then
-                boundary.CanCollide = true
-            end
-        end
-    end
+    -- Create the single navigation beam
+    createNavigationBeams(waypoints)
 end
 
+
 local lastUpdateTime = 0
-local UPDATE_THROTTLE = 0.3 -- Only update path every 0.3 seconds max to prevent lag
+local UPDATE_THROTTLE = 0.05 -- Update path every 0.05 seconds (20 FPS) for smooth tracking
 
 local function updatePathVisual()
     if not tutorialData.active or tutorialData.completed then
@@ -665,7 +574,9 @@ local function updatePathVisual()
         return
     end
     
-    local startPos = character.HumanoidRootPart.Position
+    -- Position at character's feet (ground level)
+    local rootPart = character.HumanoidRootPart
+    local startPos = rootPart.Position - Vector3.new(0, 3, 0)  -- Go down 3 studs to reach feet level
     
     -- Always check if player moved significantly
     if not lastPlayerPosition then
