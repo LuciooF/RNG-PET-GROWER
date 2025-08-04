@@ -23,6 +23,10 @@ local discoveryQueue = {}
 local isShowingDiscovery = false
 local previousCollectedPets = {}
 
+-- Anti-spam system - track last popup time 
+local lastPopupTime = 0
+local POPUP_COOLDOWN = 3 -- 3 seconds between popups (matches announcements)
+
 -- Sound configuration
 local DISCOVERY_SOUND_ID = "rbxassetid://5728423829"
 
@@ -113,6 +117,12 @@ function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
         end
     end
     
+    -- Anti-spam check - prevent popup flooding
+    local currentTime = tick()
+    if currentTime - lastPopupTime < POPUP_COOLDOWN then
+        return -- Too soon since last popup
+    end
+    
     -- If there's already a popup showing, ignore new discoveries (no queue)
     if isShowingDiscovery then
         return
@@ -133,6 +143,8 @@ function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
     
     -- If there are filtered discoveries and no popup is active, show the first one
     if #filteredDiscoveries > 0 then
+        -- Update last popup time to prevent spam
+        lastPopupTime = currentTime
         self:ShowDiscoveryPopup(filteredDiscoveries[1]) -- Only show the first discovery
     end
     
@@ -338,11 +350,11 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     })
     rainbowGradient.Parent = gradientBorder
     
-    -- Pet viewport (left side)
+    -- Pet viewport (left side) - 1.5x bigger
     local petViewport = Instance.new("ViewportFrame")
     petViewport.Name = "PetViewport"
-    petViewport.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(200), 0, ScreenUtils.getProportionalSize(200))
-    petViewport.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0, ScreenUtils.getProportionalSize(40))
+    petViewport.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(300), 0, ScreenUtils.getProportionalSize(300))
+    petViewport.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(25), 0, ScreenUtils.getProportionalSize(50))
     petViewport.BackgroundTransparency = 1
     petViewport.ZIndex = 1001
     petViewport.Parent = popupFrame
@@ -354,15 +366,15 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         self:SetupDiscoveryViewportCamera(petViewport, petModel)
     end
     
-    -- "New Pet Discovered!" title (top center)
+    -- "New Pet Discovered!" title (top center) - 1.5x bigger
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 0, ScreenUtils.getProportionalSize(40))
-    titleLabel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0, ScreenUtils.getProportionalSize(10))
+    titleLabel.Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60))
+    titleLabel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(15))
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = discovery.variation and "🌟 NEW VARIATION DISCOVERED! 🌟" or "🎉 NEW PET DISCOVERED! 🎉"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER()
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.5 -- 1.5x bigger text
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -370,24 +382,24 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     titleLabel.ZIndex = 1001
     titleLabel.Parent = popupFrame
     
-    -- Info panel (right side of viewport)
+    -- Info panel (right side of viewport) - 1.5x bigger
     local infoPanel = Instance.new("Frame")
     infoPanel.Name = "InfoPanel"
-    infoPanel.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(240), 0, ScreenUtils.getProportionalSize(180))
-    infoPanel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(240), 0, ScreenUtils.getProportionalSize(60))
+    infoPanel.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(360), 0, ScreenUtils.getProportionalSize(270))
+    infoPanel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(350), 0, ScreenUtils.getProportionalSize(75))
     infoPanel.BackgroundTransparency = 1
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
     
-    -- Pet name
+    -- Pet name - 1.5x bigger
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "PetName"
-    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(50))
+    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(75))
     nameLabel.Position = ScreenUtils.udim2(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = actualPetName
     nameLabel.TextColor3 = rarityColor
-    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 0.85 -- Use proportional sizing instead of subtraction
+    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.3 -- 1.5x bigger text
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
@@ -395,38 +407,48 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     nameLabel.ZIndex = 1002
     nameLabel.Parent = infoPanel
     
-    -- Variation (if applicable)
-    local yOffset = ScreenUtils.getProportionalSize(50)
+    -- Variation (if applicable) - 1.5x bigger
+    local yOffset = ScreenUtils.getProportionalSize(75)
     if discovery.variation then
         local variationLabel = Instance.new("TextLabel")
         variationLabel.Name = "Variation"
-        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(30))
+        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(45))
         variationLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
         variationLabel.BackgroundTransparency = 1
         variationLabel.Text = discovery.variation .. " Variation"
         variationLabel.TextColor3 = variationColor
-        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE()
+        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.5 -- 1.5x bigger text
         variationLabel.Font = Enum.Font.GothamBold
         variationLabel.TextXAlignment = Enum.TextXAlignment.Center
         variationLabel.TextStrokeTransparency = 0
         variationLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         variationLabel.ZIndex = 1002
         variationLabel.Parent = infoPanel
-        yOffset = yOffset + ScreenUtils.getProportionalSize(35)
+        yOffset = yOffset + ScreenUtils.getProportionalSize(50)
     end
     
-    -- Rarity info with separate labels for "Rarity:" and the actual rarity
-    local rarityChance = PetConstants.getRarityChance and PetConstants.getRarityChance(petConfig.Rarity) or 1000000
+    -- Combined rarity info (pet rarity × variation rarity)
+    local rarityChance = 1000000 -- fallback
     
-    -- "Rarity:" label in grey
+    if PetConstants.getCombinedRarityChance then
+        rarityChance = PetConstants.getCombinedRarityChance(petConfig.Rarity, discovery.variation)
+        
+        -- Fallback if combined calculation fails
+        if not rarityChance or rarityChance <= 0 then
+            rarityChance = PetConstants.getRarityChance(petConfig.Rarity) or 1000000
+            warn("PetDiscoveryService: Combined rarity calculation failed for", petConfig.Rarity, discovery.variation, "- using pet rarity only")
+        end
+    end
+    
+    -- "Rarity:" label in grey - 1.5x bigger
     local rarityPrefixLabel = Instance.new("TextLabel")
     rarityPrefixLabel.Name = "RarityPrefix"
-    rarityPrefixLabel.Size = ScreenUtils.udim2(0.4, 0, 0, ScreenUtils.getProportionalSize(25))
+    rarityPrefixLabel.Size = ScreenUtils.udim2(0.4, 0, 0, ScreenUtils.getProportionalSize(38))
     rarityPrefixLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     rarityPrefixLabel.BackgroundTransparency = 1
     rarityPrefixLabel.Text = "Rarity:"
     rarityPrefixLabel.TextColor3 = Color3.fromRGB(150, 150, 150) -- Grey color
-    rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM()
+    rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
     rarityPrefixLabel.Font = Enum.Font.Gotham
     rarityPrefixLabel.TextXAlignment = Enum.TextXAlignment.Right
     rarityPrefixLabel.TextStrokeTransparency = 0
@@ -434,32 +456,32 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityPrefixLabel.ZIndex = 1002
     rarityPrefixLabel.Parent = infoPanel
     
-    -- Actual rarity value in rarity color
+    -- Actual rarity value in rarity color - 1.5x bigger
     local rarityValueLabel = Instance.new("TextLabel")
     rarityValueLabel.Name = "RarityValue"
-    rarityValueLabel.Size = ScreenUtils.udim2(0.6, 0, 0, ScreenUtils.getProportionalSize(25))
-    rarityValueLabel.Position = ScreenUtils.udim2(0.4, ScreenUtils.getProportionalSize(5), 0, yOffset)
+    rarityValueLabel.Size = ScreenUtils.udim2(0.6, 0, 0, ScreenUtils.getProportionalSize(38))
+    rarityValueLabel.Position = ScreenUtils.udim2(0.4, ScreenUtils.getProportionalSize(8), 0, yOffset)
     rarityValueLabel.BackgroundTransparency = 1
     rarityValueLabel.Text = petConfig.Rarity
     rarityValueLabel.TextColor3 = rarityColor -- Bright rarity color
-    rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM()
+    rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
     rarityValueLabel.Font = Enum.Font.GothamBold
     rarityValueLabel.TextXAlignment = Enum.TextXAlignment.Left
     rarityValueLabel.TextStrokeTransparency = 0
     rarityValueLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     rarityValueLabel.ZIndex = 1002
     rarityValueLabel.Parent = infoPanel
-    yOffset = yOffset + ScreenUtils.getProportionalSize(30)
+    yOffset = yOffset + ScreenUtils.getProportionalSize(45)
     
-    -- Chance info with bigger text and rainbow colors
+    -- Chance info with bigger text and rainbow colors - 1.5x bigger
     local chanceLabel = Instance.new("TextLabel")
     chanceLabel.Name = "Chance"
-    chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(35)) -- Taller for bigger text
+    chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(53)) -- 1.5x taller for bigger text
     chanceLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     chanceLabel.BackgroundTransparency = 1
     chanceLabel.Text = "1 in " .. NumberFormatter.format(rarityChance)
     chanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White base for rainbow gradient
-    chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() -- Bigger text size
+    chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.5 -- 1.5x bigger text size
     chanceLabel.Font = Enum.Font.GothamBold -- Bold font
     chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
     chanceLabel.TextStrokeTransparency = 0
@@ -480,17 +502,17 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     })
     chanceGradient.Rotation = 0 -- Horizontal gradient
     chanceGradient.Parent = chanceLabel
-    yOffset = yOffset + ScreenUtils.getProportionalSize(45) -- More space for bigger text
+    yOffset = yOffset + ScreenUtils.getProportionalSize(68) -- 1.5x more space for bigger text
     
-    -- Congratulations message
+    -- Congratulations message - 1.5x bigger
     local congratsLabel = Instance.new("TextLabel")
     congratsLabel.Name = "Congrats"
-    congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(40))
+    congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(60))
     congratsLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "Check your Pet Index!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
-    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM()
+    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
     congratsLabel.Font = Enum.Font.GothamBold
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0
@@ -498,17 +520,85 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.ZIndex = 1002
     congratsLabel.Parent = infoPanel
     
-    -- AMAZING EXPANDING ANIMATION from center outward!
-    local finalSize = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(500), 0, ScreenUtils.getProportionalSize(260)) -- Final popup size
+    -- AMAZING POP OUT ANIMATION - Every element animates individually!
+    local finalSize = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(750), 0, ScreenUtils.getProportionalSize(390)) -- 1.5x bigger popup size
     
-    -- Create expanding animation with Back easing for satisfying effect
+    -- Set all elements to start invisible/small for pop-out effect
+    local elementsToAnimate = {
+        {element = titleLabel, delay = 0.1, type = "scale"},
+        {element = petViewport, delay = 0.2, type = "fade_in"}, -- Use fade instead of scale for viewport
+        {element = nameLabel, delay = 0.3, type = "slide_right"},
+        {element = rarityPrefixLabel, delay = 0.4, type = "slide_right"},
+        {element = rarityValueLabel, delay = 0.45, type = "slide_left"},
+        {element = chanceLabel, delay = 0.5, type = "bounce"},
+        {element = congratsLabel, delay = 0.6, type = "fade_in"}
+    }
+    
+    -- Add variation label if it exists
+    if discovery.variation then
+        table.insert(elementsToAnimate, 4, {element = infoPanel:FindFirstChild("Variation"), delay = 0.35, type = "slide_right"})
+    end
+    
+    -- Store original properties for animation
+    local originalProperties = {}
+    for _, animData in ipairs(elementsToAnimate) do
+        local element = animData.element
+        if element then
+            originalProperties[element] = {
+                Size = element.Size,
+                Position = element.Position,
+                BackgroundTransparency = element.BackgroundTransparency or 1
+            }
+            
+            -- Only store text properties for TextLabels
+            if element:IsA("TextLabel") then
+                originalProperties[element].TextTransparency = element.TextTransparency or 0
+                originalProperties[element].TextStrokeTransparency = element.TextStrokeTransparency or 0
+            end
+            
+            -- Set initial animation states
+            if animData.type == "scale" then
+                element.Size = UDim2.new(0, 0, 0, 0)
+            elseif animData.type == "slide_right" then
+                element.Position = element.Position - UDim2.new(0, ScreenUtils.getProportionalSize(50), 0, 0)
+                if element:IsA("TextLabel") then
+                    element.TextTransparency = 1
+                    element.TextStrokeTransparency = 1
+                else
+                    element.BackgroundTransparency = 1
+                end
+            elseif animData.type == "slide_left" then
+                element.Position = element.Position + UDim2.new(0, ScreenUtils.getProportionalSize(50), 0, 0)
+                if element:IsA("TextLabel") then
+                    element.TextTransparency = 1
+                    element.TextStrokeTransparency = 1
+                else
+                    element.BackgroundTransparency = 1
+                end
+            elseif animData.type == "bounce" then
+                element.Size = UDim2.new(0, 0, 0, 0)
+                if element:IsA("TextLabel") then
+                    element.TextTransparency = 1
+                    element.TextStrokeTransparency = 1
+                else
+                    element.BackgroundTransparency = 1
+                end
+            elseif animData.type == "fade_in" then
+                if element:IsA("TextLabel") then
+                    element.TextTransparency = 1
+                    element.TextStrokeTransparency = 1
+                else
+                    element.BackgroundTransparency = 1
+                end
+            end
+        end
+    end
+    
+    -- Create main popup frame expansion
     local expandTween = TweenService:Create(popupFrame, TweenInfo.new(
-        0.8, -- Duration
-        Enum.EasingStyle.Back, -- Back easing for overshoot effect
-        Enum.EasingDirection.Out, -- Out direction
-        0, -- No repeat
-        false, -- No reverse
-        0 -- No delay
+        0.6, -- Faster main expansion
+        Enum.EasingStyle.Back,
+        Enum.EasingDirection.Out
     ), {
         Size = finalSize
     })
@@ -548,10 +638,113 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         end)
     end
     
-    -- Start expanding animation
+    -- Start main popup expansion
     expandTween:Play()
     
-    -- Start secondary animations when expand completes
+    -- Create individual element animations
+    local function createElementAnimation(animData)
+        local element = animData.element
+        if not element then return end
+        
+        task.spawn(function()
+            task.wait(animData.delay)
+            
+            if animData.type == "scale" then
+                -- Scale from 0 to full size with bounce
+                local originalSize = originalProperties[element].Size
+                
+                local scaleTween = TweenService:Create(element, TweenInfo.new(
+                    0.4,
+                    Enum.EasingStyle.Back,
+                    Enum.EasingDirection.Out
+                ), {
+                    Size = originalSize
+                })
+                scaleTween:Play()
+                
+            elseif animData.type == "slide_right" then
+                -- Slide in from left with fade
+                local originalPos = originalProperties[element].Position
+                local tweenProperties = {Position = originalPos}
+                
+                if element:IsA("TextLabel") then
+                    tweenProperties.TextTransparency = originalProperties[element].TextTransparency
+                    tweenProperties.TextStrokeTransparency = originalProperties[element].TextStrokeTransparency
+                else
+                    tweenProperties.BackgroundTransparency = originalProperties[element].BackgroundTransparency
+                end
+                
+                local slideTween = TweenService:Create(element, TweenInfo.new(
+                    0.3,
+                    Enum.EasingStyle.Quad,
+                    Enum.EasingDirection.Out
+                ), tweenProperties)
+                slideTween:Play()
+                
+            elseif animData.type == "slide_left" then
+                -- Slide in from right with fade
+                local originalPos = originalProperties[element].Position
+                local tweenProperties = {Position = originalPos}
+                
+                if element:IsA("TextLabel") then
+                    tweenProperties.TextTransparency = originalProperties[element].TextTransparency
+                    tweenProperties.TextStrokeTransparency = originalProperties[element].TextStrokeTransparency
+                else
+                    tweenProperties.BackgroundTransparency = originalProperties[element].BackgroundTransparency
+                end
+                
+                local slideTween = TweenService:Create(element, TweenInfo.new(
+                    0.3,
+                    Enum.EasingStyle.Quad,
+                    Enum.EasingDirection.Out
+                ), tweenProperties)
+                slideTween:Play()
+                
+            elseif animData.type == "bounce" then
+                -- Big bounce effect for chance text
+                local originalSize = originalProperties[element].Size
+                local tweenProperties = {Size = originalSize}
+                
+                if element:IsA("TextLabel") then
+                    tweenProperties.TextTransparency = originalProperties[element].TextTransparency
+                    tweenProperties.TextStrokeTransparency = originalProperties[element].TextStrokeTransparency
+                else
+                    tweenProperties.BackgroundTransparency = originalProperties[element].BackgroundTransparency
+                end
+                
+                local bounceTween = TweenService:Create(element, TweenInfo.new(
+                    0.5,
+                    Enum.EasingStyle.Elastic,
+                    Enum.EasingDirection.Out
+                ), tweenProperties)
+                bounceTween:Play()
+                
+            elseif animData.type == "fade_in" then
+                -- Simple fade in
+                local tweenProperties = {}
+                if element:IsA("TextLabel") then
+                    tweenProperties.TextTransparency = originalProperties[element].TextTransparency
+                    tweenProperties.TextStrokeTransparency = originalProperties[element].TextStrokeTransparency
+                else
+                    tweenProperties.BackgroundTransparency = originalProperties[element].BackgroundTransparency
+                end
+                
+                local fadeTween = TweenService:Create(element, TweenInfo.new(
+                    0.4,
+                    Enum.EasingStyle.Quad,
+                    Enum.EasingDirection.Out
+                ), tweenProperties)
+                fadeTween:Play()
+            end
+        end)
+    end
+    
+    -- Start all individual element animations
+    for _, animData in ipairs(elementsToAnimate) do
+        createElementAnimation(animData)
+    end
+    
+    -- Start secondary animations after main expansion
     expandTween.Completed:Connect(function()
         animatePetModel()
         animateRainbowBorder()

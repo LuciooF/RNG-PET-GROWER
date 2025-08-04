@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 
 local ProfileService = require(game.ServerStorage.Packages:WaitForChild("profilestore"))
 local PetUtils = require(ReplicatedStorage.utils.PetUtils)
+local AnnouncementService = require(script.Parent.AnnouncementService)
 
 local DataService = {}
 DataService.__index = DataService
@@ -214,12 +215,14 @@ function DataService:TrackCollectedPet(player, petData)
     end
     
     -- Update or create collection entry
+    local isNewDiscovery = false
     if profile.Data.CollectedPets[collectionKey] then
         -- Update existing entry
         profile.Data.CollectedPets[collectionKey].count = profile.Data.CollectedPets[collectionKey].count + 1
         profile.Data.CollectedPets[collectionKey].lastCollected = currentTime
     else
-        -- Create new entry
+        -- Create new entry - this is a first-time discovery!
+        isNewDiscovery = true
         profile.Data.CollectedPets[collectionKey] = {
             petName = petName,
             variationName = variationName,
@@ -228,6 +231,8 @@ function DataService:TrackCollectedPet(player, petData)
             lastCollected = currentTime
         }
     end
+    
+    return isNewDiscovery
 end
 
 function DataService:AddPetToPlayer(player, petData)
@@ -247,8 +252,13 @@ function DataService:AddPetToPlayer(player, petData)
             petData.ID = game:GetService("HttpService"):GenerateGUID(false)
         end
         
-        -- Track this pet in the collection dictionary
-        self:TrackCollectedPet(player, petData)
+        -- Track this pet in the collection dictionary and check if it's a new discovery
+        local isNewDiscovery = self:TrackCollectedPet(player, petData)
+        
+        -- Only announce rare pet discoveries for first-time discoveries (same as popup)
+        if isNewDiscovery then
+            AnnouncementService:AnnouncePetDiscovery(player, petData)
+        end
         
         -- Sanitize pet data for DataStore compatibility
         local sanitizedPet = PetUtils.sanitizePetForStorage(petData)

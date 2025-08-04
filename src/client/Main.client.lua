@@ -28,6 +28,10 @@ BackgroundMusicService:Initialize()
 local PetballCollectionSoundService = require(script.Parent.services.PetballCollectionSoundService)
 PetballCollectionSoundService:Initialize()
 
+-- Initialize global chat service for rare pet announcements (doesn't depend on player data)
+local GlobalChatService = require(script.Parent.services.GlobalChatService)
+GlobalChatService:Initialize()
+
 -- Initialize pet processing sound service (doesn't depend on player data)
 local PetProcessingSoundService = require(script.Parent.services.PetProcessingSoundService)
 PetProcessingSoundService:Initialize()
