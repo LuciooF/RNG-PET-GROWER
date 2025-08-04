@@ -20,6 +20,18 @@ ClientPetBallService:Initialize()
 local PetFollowService = require(script.Parent.services.PetFollowService)
 PetFollowService:Initialize()
 
+-- Initialize background music service (doesn't depend on player data)
+local BackgroundMusicService = require(script.Parent.services.BackgroundMusicService)
+BackgroundMusicService:Initialize()
+
+-- Initialize petball collection sound service (doesn't depend on player data)
+local PetballCollectionSoundService = require(script.Parent.services.PetballCollectionSoundService)
+PetballCollectionSoundService:Initialize()
+
+-- Initialize pet processing sound service (doesn't depend on player data)
+local PetProcessingSoundService = require(script.Parent.services.PetProcessingSoundService)
+PetProcessingSoundService:Initialize()
+
 -- Wait for server to process player, then initialize data-dependent services
 task.spawn(function()
     -- Small delay to ensure server has started processing this player

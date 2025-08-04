@@ -427,19 +427,27 @@ end
 
 -- Process one pet per tube
 function PetService:ProcessOnePetPerTube(player, ownedTubes)
+    print(string.format("[PetService] ProcessOnePetPerTube called for %s", player.Name))
+    
     local profile = DataService:GetPlayerProfile(player)
     if not profile then
+        print(string.format("[PetService] %s - No profile found", player.Name))
         return false
     end
     
     local processingPets = profile.Data.ProcessingPets or {}
     if #processingPets == 0 then
+        print(string.format("[PetService] %s - No pets to process", player.Name))
         return false -- No more pets to process
     end
     
     -- Process up to one pet per tube
     local petsProcessed = 0
     local maxProcessThisRound = math.min(#ownedTubes, #processingPets)
+    local totalMoneyToAdd = 0 -- Batch money updates to prevent race conditions in multiplayer
+    
+    print(string.format("[PetService] %s processing %d pets (%d tubes available)", 
+        player.Name, maxProcessThisRound, #ownedTubes))
     
     for i = 1, maxProcessThisRound do
         local pet = processingPets[1] -- Always take first pet
@@ -451,11 +459,20 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
         -- Apply gamepass multipliers (includes equipped pet boost)
         local finalValue = self:ApplyGamepassMultipliers(player, petValue, "Money")
         
-        -- Add money to player
-        DataService:UpdatePlayerResources(player, "Money", finalValue)
+        print(string.format("[PetService] %s pet %d: %s -> Base: %d, Final: %d", 
+            player.Name, i, pet.Name or "Unknown", petValue or 0, finalValue or 0))
+        
+        -- Accumulate money instead of updating immediately (prevents multiplayer race conditions)
+        totalMoneyToAdd = totalMoneyToAdd + finalValue
         
         -- Create visual heaven effect
         self:CreateHeavenEffect(player, pet, tubeNumber)
+        
+        -- Fire sound effect event to client
+        local petProcessedRemote = ReplicatedStorage:FindFirstChild("PetProcessed")
+        if petProcessedRemote then
+            petProcessedRemote:FireClient(player)
+        end
         
         -- Remove pet from ProcessingPets
         table.remove(processingPets, 1)
@@ -470,9 +487,26 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
     profile.Data.ProcessingPets = processingPets
     
     if petsProcessed > 0 then
+        print(string.format("[PetService] %s processed %d pets, total money to add: %d", 
+            player.Name, petsProcessed, totalMoneyToAdd))
+        
+        -- Single money update with total amount (prevents multiplayer race conditions)
+        if totalMoneyToAdd > 0 then
+            local success = DataService:UpdatePlayerResources(player, "Money", totalMoneyToAdd)
+            print(string.format("[PetService] %s money update success: %s", player.Name, tostring(success)))
+            
+            -- Log current money after update
+            local playerData = DataService:GetPlayerData(player)
+            if playerData and playerData.Resources then
+                print(string.format("[PetService] %s current money after update: %d", 
+                    player.Name, playerData.Resources.Money or 0))
+            end
+        end
+        
         -- Sync data to client
         local StateService = require(script.Parent.StateService)
         StateService:BroadcastPlayerDataUpdate(player)
+        print(string.format("[PetService] %s data synced to client", player.Name))
         
         -- Update processing counter
         self:UpdateProcessingCounter(player)
@@ -562,6 +596,7 @@ end
 function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
     local playerData = DataService:GetPlayerData(player)
     if not playerData or not playerData.OwnedGamepasses then
+        print(string.format("[ApplyGamepassMultipliers] %s - No player data or gamepasses, returning base: %d", player.Name, baseValue))
         return baseValue
     end
     
@@ -591,8 +626,14 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
         local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
         local rebirthMultiplier = 1 + (playerRebirths * 0.5)
         
+        print(string.format("[ApplyGamepassMultipliers] %s - Base: %d, GamepassMult: %.2f, PetBoostMult: %.2f, RebirthMult: %.2f", 
+            player.Name, baseValue, gamepassMultiplier, petBoostMultiplier, rebirthMultiplier))
+        
         -- Total calculation matches client: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus
         multiplier = 1 + (petBoostMultiplier - 1) + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
+        
+        print(string.format("[ApplyGamepassMultipliers] %s - Final multiplier: %.4f, Result: %d", 
+            player.Name, multiplier, math.floor(baseValue * multiplier)))
     elseif rewardType == "Diamonds" then
         -- Check for 2x Diamonds gamepass
         if gamepasses.TwoXDiamonds then
@@ -612,16 +653,36 @@ end
 function PetService:GetEquippedPetBoostMultiplier(player)
     local playerData = DataService:GetPlayerData(player)
     if not playerData then
+        print(string.format("[GetEquippedPetBoostMultiplier] %s - No player data, returning 1", player.Name))
         return 1 -- No boost if no player data
     end
     
     local totalBoostMultiplier = 1 -- Start with 1 (no boost)
+    local equippedPetCount = #(playerData.EquippedPets or {})
+    local opPetCount = #(playerData.OPPets or {})
+    
+    print(string.format("[GetEquippedPetBoostMultiplier] %s - %d equipped pets, %d OP pets", 
+        player.Name, equippedPetCount, opPetCount))
     
     -- Add boost from each equipped pet (use BaseBoost, not FinalBoost to avoid double-multiplying)
     for _, equippedPet in pairs(playerData.EquippedPets or {}) do
         local petBoost = equippedPet.BaseBoost or 1
-        -- Convert boost to multiplier (e.g., 1.1 boost = 0.1 = 10% boost)
-        local boostPercentage = petBoost - 1 -- 1.1 becomes 0.1 (10%)
+        
+        -- Fix for pets with boost values stored as decimals (0.77) instead of multipliers (1.77)
+        -- If boost is less than 1, it's likely stored as a decimal and needs to be converted
+        local boostPercentage
+        if petBoost < 1 then
+            -- Convert decimal to percentage (0.77 becomes 0.77 = 77% boost)
+            boostPercentage = petBoost
+            print(string.format("[GetEquippedPetBoostMultiplier] %s - Equipped pet %s: decimal boost %.4f -> percentage %.4f", 
+                player.Name, equippedPet.Name or "Unknown", petBoost, boostPercentage))
+        else
+            -- Standard conversion (1.77 becomes 0.77 = 77% boost)
+            boostPercentage = petBoost - 1
+            print(string.format("[GetEquippedPetBoostMultiplier] %s - Equipped pet %s: multiplier boost %.4f -> percentage %.4f", 
+                player.Name, equippedPet.Name or "Unknown", petBoost, boostPercentage))
+        end
+        
         totalBoostMultiplier = totalBoostMultiplier + boostPercentage
     end
     
@@ -631,7 +692,12 @@ function PetService:GetEquippedPetBoostMultiplier(player)
         -- Convert boost to multiplier (e.g., 1000 boost = 999 = 99900% boost)
         local boostPercentage = petBoost - 1 -- 1000 becomes 999 (99900%)
         totalBoostMultiplier = totalBoostMultiplier + boostPercentage
+        print(string.format("[GetEquippedPetBoostMultiplier] %s - OP pet %s: boost %.4f", 
+            player.Name, opPet.Name or "Unknown", petBoost))
     end
+    
+    print(string.format("[GetEquippedPetBoostMultiplier] %s - Total boost multiplier: %.4f", 
+        player.Name, totalBoostMultiplier))
     
     return totalBoostMultiplier
 end

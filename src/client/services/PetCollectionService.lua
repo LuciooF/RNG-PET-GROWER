@@ -107,6 +107,10 @@ function PetCollectionService:CollectPetBall(petBall, connection)
         ClientPetBallService:OnPetBallCollected(areaName)
     end
     
+    -- Play collection sound
+    local PetballCollectionSoundService = require(script.Parent.PetballCollectionSoundService)
+    PetballCollectionSoundService:PlayCollectionSound()
+    
     -- Send to server (no ball path needed since balls are client-only)
     collectPetRemote:FireServer(petData)
 end

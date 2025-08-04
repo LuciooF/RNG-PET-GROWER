@@ -33,8 +33,13 @@ function PetMagnetButtonService:Initialize()
         self:SetupProximityDetection()
     end
     
-    -- Set up data subscription for visibility updates
-    self:SetupDataSubscription()
+    -- Set up data subscription for visibility updates only if button found
+    if petMagnetButtonPart then
+        self:SetupDataSubscription()
+    end
+    
+    -- Hide gamepass GUIs in all OTHER player areas (not own area)
+    self:HideGamepassGUIsInOtherAreas()
 end
 
 function PetMagnetButtonService:FindPetMagnetButton()
@@ -263,6 +268,29 @@ function PetMagnetButtonService:HideOwnedSurfaceGUI()
     local ownedGui = petMagnetButtonPart:FindFirstChild("OwnedSurfaceGui", true)
     if ownedGui then
         ownedGui.Enabled = false
+    end
+end
+
+function PetMagnetButtonService:HideGamepassGUIsInOtherAreas()
+    -- Find all player areas and hide Pet Magnet GUIs in areas that aren't the player's
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return end
+    
+    -- Get player's own area for comparison
+    local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:FindPlayerArea()
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") and area ~= playerArea then
+            -- This is not the player's area, hide the PetMagnet button GUI
+            local gamepassButton = area:FindFirstChild("PetMagnet", true)
+            if gamepassButton then
+                local billboard = gamepassButton:FindFirstChild("GamepassBillboard", true)
+                if billboard then
+                    billboard.Enabled = false -- Hide the billboard GUI
+                end
+            end
+        end
     end
 end
 

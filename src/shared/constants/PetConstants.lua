@@ -99,7 +99,7 @@ PetConstants.VariationMultipliers = {
     [PetConstants.Variation.COSMIC] = 4.0,
     [PetConstants.Variation.VOID] = 4.5,
     [PetConstants.Variation.DIVINE] = 5.0,      -- Rarest (5x instead of 250x!)
-    [PetConstants.Variation.OP] = 100.0         -- OP pets get 100x multiplier!
+    [PetConstants.Variation.OP] = 1.0          -- OP pets use base values directly (no multiplier)
 }
 
 -- Helper functions

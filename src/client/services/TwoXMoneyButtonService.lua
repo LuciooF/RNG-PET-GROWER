@@ -31,13 +31,18 @@ function TwoXMoneyButtonService:Initialize()
     -- Find the 2x Money button in the player's area
     self:FindTwoXMoneyButton()
     
-    -- Set up proximity detection
+    -- Set up proximity detection only if button found in player area
     if twoXMoneyButtonPart then
         self:SetupProximityDetection()
     end
     
-    -- Set up data subscription for visibility updates
-    self:SetupDataSubscription()
+    -- Set up data subscription for visibility updates only if button found
+    if twoXMoneyButtonPart then
+        self:SetupDataSubscription()
+    end
+    
+    -- Hide gamepass GUIs in all OTHER player areas (not own area)
+    self:HideGamepassGUIsInOtherAreas()
 end
 
 function TwoXMoneyButtonService:FindTwoXMoneyButton()
@@ -405,6 +410,28 @@ function TwoXMoneyButtonService:PlayerOwnsTwoXMoney(playerData)
     end
     
     return false
+end
+
+function TwoXMoneyButtonService:HideGamepassGUIsInOtherAreas()
+    -- Find all player areas and hide 2x Money GUIs in areas that aren't the player's
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return end
+    
+    -- Get player's own area for comparison
+    local playerArea = PlayerAreaFinder:FindPlayerArea()
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") and area ~= playerArea then
+            -- This is not the player's area, hide the 2x Money button GUI
+            local twoXMoneyButton = area:FindFirstChild("2xMoneyButton", true)
+            if twoXMoneyButton then
+                local billboard = twoXMoneyButton:FindFirstChild("GamepassBillboard", true)
+                if billboard then
+                    billboard.Enabled = false -- Hide the billboard GUI
+                end
+            end
+        end
+    end
 end
 
 -- Clean up connections

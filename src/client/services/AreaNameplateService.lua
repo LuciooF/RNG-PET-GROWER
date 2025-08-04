@@ -4,6 +4,8 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+
 local AreaNameplateService = {}
 AreaNameplateService.__index = AreaNameplateService
 
@@ -71,8 +73,8 @@ function AreaNameplateService:ProcessAreaNameplate(area)
         return
     end
     
-    -- Make it much bigger
-    billboard.Size = UDim2.new(0, 600, 0, 150) -- 3x width, 3x height
+    -- Use ScreenUtils for proportional scaling
+    billboard.Size = ScreenUtils.udim2(0, 600, 0, 150) -- Automatically scales based on screen size
     billboard.StudsOffset = Vector3.new(0, 30, 0) -- Higher above area
     billboard.MaxDistance = math.huge -- Visible from anywhere on the map
     billboard.AlwaysOnTop = false -- Don't show through walls
@@ -86,18 +88,28 @@ function AreaNameplateService:ProcessAreaNameplate(area)
     local isOwnArea = textLabel.Text:find(player.Name)
     local isUnassigned = textLabel.Text:find("Unassigned")
     
-    -- Set text size based on area type
+    -- Set text size based on area type using ScreenUtils
     if isUnassigned then
-        textLabel.TextSize = 36 -- Much smaller for unassigned (50% of normal)
+        textLabel.TextSize = ScreenUtils.getTextSize(36) -- Much smaller for unassigned
     elseif isOwnArea then
-        textLabel.TextSize = 96 -- Biggest for own area
+        textLabel.TextSize = ScreenUtils.getTextSize(96) -- Biggest for own area
     else
-        textLabel.TextSize = 72 -- Normal size for other player areas
+        textLabel.TextSize = ScreenUtils.getTextSize(72) -- Normal size for other player areas
     end
     
     -- ALWAYS ensure black outline is applied (for all areas including rainbow)
     textLabel.TextStrokeTransparency = 0
     textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    -- Add UIStroke for thicker, more visible black outline on the TEXT
+    if not textLabel:FindFirstChild("UIStroke") then
+        local uiStroke = Instance.new("UIStroke")
+        uiStroke.Thickness = 5 -- Thicker outline for better visibility
+        uiStroke.Color = Color3.fromRGB(0, 0, 0)
+        uiStroke.Transparency = 0
+        uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual -- For text, not border
+        uiStroke.Parent = textLabel
+    end
     
     if isOwnArea then
         -- Add rainbow gradient for own area
@@ -110,6 +122,14 @@ function AreaNameplateService:ProcessAreaNameplate(area)
         textLabel.TextStrokeTransparency = 0
         textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         
+        -- UIStroke is already added above, just ensure it stays visible
+        local uiStroke = textLabel:FindFirstChild("UIStroke")
+        if uiStroke then
+            uiStroke.Thickness = 5 -- Keep it thick
+            uiStroke.Color = Color3.fromRGB(0, 0, 0)
+            uiStroke.Transparency = 0
+        end
+        
         -- Animate the gradient
         local connection
         connection = RunService.Heartbeat:Connect(function(deltaTime)
@@ -120,9 +140,15 @@ function AreaNameplateService:ProcessAreaNameplate(area)
             
             textGradient.Rotation = (textGradient.Rotation + 60 * deltaTime) % 360
             
-            -- Ensure stroke stays visible during animation
+            -- Ensure both stroke types stay visible during animation
             textLabel.TextStrokeTransparency = 0
             textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            
+            local uiStroke = textLabel:FindFirstChild("UIStroke")
+            if uiStroke then
+                uiStroke.Transparency = 0
+                uiStroke.Color = Color3.fromRGB(0, 0, 0)
+            end
         end)
     end
 end

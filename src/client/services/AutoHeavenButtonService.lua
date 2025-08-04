@@ -26,19 +26,19 @@ local lastPurchaseAttempt = 0
 local lastKnownOwnership = nil
 
 function AutoHeavenButtonService:Initialize()
-    -- Find the AutoSendHeaven button in the player's area
+    -- Find the AutoSendHeaven button in the player's area (this will also set up proximity detection)
     self:FindAutoHeavenButton()
     
-    -- Set up proximity detection
+    -- Set up data subscription for visibility updates only if button found
     if autoHeavenButtonPart then
-        self:SetupProximityDetection()
+        self:SetupDataSubscription()
     end
-    
-    -- Set up data subscription for visibility updates
-    self:SetupDataSubscription()
     
     -- Set up gamepass purchase detection
     self:SetupGamepassPurchaseDetection()
+    
+    -- Hide gamepass GUIs in all OTHER player areas (not own area)
+    self:HideGamepassGUIsInOtherAreas()
 end
 
 function AutoHeavenButtonService:FindAutoHeavenButton()
@@ -47,28 +47,71 @@ function AutoHeavenButtonService:FindAutoHeavenButton()
         player.CharacterAdded:Wait()
     end
     
-    -- Use shared utility to find player's area
-    local playerArea = PlayerAreaFinder:WaitForPlayerArea(5)
+    -- Use shared utility to find player's area with retry logic
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(10) -- Increased timeout to 10 seconds
     if not playerArea then
-        warn("AutoHeavenButtonService: Player area not found")
-        return
+        warn("AutoHeavenButtonService: Player area not found after 10 seconds, retrying...")
+        
+        -- Clear cache and try again with longer timeout
+        PlayerAreaFinder:ClearCache()
+        task.wait(2) -- Wait a bit longer for area initialization
+        
+        playerArea = PlayerAreaFinder:WaitForPlayerArea(15) -- Even longer retry timeout
+        if not playerArea then
+            warn("AutoHeavenButtonService: Player area not found after retries - service will retry later")
+            -- Schedule a retry in a few seconds
+            task.delay(5, function()
+                if not autoHeavenButtonPart then -- Only retry if we still haven't found it
+                    print("AutoHeavenButtonService: Retrying area detection...")
+                    self:FindAutoHeavenButton()
+                end
+            end)
+            return
+        else
+            print("AutoHeavenButtonService: Player area found on retry!")
+        end
     end
     
     -- Find the AutoSendHeaven button
     local buttonsFolder = playerArea:FindFirstChild("Buttons")
     if not buttonsFolder then
         warn("AutoHeavenButtonService: Buttons folder not found")
+        -- Schedule retry for buttons folder
+        task.delay(3, function()
+            if not autoHeavenButtonPart then
+                print("AutoHeavenButtonService: Retrying button detection...")
+                self:FindAutoHeavenButton()
+            end
+        end)
         return
     end
     
     autoHeavenButtonPart = buttonsFolder:FindFirstChild("AutoSendHeaven")
     if not autoHeavenButtonPart then
-        warn("AutoHeavenButtonService: AutoSendHeaven button not found")
+        warn("AutoHeavenButtonService: AutoSendHeaven button not found, will retry...")
+        -- Schedule retry for the specific button
+        task.delay(2, function()
+            if not autoHeavenButtonPart then
+                print("AutoHeavenButtonService: Retrying AutoSendHeaven button detection...")
+                local retryButtonPart = buttonsFolder:FindFirstChild("AutoSendHeaven")
+                if retryButtonPart then
+                    autoHeavenButtonPart = retryButtonPart
+                    self:UpdateGamepassGUI()
+                    self:SetupProximityDetection()
+                    print("AutoHeavenButtonService: AutoSendHeaven button found on retry!")
+                end
+            end
+        end)
         return
     end
     
+    print("AutoHeavenButtonService: Successfully found AutoSendHeaven button!")
+    
     -- Update existing template GUI with ownership status
     self:UpdateGamepassGUI()
+    
+    -- Set up proximity detection now that we have the button
+    self:SetupProximityDetection()
 end
 
 function AutoHeavenButtonService:UpdateGamepassGUI()
@@ -269,6 +312,29 @@ function AutoHeavenButtonService:HideOwnedSurfaceGUI()
     local ownedGui = autoHeavenButtonPart:FindFirstChild("OwnedSurfaceGui", true)
     if ownedGui then
         ownedGui.Enabled = false
+    end
+end
+
+function AutoHeavenButtonService:HideGamepassGUIsInOtherAreas()
+    -- Find all player areas and hide Auto Heaven GUIs in areas that aren't the player's
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return end
+    
+    -- Get player's own area for comparison
+    local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:FindPlayerArea()
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") and area ~= playerArea then
+            -- This is not the player's area, hide the AutoSendHeaven button GUI
+            local gamepassButton = area:FindFirstChild("AutoSendHeaven", true)
+            if gamepassButton then
+                local billboard = gamepassButton:FindFirstChild("GamepassBillboard", true)
+                if billboard then
+                    billboard.Enabled = false -- Hide the billboard GUI
+                end
+            end
+        end
     end
 end
 

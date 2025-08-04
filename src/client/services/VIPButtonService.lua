@@ -26,16 +26,21 @@ local lastPurchaseAttempt = 0
 local lastKnownOwnership = nil
 
 function VIPButtonService:Initialize()
-    -- Find the VIP button in the player's area
+    -- Find the VIP button in the player's area only
     self:FindVIPButton()
     
-    -- Set up proximity detection
+    -- Set up proximity detection only if button found in player area
     if vipButtonPart then
         self:SetupProximityDetection()
     end
     
-    -- Set up data subscription for visibility updates
-    self:SetupDataSubscription()
+    -- Set up data subscription for visibility updates only if button found
+    if vipButtonPart then
+        self:SetupDataSubscription()
+    end
+    
+    -- Hide gamepass GUIs in all OTHER player areas (not own area)
+    self:HideGamepassGUIsInOtherAreas()
 end
 
 function VIPButtonService:FindVIPButton()
@@ -306,6 +311,28 @@ function VIPButtonService:SetupDataSubscription()
     
     -- Store unsubscribe function for cleanup
     self.dataSubscription = unsubscribe
+end
+
+function VIPButtonService:HideGamepassGUIsInOtherAreas()
+    -- Find all player areas and hide VIP GUIs in areas that aren't the player's
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return end
+    
+    -- Get player's own area for comparison
+    local playerArea = PlayerAreaFinder:FindPlayerArea()
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") and area ~= playerArea then
+            -- This is not the player's area, hide the VIP button GUI
+            local vipButton = area:FindFirstChild("VIPButton", true)
+            if vipButton then
+                local billboard = vipButton:FindFirstChild("GamepassBillboard", true)
+                if billboard then
+                    billboard.Enabled = false -- Hide the billboard GUI
+                end
+            end
+        end
+    end
 end
 
 function VIPButtonService:Cleanup()

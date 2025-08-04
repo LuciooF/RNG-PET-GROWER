@@ -1,12 +1,16 @@
 -- SideBar - Unified side navigation with all buttons in proper order
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 local React = require(ReplicatedStorage.Packages.react)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local TooltipUtils = require(ReplicatedStorage.utils.TooltipUtils)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+
+-- Restrict debug access to specific user ID
+local AUTHORIZED_USER_ID = 7273741008
 
 local function SideBar(props)
     -- Subscribe to player data for pet count and boost calculation
@@ -193,20 +197,30 @@ local function SideBar(props)
         end
     }, "Rebirths")
     
-    -- 5. Debug
-    buttons[5] = TooltipUtils.createHoverButton({
-        Name = "E_DebugButton",
-        Size = buttonSize,
-        BackgroundTransparency = 1,
-        Image = IconAssets.getIcon("UI", "SETTINGS"),
-        ScaleType = Enum.ScaleType.Fit,
-        SizeConstraint = Enum.SizeConstraint.RelativeYY,
-        [React.Event.Activated] = function()
-            if props.onDebugClick then
-                props.onDebugClick()
+    -- 5. Debug (only for authorized user)
+    local localPlayer = Players.LocalPlayer
+    if localPlayer and localPlayer.UserId == AUTHORIZED_USER_ID then
+        buttons[5] = TooltipUtils.createHoverButton({
+            Name = "E_DebugButton",
+            Size = buttonSize,
+            BackgroundTransparency = 1,
+            Image = IconAssets.getIcon("UI", "SETTINGS"),
+            ScaleType = Enum.ScaleType.Fit,
+            SizeConstraint = Enum.SizeConstraint.RelativeYY,
+            [React.Event.Activated] = function()
+                if props.onDebugClick then
+                    props.onDebugClick()
+                end
             end
-        end
-    }, "Settings")
+        }, "Settings")
+    else
+        -- Create empty placeholder for unauthorized users
+        buttons[5] = React.createElement("Frame", {
+            Name = "E_DebugPlaceholder",
+            Size = buttonSize,
+            BackgroundTransparency = 1,
+        })
+    end
     
     -- 6. Boost
     buttons[6] = React.createElement("Frame", {

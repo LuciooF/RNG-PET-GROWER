@@ -24,8 +24,6 @@ function SendHeavenButtonService:FindSendHeavenButton()
         player.CharacterAdded:Wait()
     end
     
-    -- Use event-based waiting instead of hardcoded delay
-    
     -- Find player's area
     local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then
@@ -148,7 +146,7 @@ end
 -- Cleanup method (minimal - this service doesn't track much state)
 function SendHeavenButtonService:Cleanup()
     -- Nothing to clean up for this simple service
-    sendHeavenButton = nil
+    sendHeavenButtonPart = nil
 end
 
 -- Handle character respawn

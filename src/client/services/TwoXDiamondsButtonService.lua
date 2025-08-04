@@ -42,8 +42,13 @@ function TwoXDiamondsButtonService:Initialize()
         self:SetupProximityDetection()
     end
     
-    -- Set up data subscription for visibility updates
-    self:SetupDataSubscription()
+    -- Set up data subscription for visibility updates only if button found
+    if twoXDiamondsButtonPart then
+        self:SetupDataSubscription()
+    end
+    
+    -- Hide gamepass GUIs in all OTHER player areas (not own area)
+    self:HideGamepassGUIsInOtherAreas()
 end
 
 function TwoXDiamondsButtonService:FindTwoXDiamondsButton()
@@ -374,6 +379,29 @@ function TwoXDiamondsButtonService:HandleGamepassPurchase()
     
     if not success then
         warn("TwoXDiamondsButtonService: Failed to prompt gamepass purchase:", error)
+    end
+end
+
+function TwoXDiamondsButtonService:HideGamepassGUIsInOtherAreas()
+    -- Find all player areas and hide 2x Diamonds GUIs in areas that aren't the player's
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return end
+    
+    -- Get player's own area for comparison
+    local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:FindPlayerArea()
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") and area ~= playerArea then
+            -- This is not the player's area, hide the 2xDiamondsButton button GUI
+            local gamepassButton = area:FindFirstChild("2xDiamondsButton", true)
+            if gamepassButton then
+                local billboard = gamepassButton:FindFirstChild("GamepassBillboard", true)
+                if billboard then
+                    billboard.Enabled = false -- Hide the billboard GUI
+                end
+            end
+        end
     end
 end
 

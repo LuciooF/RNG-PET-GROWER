@@ -289,6 +289,12 @@ function DataService:ScheduleDebouncedAutoEquip(player)
 end
 
 function DataService:ResetPlayerData(player)
+    -- Security check: Only allow authorized user
+    if player.UserId ~= 7273741008 then
+        warn("DataService: Unauthorized reset data request from", player.Name, "UserID:", player.UserId)
+        return false
+    end
+    
     local profile = Profiles[player]
     if profile then
         -- Clear any pending auto-equip timers

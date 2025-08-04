@@ -34,8 +34,13 @@ function TwoXHeavenSpeedButtonService:Initialize()
         self:SetupProximityDetection()
     end
     
-    -- Set up data subscription for visibility updates
-    self:SetupDataSubscription()
+    -- Set up data subscription for visibility updates only if button found
+    if twoXHeavenSpeedButtonPart then
+        self:SetupDataSubscription()
+    end
+    
+    -- Hide gamepass GUIs in all OTHER player areas (not own area)
+    self:HideGamepassGUIsInOtherAreas()
 end
 
 function TwoXHeavenSpeedButtonService:FindTwoXHeavenSpeedButton()
@@ -343,6 +348,29 @@ function TwoXHeavenSpeedButtonService:HandleGamepassPurchase()
         print("TwoXHeavenSpeedButtonService: Triggered TwoXHeavenSpeed gamepass purchase")
     else
         warn("TwoXHeavenSpeedButtonService: PurchaseGamepass remote not found")
+    end
+end
+
+function TwoXHeavenSpeedButtonService:HideGamepassGUIsInOtherAreas()
+    -- Find all player areas and hide 2x Heaven Speed GUIs in areas that aren't the player's
+    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return end
+    
+    -- Get player's own area for comparison
+    local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:FindPlayerArea()
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("PlayerArea") and area ~= playerArea then
+            -- This is not the player's area, hide the 2xHeavenSpeedButton button GUI
+            local gamepassButton = area:FindFirstChild("2xHeavenSpeedButton", true)
+            if gamepassButton then
+                local billboard = gamepassButton:FindFirstChild("GamepassBillboard", true)
+                if billboard then
+                    billboard.Enabled = false -- Hide the billboard GUI
+                end
+            end
+        end
     end
 end
 

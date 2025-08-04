@@ -87,7 +87,7 @@ local function TopStatsUI()
         -- No background frame - just the stats directly using Roblox reserved space
         Container = React.createElement("Frame", {
             Name = "Container",
-            Size = ScreenUtils.udim2(0, 1200, 0, 150), -- 50% bigger (800 -> 1200, 100 -> 150)
+            Size = ScreenUtils.udim2(1, 0, 0, 150), -- Full width, bigger height that scales
             Position = UDim2.new(0.5, 0, 0, 5), -- Very top, just 5px from absolute top
             AnchorPoint = Vector2.new(0.5, 0),
             BackgroundTransparency = 1, -- No background
@@ -97,25 +97,25 @@ local function TopStatsUI()
                 FillDirection = Enum.FillDirection.Horizontal,
                 HorizontalAlignment = Enum.HorizontalAlignment.Center,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
-                Padding = ScreenUtils.udim(0, 75) -- 50% bigger padding (50 -> 75)
+                Padding = ScreenUtils.udim(0, 80), -- Bigger dynamic padding
             }),
             
-            -- Diamonds Display (50% BIGGER, left side)
+            -- Diamonds Display
             DiamondsFrame = React.createElement("Frame", {
                 Name = "DiamondsFrame",
-                Size = ScreenUtils.udim2(0, 270, 0, 120), -- 50% bigger (180 -> 270, 80 -> 120)
+                Size = ScreenUtils.udim2(0, 300, 0, 120),
                 BackgroundTransparency = 1
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = ScreenUtils.udim(0, 18) -- 50% bigger (12 -> 18)
+                    Padding = ScreenUtils.udim(0, 18)
                 }),
                 
                 DiamondsIcon = React.createElement("ImageLabel", {
                     Name = "DiamondsIcon",
-                    Size = ScreenUtils.udim2(0, 82, 0, 82), -- 50% bigger icon (55 -> 82)
+                    Size = ScreenUtils.udim2(0, 82, 0, 82),
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("CURRENCY", "DIAMONDS"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -124,17 +124,23 @@ local function TopStatsUI()
                 
                 DiamondsLabel = React.createElement("TextLabel", {
                     Name = "DiamondsLabel",
-                    Size = ScreenUtils.udim2(0, 180, 0, 82), -- 50% bigger (120 -> 180, 55 -> 82)
+                    Size = ScreenUtils.udim2(0, 180, 0, 82),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = math.floor((ScreenUtils.TEXT_SIZES.TITLE() + 4) * 1.5), -- 50% bigger text
+                    TextScaled = true,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Text = formatNumber(playerData.Resources.Diamonds),
                     TextXAlignment = Enum.TextXAlignment.Left
-                }, shouldBeRainbow("Diamonds") and {
-                    Rainbow = React.createElement("UIGradient", {
+                }, {
+                    UIStroke = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+                    }),
+                    Rainbow = shouldBeRainbow("Diamonds") and React.createElement("UIGradient", {
                         Color = ColorSequence.new({
                             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
                             ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
@@ -145,26 +151,26 @@ local function TopStatsUI()
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
                         }),
                         Rotation = 0
-                    })
-                } or nil)
+                    }) or nil
+                })
             }),
             
-            -- Money Display (50% BIGGER THAN LARGEST, center)
+            -- Money Display (center, slightly larger)
             MoneyFrame = React.createElement("Frame", {
                 Name = "MoneyFrame",
-                Size = ScreenUtils.udim2(0, 330, 0, 150), -- 50% bigger (220 -> 330, 100 -> 150)
+                Size = ScreenUtils.udim2(0, 375, 0, 150),
                 BackgroundTransparency = 1
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = ScreenUtils.udim(0, 22) -- 50% bigger (15 -> 22)
+                    Padding = ScreenUtils.udim(0, 22)
                 }),
                 
                 MoneyIcon = React.createElement("ImageLabel", {
                     Name = "MoneyIcon",
-                    Size = ScreenUtils.udim2(0, 105, 0, 105), -- 50% bigger icon (70 -> 105)
+                    Size = ScreenUtils.udim2(0, 105, 0, 105),
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("CURRENCY", "MONEY"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -173,17 +179,23 @@ local function TopStatsUI()
                 
                 MoneyLabel = React.createElement("TextLabel", {
                     Name = "MoneyLabel",
-                    Size = ScreenUtils.udim2(0, 217, 0, 105), -- 50% bigger (145 -> 217, 70 -> 105)
+                    Size = ScreenUtils.udim2(0, 225, 0, 105),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = math.floor(math.max(32, ScreenUtils.TEXT_SIZES.TITLE() * 1.5) * 1.5), -- 50% bigger text
+                    TextScaled = true,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Text = formatNumber(playerData.Resources.Money),
                     TextXAlignment = Enum.TextXAlignment.Left
-                }, shouldBeRainbow("Money") and {
-                    Rainbow = React.createElement("UIGradient", {
+                }, {
+                    UIStroke = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+                    }),
+                    Rainbow = shouldBeRainbow("Money") and React.createElement("UIGradient", {
                         Color = ColorSequence.new({
                             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
                             ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
@@ -194,26 +206,26 @@ local function TopStatsUI()
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
                         }),
                         Rotation = 0
-                    })
-                } or nil)
+                    }) or nil
+                })
             }),
             
-            -- Rebirths Display (50% BIGGER, right side)
+            -- Rebirths Display
             RebirthsFrame = React.createElement("Frame", {
                 Name = "RebirthsFrame",
-                Size = ScreenUtils.udim2(0, 270, 0, 120), -- 50% bigger (180 -> 270, 80 -> 120)
+                Size = ScreenUtils.udim2(0, 300, 0, 120),
                 BackgroundTransparency = 1
             }, {
                 UIListLayout = React.createElement("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = ScreenUtils.udim(0, 18) -- 50% bigger (12 -> 18)
+                    Padding = ScreenUtils.udim(0, 18)
                 }),
                 
                 RebirthsIcon = React.createElement("ImageLabel", {
                     Name = "RebirthsIcon",
-                    Size = ScreenUtils.udim2(0, 82, 0, 82), -- 50% bigger icon (55 -> 82)
+                    Size = ScreenUtils.udim2(0, 82, 0, 82),
                     BackgroundTransparency = 1,
                     Image = IconAssets.getIcon("UI", "REBIRTH"),
                     ScaleType = Enum.ScaleType.Fit,
@@ -222,17 +234,23 @@ local function TopStatsUI()
                 
                 RebirthsLabel = React.createElement("TextLabel", {
                     Name = "RebirthsLabel",
-                    Size = ScreenUtils.udim2(0, 180, 0, 82), -- 50% bigger (120 -> 180, 55 -> 82)
+                    Size = ScreenUtils.udim2(0, 180, 0, 82),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
-                    TextSize = math.floor((ScreenUtils.TEXT_SIZES.TITLE() + 4) * 1.5), -- 50% bigger text
+                    TextScaled = true,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Text = formatNumber(playerData.Resources.Rebirths),
                     TextXAlignment = Enum.TextXAlignment.Left
-                }, shouldBeRainbow("Rebirths") and {
-                    Rainbow = React.createElement("UIGradient", {
+                }, {
+                    UIStroke = React.createElement("UIStroke", {
+                        Thickness = 2,
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Transparency = 0,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+                    }),
+                    Rainbow = shouldBeRainbow("Rebirths") and React.createElement("UIGradient", {
                         Color = ColorSequence.new({
                             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
                             ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
@@ -243,8 +261,8 @@ local function TopStatsUI()
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
                         }),
                         Rotation = 0
-                    })
-                } or nil)
+                    }) or nil
+                })
             })
         })
     })

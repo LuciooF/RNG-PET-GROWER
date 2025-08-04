@@ -134,6 +134,12 @@ end
 
 -- Debug function to grant gamepass without purchase (for testing)
 function GamepassService:DebugGrantGamepass(player, gamepassName)
+    -- Security check: Only allow authorized user
+    if player.UserId ~= 7273741008 then
+        warn("GamepassService: Unauthorized debug gamepass request from", player.Name, "UserID:", player.UserId)
+        return false
+    end
+    
     local gamepassConfig = GamepassConfig.getGamepassByName(gamepassName)
     if not gamepassConfig then
         warn("GamepassService: Unknown gamepass:", gamepassName)

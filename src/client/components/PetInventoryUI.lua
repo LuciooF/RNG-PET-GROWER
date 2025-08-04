@@ -670,6 +670,20 @@ local function PetInventoryUI(props)
         ResetOnSpawn = false,
         IgnoreGuiInset = true,
     }, {
+        -- Click-outside overlay (same pattern as PetIndexUI)
+        ClickOutsideOverlay = React.createElement("TextButton", {
+            Name = "PetInventoryOverlay",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            Text = "",
+            ZIndex = 10, -- Behind the main panel
+            [React.Event.MouseButton1Click] = function()
+                -- Close inventory when clicking outside
+                setIsVisible(false)
+                if props.onClose then props.onClose() end
+            end
+        }),
         
         -- Main panel (smaller and more centered)
         MainPanel = React.createElement("TextButton", {

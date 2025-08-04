@@ -10,7 +10,7 @@ ClientPetBallService.__index = ClientPetBallService
 local player = Players.LocalPlayer
 
 -- Configuration
-local MAX_PET_BALLS_PER_AREA = 100
+local MAX_PET_BALLS_PER_AREA = 50
 
 -- Track pet balls per area for this client
 local areaPetBallCounts = {}

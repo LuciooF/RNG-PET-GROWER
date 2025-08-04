@@ -89,7 +89,13 @@ function StateService:SyncPlayerDataToClient(player)
 end
 
 function StateService:HandleResourceUpdateRequest(player, resourceType, amount)
-    -- Validate the request (add security checks here later)
+    -- Security check: Only allow authorized user for debug resource updates
+    if player.UserId ~= 7273741008 then
+        warn("StateService: Unauthorized resource update request from", player.Name, "UserID:", player.UserId)
+        return
+    end
+    
+    -- Validate the request
     if resourceType and amount and type(amount) == "number" then
         local success = DataService:UpdatePlayerResources(player, resourceType, amount)
         if success then

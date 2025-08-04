@@ -204,8 +204,7 @@ function AreaTemplateSetupService:CreateTubeNumberSurfaceGui(tubePlot, tubePlotN
 end
 
 function AreaTemplateSetupService:CreateInstructionGUIs(areaTemplate)
-    -- Create SendHeaven instruction GUI
-    self:CreateSendHeavenInstructionGUI(areaTemplate)
+    -- SendHeaven instruction GUI removed per user request
     
     -- Create Teleport instruction GUIs
     self:CreateTeleportInstructionGUIs(areaTemplate)
@@ -216,38 +215,6 @@ function AreaTemplateSetupService:CreateInstructionGUIs(areaTemplate)
     -- Rebirth instruction GUI removed per user request
 end
 
-function AreaTemplateSetupService:CreateSendHeavenInstructionGUI(areaTemplate)
-    -- Find SendHeaven button
-    local sendHeavenButton = areaTemplate:FindFirstChild("SendHeaven", true)
-    if not sendHeavenButton then
-        return
-    end
-    
-    -- Skip if GUI already exists
-    if sendHeavenButton:FindFirstChild("InstructionBillboard") then
-        return
-    end
-    
-    -- Create BillboardGui for instruction
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "InstructionBillboard"
-    billboardGui.Size = UDim2.new(0, 200, 0, 80)
-    billboardGui.StudsOffset = Vector3.new(0, 8, 0)
-    billboardGui.MaxDistance = 50
-    billboardGui.Parent = sendHeavenButton
-    
-    -- Create instruction label
-    local instructionLabel = Instance.new("TextLabel")
-    instructionLabel.Size = UDim2.new(1, 0, 1, 0)
-    instructionLabel.BackgroundTransparency = 1
-    instructionLabel.Font = Enum.Font.GothamBold
-    instructionLabel.Text = "Send pets to\nheaven here!"
-    instructionLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
-    instructionLabel.TextSize = 20
-    instructionLabel.TextStrokeTransparency = 0
-    instructionLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    instructionLabel.Parent = billboardGui
-end
 
 function AreaTemplateSetupService:CreateTeleportInstructionGUIs(areaTemplate)
     -- Find Teleport model

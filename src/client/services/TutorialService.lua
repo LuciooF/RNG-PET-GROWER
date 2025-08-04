@@ -18,6 +18,7 @@ local connections = {}
 local currentPathVisual = nil
 local pathUpdateConnection = nil
 local lastPlayerPosition = nil
+local activeTweens = {} -- Track active tweens for proper cleanup
 
 -- Tutorial step definitions
 local TUTORIAL_STEPS = {
@@ -32,31 +33,16 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local buttons = closestArea:FindFirstChild("Buttons")
+                if playerArea then
+                    local buttons = playerArea:FindFirstChild("Buttons")
                     if buttons then
                         plot = buttons:FindFirstChild("Plot1")
                     end
                 end
-            end
-            
-            if not plot then
-                plot = Workspace:FindFirstChild("Plot1")
             end
             
             if plot then
@@ -84,23 +70,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local collectBase = closestArea:FindFirstChild("CollectBase")
+                if playerArea then
+                    local collectBase = playerArea:FindFirstChild("CollectBase")
                     if collectBase then
                         return collectBase
                     end
@@ -135,31 +110,16 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local buttons = closestArea:FindFirstChild("Buttons")
+                if playerArea then
+                    local buttons = playerArea:FindFirstChild("Buttons")
                     if buttons then
                         tubePlot = buttons:FindFirstChild("TubePlot1")
                     end
                 end
-            end
-            
-            if not tubePlot then
-                tubePlot = Workspace:FindFirstChild("TubePlot1")
             end
             
             if tubePlot then
@@ -187,23 +147,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local buttons = closestArea:FindFirstChild("Buttons")
+                if playerArea then
+                    local buttons = playerArea:FindFirstChild("Buttons")
                     if buttons then
                         local sendHeaven = buttons:FindFirstChild("SendHeaven")
                         if sendHeaven then
@@ -236,23 +185,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local buttons = closestArea:FindFirstChild("Buttons")
+                if playerArea then
+                    local buttons = playerArea:FindFirstChild("Buttons")
                     if buttons then
                         plot = buttons:FindFirstChild("Plot2")
                     end
@@ -287,23 +225,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local boundary1 = closestArea:FindFirstChild("Boundary1")
+                if playerArea then
+                    local boundary1 = playerArea:FindFirstChild("Boundary1")
                     if boundary1 then
                         return boundary1
                     end
@@ -338,23 +265,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local buttons = closestArea:FindFirstChild("Buttons")
+                if playerArea then
+                    local buttons = playerArea:FindFirstChild("Buttons")
                     if buttons then
                         local rebirthButton = buttons:FindFirstChild("RebirthButton")
                         if rebirthButton then
@@ -387,23 +303,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local boundary1 = closestArea:FindFirstChild("Boundary1")
+                if playerArea then
+                    local boundary1 = playerArea:FindFirstChild("Boundary1")
                     if boundary1 then
                         return boundary1
                     end
@@ -438,23 +343,12 @@ local TUTORIAL_STEPS = {
             local playerAreas = Workspace:FindFirstChild("PlayerAreas")
             
             if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = character.HumanoidRootPart.Position
-                local closestArea = nil
-                local closestDistance = math.huge
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
                 
-                for _, area in pairs(playerAreas:GetChildren()) do
-                    if area.Name:match("PlayerArea") and area:FindFirstChild("SpawnPoint") then
-                        local spawnPoint = area.SpawnPoint
-                        local distance = (spawnPoint.Position - playerPos).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestArea = area
-                        end
-                    end
-                end
-                
-                if closestArea then
-                    local buttons = closestArea:FindFirstChild("Buttons")
+                if playerArea then
+                    local buttons = playerArea:FindFirstChild("Buttons")
                     if buttons then
                         local sendHeaven = buttons:FindFirstChild("SendHeaven")
                         if sendHeaven then
@@ -502,6 +396,14 @@ local isInitialized = false
 
 -- Path visualization functions
 local function clearPathVisual()
+    -- Cancel all active tweens first
+    for _, tween in pairs(activeTweens) do
+        if tween then
+            tween:Cancel()
+        end
+    end
+    activeTweens = {} -- Clear the tween tracking table
+    
     -- Clean up visual folder if it exists
     local existingFolder = Workspace:FindFirstChild("TutorialPath")
     if existingFolder then
@@ -513,16 +415,14 @@ end
 local function updatePathMarkers(startPos, endPos)
     local distance = (endPos - startPos).Magnitude
     
-    -- Only recreate path if folder doesn't exist
-    if not currentPathVisual or not currentPathVisual.Parent then
-        clearPathVisual()
-        
-        -- Create folder for visual elements
-        local pathFolder = Instance.new("Folder")
-        pathFolder.Name = "TutorialPath"
-        pathFolder.Parent = Workspace
-        currentPathVisual = pathFolder
-    end
+    -- Always clear and recreate path to prevent accumulation
+    clearPathVisual()
+    
+    -- Create folder for visual elements
+    local pathFolder = Instance.new("Folder")
+    pathFolder.Name = "TutorialPath"
+    pathFolder.Parent = Workspace
+    currentPathVisual = pathFolder
     
     -- If distance is very small, don't create path markers but keep arrow
     if distance < 3 then
@@ -546,9 +446,11 @@ local function updatePathMarkers(startPos, endPos)
         arrowLabel.Size = UDim2.new(1, 0, 1, 0)
         arrowLabel.BackgroundTransparency = 1
         arrowLabel.Text = "⬇"
-        arrowLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        arrowLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green arrow
         arrowLabel.TextScaled = true
         arrowLabel.Font = Enum.Font.GothamBold
+        arrowLabel.TextStrokeTransparency = 0 -- Add stroke outline
+        arrowLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
         arrowLabel.Parent = billboardGui
         
         local arrowTween = TweenService:Create(billboardGui,
@@ -556,16 +458,11 @@ local function updatePathMarkers(startPos, endPos)
             {StudsOffset = Vector3.new(0, 10, 0)}
         )
         arrowTween:Play()
+        table.insert(activeTweens, arrowTween) -- Track for cleanup
         
         return
     end
     
-    -- Clear existing markers but keep the folder
-    for _, child in pairs(currentPathVisual:GetChildren()) do
-        if child.Name == "PathMarker" or child.Name == "TutorialTarget" then
-            child:Destroy()
-        end
-    end
     
     -- Temporarily modify Boundary parts for pathfinding
     local modifiedBoundaries = {}
@@ -600,8 +497,9 @@ local function updatePathMarkers(startPos, endPos)
         else
             -- Create visual path using the waypoints (but don't move player)
             local markersCreated = 0
+            local maxMarkers = 12 -- Limit total markers to prevent lag
             for i, waypoint in pairs(waypoints) do
-                if i > 1 then -- Skip first waypoint (current position)
+                if i > 1 and markersCreated < maxMarkers then -- Skip first waypoint, limit markers
                     local position = waypoint.Position
                     
                     -- Create small glowing path marker
@@ -629,6 +527,7 @@ local function updatePathMarkers(startPos, endPos)
                         {Transparency = 0.3}
                     )
                     tween:Play()
+                    table.insert(activeTweens, tween) -- Track for cleanup
                     
                     markersCreated = markersCreated + 1
                 end
@@ -654,9 +553,11 @@ local function updatePathMarkers(startPos, endPos)
         arrowLabel.Size = UDim2.new(1, 0, 1, 0)
         arrowLabel.BackgroundTransparency = 1
         arrowLabel.Text = "⬇"
-        arrowLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        arrowLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green arrow
         arrowLabel.TextScaled = true
         arrowLabel.Font = Enum.Font.GothamBold
+        arrowLabel.TextStrokeTransparency = 0 -- Add stroke outline
+        arrowLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
         arrowLabel.Parent = billboardGui
         
         local arrowTween = TweenService:Create(billboardGui,
@@ -664,6 +565,7 @@ local function updatePathMarkers(startPos, endPos)
             {StudsOffset = Vector3.new(0, 10, 0)}
         )
         arrowTween:Play()
+        table.insert(activeTweens, arrowTween) -- Track for cleanup
         
     end
     
@@ -675,10 +577,10 @@ local function updatePathMarkers(startPos, endPos)
     end
     
     if not success then
-        -- Fallback: simple straight line
+        -- Fallback: simple straight line with marker limit
         local direction = (endPos - startPos).Unit
         local distance = (endPos - startPos).Magnitude
-        local numPoints = math.floor(distance / 4)
+        local numPoints = math.min(8, math.floor(distance / 4)) -- Limit to 8 markers max
         
         for i = 1, numPoints do
             local progress = i / numPoints
@@ -694,6 +596,21 @@ local function updatePathMarkers(startPos, endPos)
             marker.CanCollide = false
             marker.Position = Vector3.new(position.X, position.Y + 1, position.Z)
             marker.Parent = currentPathVisual
+            
+            -- Add glow effect to fallback markers too
+            local light = Instance.new("PointLight")
+            light.Color = Color3.fromRGB(255, 255, 100)
+            light.Brightness = 2
+            light.Range = 5
+            light.Parent = marker
+            
+            -- Pulse animation for fallback markers
+            local tween = TweenService:Create(marker,
+                TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+                {Transparency = 0.3}
+            )
+            tween:Play()
+            table.insert(activeTweens, tween) -- Track for cleanup
         end
         
         -- Restore Boundary parts to their original state (fallback case)
@@ -705,8 +622,17 @@ local function updatePathMarkers(startPos, endPos)
     end
 end
 
+local lastUpdateTime = 0
+local UPDATE_THROTTLE = 0.3 -- Only update path every 0.3 seconds max to prevent lag
+
 local function updatePathVisual()
     if not tutorialData.active or tutorialData.completed then
+        return
+    end
+    
+    -- Throttle updates to prevent lag
+    local currentTime = tick()
+    if currentTime - lastUpdateTime < UPDATE_THROTTLE then
         return
     end
     
@@ -745,12 +671,14 @@ local function updatePathVisual()
     if not lastPlayerPosition then
         lastPlayerPosition = startPos
         updatePathMarkers(startPos, targetPos)
+        lastUpdateTime = currentTime
     else
         local moveDistance = (startPos - lastPlayerPosition).Magnitude
         
         if moveDistance > 8 then
             updatePathMarkers(startPos, targetPos)
             lastPlayerPosition = startPos
+            lastUpdateTime = currentTime
         end
     end
 end
@@ -795,6 +723,12 @@ function TutorialService:StopTutorial()
     tutorialData.active = false
     tutorialData.completed = true
     clearPathVisual()
+    
+    -- Stop path update connection to prevent lag
+    if pathUpdateConnection then
+        pathUpdateConnection:Disconnect()
+        pathUpdateConnection = nil
+    end
     
     -- Save progress
     saveTutorialProgress()
@@ -1325,6 +1259,16 @@ function TutorialService:Initialize()
 end
 
 function TutorialService:Cleanup()
+    -- Stop tutorial first to clean up path updates
+    tutorialData.active = false
+    
+    -- Disconnect path update connection
+    if pathUpdateConnection then
+        pathUpdateConnection:Disconnect()
+        pathUpdateConnection = nil
+    end
+    
+    -- Clean up all connections
     for name, connection in pairs(connections) do
         if connection and type(connection) == "function" then
             connection()
@@ -1334,6 +1278,7 @@ function TutorialService:Cleanup()
     end
     connections = {}
     
+    -- Clear path visuals and cancel all tweens
     clearPathVisual()
 end
 

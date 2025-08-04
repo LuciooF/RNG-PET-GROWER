@@ -184,7 +184,7 @@ function PlotGUIService:CreatePlotGUI(area, plot, plotNumber)
     costLabel.BackgroundTransparency = 1
     costLabel.BorderSizePixel = 0
     costLabel.Font = Enum.Font.GothamBold
-    costLabel.TextSize = 22
+    costLabel.TextSize = ScreenUtils.getTextSize(22)
     costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     costLabel.TextStrokeTransparency = 0
     costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -275,7 +275,7 @@ function PlotGUIService:CreateTubePlotGUI(area, tubePlot, tubePlotNumber)
     costLabel.BackgroundTransparency = 1
     costLabel.BorderSizePixel = 0
     costLabel.Font = Enum.Font.GothamBold
-    costLabel.TextSize = 22
+    costLabel.TextSize = ScreenUtils.getTextSize(22)
     costLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange for tubeplots
     costLabel.TextStrokeTransparency = 0
     costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -349,7 +349,7 @@ function PlotGUIService:UpdatePlotGUI(guiData, playerMoney, playerRebirths, owne
             costLabel.Text = requiredRebirths .. " Needed"
             costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
             costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-            costLabel.TextSize = 24
+            costLabel.TextSize = ScreenUtils.getTextSize(24)
             -- Adjust positioning for rebirth text (wider)
             costLabel.Position = UDim2.new(0, 30, 0, 0) -- More space for "Needed" text
             costLabel.Size = UDim2.new(0, 80, 1, 0)
@@ -366,7 +366,7 @@ function PlotGUIService:UpdatePlotGUI(guiData, playerMoney, playerRebirths, owne
         rebirthIcon.Visible = false
         costLabel.Text = "FREE"
         costLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        costLabel.TextSize = 22
+        costLabel.TextSize = ScreenUtils.getTextSize(22)
         costLabel.Position = UDim2.new(0, 0, 0, 0) -- Centered
         costLabel.Size = UDim2.new(1, 0, 1, 0)
         costLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -390,7 +390,7 @@ function PlotGUIService:UpdatePlotGUI(guiData, playerMoney, playerRebirths, owne
             costLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
         end
         
-        costLabel.TextSize = 22
+        costLabel.TextSize = ScreenUtils.getTextSize(22)
         billboard.Size = UDim2.new(0, 90, 0, 40)
         guiData.billboard.Enabled = true
     end
@@ -420,7 +420,7 @@ function PlotGUIService:UpdateTubePlotGUI(guiData, playerMoney, playerRebirths, 
             costLabel.Text = requiredRebirths .. " Needed"
             costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
             costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-            costLabel.TextSize = 24
+            costLabel.TextSize = ScreenUtils.getTextSize(24)
             -- Adjust positioning for rebirth text (wider)
             costLabel.Position = UDim2.new(0, 30, 0, 0) -- More space for "Needed" text
             costLabel.Size = UDim2.new(0, 80, 1, 0)
@@ -437,7 +437,7 @@ function PlotGUIService:UpdateTubePlotGUI(guiData, playerMoney, playerRebirths, 
         rebirthIcon.Visible = false
         costLabel.Text = "FREE"
         costLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        costLabel.TextSize = 22
+        costLabel.TextSize = ScreenUtils.getTextSize(22)
         costLabel.Position = UDim2.new(0, 0, 0, 0) -- Centered
         costLabel.Size = UDim2.new(1, 0, 1, 0)
         costLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -461,7 +461,7 @@ function PlotGUIService:UpdateTubePlotGUI(guiData, playerMoney, playerRebirths, 
             costLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
         end
         
-        costLabel.TextSize = 22
+        costLabel.TextSize = ScreenUtils.getTextSize(22)
         billboard.Size = UDim2.new(0, 90, 0, 40)
         guiData.billboard.Enabled = true
     end

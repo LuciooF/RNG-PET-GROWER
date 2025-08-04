@@ -35,7 +35,7 @@ local plotConnections = {}
 local spawningDoors = {}
 
 -- Note: Pet ball counting is now handled client-side
-local MAX_PET_BALLS_PER_AREA = 100 -- Kept for GUI display purposes only
+local MAX_PET_BALLS_PER_AREA = 50 -- Kept for GUI display purposes only
 
 
 -- Helper functions for rebirth requirements

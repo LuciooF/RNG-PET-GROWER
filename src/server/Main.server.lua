@@ -379,6 +379,14 @@ if not updateTutorialProgressRemote then
     updateTutorialProgressRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote event for pet processing sound effects
+local petProcessedRemote = ReplicatedStorage:FindFirstChild("PetProcessed")
+if not petProcessedRemote then
+    petProcessedRemote = Instance.new("RemoteEvent")
+    petProcessedRemote.Name = "PetProcessed"
+    petProcessedRemote.Parent = ReplicatedStorage
+end
+
 
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
@@ -409,6 +417,12 @@ end)
 
 -- Handle reset player data from debug panel
 resetPlayerDataRemote.OnServerEvent:Connect(function(player)
+    -- Security check: Only allow authorized user
+    if player.UserId ~= 7273741008 then
+        warn("Main: Unauthorized reset data request from", player.Name, "UserID:", player.UserId)
+        return
+    end
+    
     print("Main: Reset data request from", player.Name)
     
     -- Reset player data to template
@@ -482,6 +496,12 @@ end)
 
 -- Handle debug gamepass grant from client (for testing)
 debugGrantGamepassRemote.OnServerEvent:Connect(function(player, gamepassName)
+    -- Security check: Only allow authorized user
+    if player.UserId ~= 7273741008 then
+        warn("Main: Unauthorized debug gamepass grant request from", player.Name, "UserID:", player.UserId)
+        return
+    end
+    
     if not gamepassName then
         warn("Main: Invalid gamepass name received for debug grant from", player.Name)
         return
@@ -601,6 +621,12 @@ end)
 
 -- Handle debug OP pet grant from client (for testing)
 debugGrantOPPetRemote.OnServerEvent:Connect(function(player, opPetName)
+    -- Security check: Only allow authorized user
+    if player.UserId ~= 7273741008 then
+        warn("Main: Unauthorized debug OP pet grant request from", player.Name, "UserID:", player.UserId)
+        return
+    end
+    
     if not opPetName then
         return
     end
