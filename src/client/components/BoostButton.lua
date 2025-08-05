@@ -118,7 +118,7 @@ local function BoostButton(props)
             Size = UDim2.new(0, containerWidth, 0, isMobile and 35 or 25),
             Position = UDim2.new(0, 0, 0, buttonPixelSize + textSpacing), -- Below button with proper spacing
             BackgroundTransparency = 1,
-            Font = Enum.Font.GothamBold,
+            Font = Enum.Font.FredokaOne,
             Text = string.format("%sx", NumberFormatter.formatBoost(totalBoostMultiplier)),
             TextColor3 = Color3.fromRGB(255, 255, 100),
             TextSize = isMobile and ScreenUtils.TEXT_SIZES.LARGE() * 1.2 or ScreenUtils.TEXT_SIZES.LARGE(),

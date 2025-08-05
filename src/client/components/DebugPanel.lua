@@ -8,14 +8,12 @@ local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
-
--- Restrict debug access to specific user ID
-local AUTHORIZED_USER_ID = 7273741008
+local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 local function DebugPanel(props)
     -- Check if current player is authorized
     local localPlayer = Players.LocalPlayer
-    if not localPlayer or localPlayer.UserId ~= AUTHORIZED_USER_ID then
+    if not AuthorizationUtils.isAuthorized(localPlayer) then
         return nil -- Don't render debug panel for unauthorized users
     end
     local isVisible, setIsVisible = React.useState(props.visible or false)
@@ -157,7 +155,7 @@ local function DebugPanel(props)
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4,
                         TextStrokeTransparency = 0,
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextXAlignment = Enum.TextXAlignment.Left,
                         TextYAlignment = Enum.TextYAlignment.Center,
                         ZIndex = 205,
@@ -212,7 +210,7 @@ local function DebugPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     LayoutOrder = 1,
                     ZIndex = 203
@@ -227,7 +225,7 @@ local function DebugPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     LayoutOrder = 2,
                     ZIndex = 203,
                     [React.Event.Activated] = function()
@@ -254,7 +252,7 @@ local function DebugPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     LayoutOrder = 3,
                     ZIndex = 203,
                     [React.Event.Activated] = function()
@@ -281,7 +279,7 @@ local function DebugPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     LayoutOrder = 4,
                     ZIndex = 203,
                     [React.Event.Activated] = function()
@@ -308,7 +306,7 @@ local function DebugPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     LayoutOrder = 5,
                     ZIndex = 203
@@ -323,7 +321,7 @@ local function DebugPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 1,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     LayoutOrder = 6,
                     ZIndex = 203,
                     [React.Event.Activated] = function()
@@ -348,7 +346,7 @@ local function DebugPanel(props)
                     Text = "🎯 Start Tutorial",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     LayoutOrder = 7,
                     ZIndex = 203,
                     [React.Event.Activated] = function()
@@ -373,7 +371,7 @@ local function DebugPanel(props)
                     Text = "⏹️ Stop Tutorial",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     LayoutOrder = 8,
                     ZIndex = 203,
                     [React.Event.Activated] = function()

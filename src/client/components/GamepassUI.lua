@@ -358,7 +358,7 @@ local function GamepassUI(props)
                     Text = displayConfig.name,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = isGamepass and ScreenUtils.TEXT_SIZES.LARGE() or (ScreenUtils.TEXT_SIZES.LARGE() + 4), -- Bigger for dev products
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -395,7 +395,7 @@ local function GamepassUI(props)
                         Text = isOwned and "✅ OWNED" or (displayConfig.price and tostring(displayConfig.price) or "Loading..."),
                         TextColor3 = isOwned and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 215, 0),
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2, -- Even bigger price
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextXAlignment = Enum.TextXAlignment.Center,
                         TextYAlignment = Enum.TextYAlignment.Center,
                         TextStrokeTransparency = 0,
@@ -420,7 +420,7 @@ local function GamepassUI(props)
                     Text = displayConfig.description or "Premium item with amazing benefits!",
                     TextColor3 = Color3.fromRGB(40, 40, 40), -- Much darker gray for better contrast
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2, -- Bigger text
-                    Font = Enum.Font.GothamBold, -- Make description bold
+                    Font = Enum.Font.FredokaOne, -- Make description bold
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Top,
                     TextWrapped = true,
@@ -437,7 +437,7 @@ local function GamepassUI(props)
                     Text = isGamepass and (isOwned and "Toggle" or "") or "", -- Remove text, will use children for layout
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 112,
@@ -484,7 +484,7 @@ local function GamepassUI(props)
                             Text = tostring(displayConfig.price or "0"),
                             TextColor3 = Color3.fromRGB(255, 255, 255),
                             TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
-                            Font = Enum.Font.GothamBold,
+                            Font = Enum.Font.FredokaOne,
                             TextStrokeTransparency = 0,
                             TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                             TextXAlignment = Enum.TextXAlignment.Center,
@@ -497,7 +497,7 @@ local function GamepassUI(props)
                             Text = "Buy Now!",
                             TextColor3 = Color3.fromRGB(255, 255, 255),
                             TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
-                            Font = Enum.Font.GothamBold,
+                            Font = Enum.Font.FredokaOne,
                             TextStrokeTransparency = 0,
                             TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                             TextXAlignment = Enum.TextXAlignment.Center,
@@ -509,7 +509,7 @@ local function GamepassUI(props)
                         Text = "Toggle",
                         TextColor3 = Color3.fromRGB(255, 255, 255),
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextStrokeTransparency = 0,
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                         TextXAlignment = Enum.TextXAlignment.Center,
@@ -718,7 +718,7 @@ local function GamepassUI(props)
                     Text = "✨🛒 PREMIUM STORE 🛒✨",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 8, -- Much bigger
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0,
@@ -775,7 +775,7 @@ local function GamepassUI(props)
                     Text = "🎮 Gamepasses",
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Much bigger tab text
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 107,
@@ -817,7 +817,7 @@ local function GamepassUI(props)
                     Text = "🛒 Products",
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Much bigger tab text
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 107,

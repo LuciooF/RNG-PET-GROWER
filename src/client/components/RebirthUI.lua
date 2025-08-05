@@ -170,7 +170,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 8, -- Big title
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextXAlignment = Enum.TextXAlignment.Left,
                         TextYAlignment = Enum.TextYAlignment.Center,
                         ZIndex = 1008,
@@ -232,7 +232,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 6, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextXAlignment = Enum.TextXAlignment.Center,
                         ZIndex = 1007,
                     }),
@@ -255,7 +255,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -278,7 +278,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -301,7 +301,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -325,7 +325,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -367,7 +367,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 6, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextXAlignment = Enum.TextXAlignment.Center,
                         ZIndex = 1007,
                     }),
@@ -390,7 +390,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -413,7 +413,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -436,7 +436,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -460,7 +460,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 4, -- Even bigger
                         TextStrokeTransparency = 0, -- Black outline
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold, -- Bold
+                        Font = Enum.Font.FredokaOne, -- Bold
                         TextXAlignment = Enum.TextXAlignment.Left,
                         ZIndex = 1007,
                     }),
@@ -484,7 +484,7 @@ function RebirthUI.new(props)
                         ),
                         TextColor3 = Color3.fromRGB(50, 50, 50),
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         TextXAlignment = Enum.TextXAlignment.Center,
                         ZIndex = 1007,
                     }),
@@ -535,7 +535,7 @@ function RebirthUI.new(props)
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2, -- Much bigger text
                         TextStrokeTransparency = 0,
                         TextStrokeColor3 = Color3.fromRGB(0, 150, 0), -- Green outline
-                        Font = Enum.Font.GothamBold, -- Bold for better visibility
+                        Font = Enum.Font.FredokaOne, -- Bold for better visibility
                         TextXAlignment = Enum.TextXAlignment.Center,
                         TextYAlignment = Enum.TextYAlignment.Center,
                         TextWrapped = true, -- Allow text wrapping
@@ -561,7 +561,7 @@ function RebirthUI.new(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     ZIndex = 1007,
                     [React.Event.MouseButton1Click] = canAffordRebirth and function()
                         -- Close UI first so player can see rebirth animation
@@ -605,7 +605,7 @@ function RebirthUI.new(props)
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     ZIndex = 1007,
                     [React.Event.MouseButton1Click] = handleRobuxRebirth,
                 }, {

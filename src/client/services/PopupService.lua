@@ -131,7 +131,7 @@ function PopupService:ShowPopup(resourceType, amount, iconAsset)
     popupLabel.Size = UDim2.new(0, 120, 1, 0)
     popupLabel.Position = UDim2.new(0, 25, 0, 0) -- Right next to icon
     popupLabel.BackgroundTransparency = 1
-    popupLabel.Font = Enum.Font.GothamBold
+    popupLabel.Font = Enum.Font.FredokaOne
     popupLabel.Text = "+" .. NumberFormatter.format(amount)
     popupLabel.TextSize = 18
     popupLabel.TextStrokeTransparency = 0

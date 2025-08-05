@@ -15,6 +15,9 @@ local PetMixerService = require(ServerScriptService.services.PetMixerService)
 local LeaderboardService = require(ServerScriptService.services.LeaderboardService)
 local OPPetService = require(ServerScriptService.services.OPPetService)
 local AnnouncementService = require(ServerScriptService.services.AnnouncementService)
+local PlaytimeTrackingService = require(ServerScriptService.services.PlaytimeTrackingService)
+local PlaytimeRewardsService = require(ServerScriptService.services.PlaytimeRewardsService)
+local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 DataService:Initialize()
 StateService:Initialize()
@@ -24,6 +27,8 @@ PetMixerService:Initialize()
 LeaderboardService:Initialize()
 OPPetService:Initialize()
 AnnouncementService:Initialize()
+PlaytimeTrackingService:Initialize()
+PlaytimeRewardsService:Initialize()
 
 -- Rebirth function (shared by both money and Robux rebirth)
 local function performRebirth(player, skipMoneyCheck)
@@ -389,6 +394,14 @@ if not petProcessedRemote then
     petProcessedRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote event for playtime rewards
+local claimPlaytimeRewardRemote = ReplicatedStorage:FindFirstChild("ClaimPlaytimeReward")
+if not claimPlaytimeRewardRemote then
+    claimPlaytimeRewardRemote = Instance.new("RemoteEvent")
+    claimPlaytimeRewardRemote.Name = "ClaimPlaytimeReward"
+    claimPlaytimeRewardRemote.Parent = ReplicatedStorage
+end
+
 
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
@@ -419,9 +432,9 @@ end)
 
 -- Handle reset player data from debug panel
 resetPlayerDataRemote.OnServerEvent:Connect(function(player)
-    -- Security check: Only allow authorized user
-    if player.UserId ~= 7273741008 then
-        warn("Main: Unauthorized reset data request from", player.Name, "UserID:", player.UserId)
+    -- Security check: Only allow authorized users
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "reset player data")
         return
     end
     
@@ -498,9 +511,9 @@ end)
 
 -- Handle debug gamepass grant from client (for testing)
 debugGrantGamepassRemote.OnServerEvent:Connect(function(player, gamepassName)
-    -- Security check: Only allow authorized user
-    if player.UserId ~= 7273741008 then
-        warn("Main: Unauthorized debug gamepass grant request from", player.Name, "UserID:", player.UserId)
+    -- Security check: Only allow authorized users
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "debug gamepass grant")
         return
     end
     
@@ -623,9 +636,9 @@ end)
 
 -- Handle debug OP pet grant from client (for testing)
 debugGrantOPPetRemote.OnServerEvent:Connect(function(player, opPetName)
-    -- Security check: Only allow authorized user
-    if player.UserId ~= 7273741008 then
-        warn("Main: Unauthorized debug OP pet grant request from", player.Name, "UserID:", player.UserId)
+    -- Security check: Only allow authorized users
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "debug OP pet grant")
         return
     end
     
@@ -649,6 +662,26 @@ debugGrantOPPetRemote.OnServerEvent:Connect(function(player, opPetName)
         local successRemote = ReplicatedStorage:FindFirstChild("OPPetPurchaseSuccess")
         if successRemote then
             successRemote:FireClient(player, opPet)
+        end
+    end
+end)
+
+-- Handle playtime reward claim from client
+claimPlaytimeRewardRemote.OnServerEvent:Connect(function(player, timeMinutes, sessionTime)
+    if not player or not timeMinutes then
+        warn("Main: Invalid playtime reward claim parameters from", player.Name)
+        return
+    end
+    
+    print("Main: Playtime reward claim request from", player.Name, "for", timeMinutes, "minutes with session time", sessionTime or "nil")
+    
+    local success, message = PlaytimeRewardsService:ClaimReward(player, timeMinutes, sessionTime)
+    
+    if not success then
+        -- Show error message to player
+        local errorMessageRemote = ReplicatedStorage:FindFirstChild("ShowErrorMessage")
+        if errorMessageRemote then
+            errorMessageRemote:FireClient(player, message or "Failed to claim reward")
         end
     end
 end)

@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local ProfileService = require(game.ServerStorage.Packages:WaitForChild("profilestore"))
 local PetUtils = require(ReplicatedStorage.utils.PetUtils)
 local AnnouncementService = require(script.Parent.AnnouncementService)
+local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 local DataService = {}
 DataService.__index = DataService
@@ -39,7 +40,9 @@ local PROFILE_TEMPLATE = {
         currentStep = 1,
         completedSteps = {},
         active = false
-    }
+    },
+    PlaytimeMinutes = 0, -- Total playtime in minutes
+    ClaimedPlaytimeRewards = {} -- Array of claimed playtime reward times (e.g., {5, 10, 15})
 }
 
 local DATASTORE_NAME = "PlayerData"
@@ -299,9 +302,9 @@ function DataService:ScheduleDebouncedAutoEquip(player)
 end
 
 function DataService:ResetPlayerData(player)
-    -- Security check: Only allow authorized user
-    if player.UserId ~= 7273741008 then
-        warn("DataService: Unauthorized reset data request from", player.Name, "UserID:", player.UserId)
+    -- Security check: Only allow authorized users
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "reset player data")
         return false
     end
     

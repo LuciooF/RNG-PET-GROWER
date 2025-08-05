@@ -183,7 +183,7 @@ function PlotGUIService:CreatePlotGUI(area, plot, plotNumber)
     costLabel.Position = UDim2.new(0, 35, 0, 0) -- Right next to icon
     costLabel.BackgroundTransparency = 1
     costLabel.BorderSizePixel = 0
-    costLabel.Font = Enum.Font.GothamBold
+    costLabel.Font = Enum.Font.FredokaOne
     costLabel.TextSize = ScreenUtils.getTextSize(22)
     costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     costLabel.TextStrokeTransparency = 0
@@ -274,7 +274,7 @@ function PlotGUIService:CreateTubePlotGUI(area, tubePlot, tubePlotNumber)
     costLabel.Position = UDim2.new(0, 35, 0, 0) -- Right next to icon
     costLabel.BackgroundTransparency = 1
     costLabel.BorderSizePixel = 0
-    costLabel.Font = Enum.Font.GothamBold
+    costLabel.Font = Enum.Font.FredokaOne
     costLabel.TextSize = ScreenUtils.getTextSize(22)
     costLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange for tubeplots
     costLabel.TextStrokeTransparency = 0

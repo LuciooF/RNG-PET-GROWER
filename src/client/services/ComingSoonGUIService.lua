@@ -54,7 +54,7 @@ local function createComingSoonGUI(part, text, offset, customDistances)
     textLabel.Text = text
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextXAlignment = Enum.TextXAlignment.Center
     textLabel.TextYAlignment = Enum.TextYAlignment.Center
     textLabel.TextStrokeTransparency = 0

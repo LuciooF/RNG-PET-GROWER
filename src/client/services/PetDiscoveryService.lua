@@ -375,7 +375,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     titleLabel.Text = discovery.variation and "🌟 NEW VARIATION DISCOVERED! 🌟" or "🎉 NEW PET DISCOVERED! 🎉"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
     titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.5 -- 1.5x bigger text
-    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
     titleLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -400,7 +400,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     nameLabel.Text = actualPetName
     nameLabel.TextColor3 = rarityColor
     nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.3 -- 1.5x bigger text
-    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Font = Enum.Font.FredokaOne
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -418,7 +418,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         variationLabel.Text = discovery.variation .. " Variation"
         variationLabel.TextColor3 = variationColor
         variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.5 -- 1.5x bigger text
-        variationLabel.Font = Enum.Font.GothamBold
+        variationLabel.Font = Enum.Font.FredokaOne
         variationLabel.TextXAlignment = Enum.TextXAlignment.Center
         variationLabel.TextStrokeTransparency = 0
         variationLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -465,7 +465,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityValueLabel.Text = petConfig.Rarity
     rarityValueLabel.TextColor3 = rarityColor -- Bright rarity color
     rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
-    rarityValueLabel.Font = Enum.Font.GothamBold
+    rarityValueLabel.Font = Enum.Font.FredokaOne
     rarityValueLabel.TextXAlignment = Enum.TextXAlignment.Left
     rarityValueLabel.TextStrokeTransparency = 0
     rarityValueLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -482,7 +482,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     chanceLabel.Text = "1 in " .. NumberFormatter.format(rarityChance)
     chanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White base for rainbow gradient
     chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.5 -- 1.5x bigger text size
-    chanceLabel.Font = Enum.Font.GothamBold -- Bold font
+    chanceLabel.Font = Enum.Font.FredokaOne -- Bold font
     chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
     chanceLabel.TextStrokeTransparency = 0
     chanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -513,7 +513,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.Text = "Check your Pet Index!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
     congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
-    congratsLabel.Font = Enum.Font.GothamBold
+    congratsLabel.Font = Enum.Font.FredokaOne
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0
     congratsLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)

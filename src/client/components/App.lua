@@ -16,10 +16,12 @@ local GamepassUI = require(script.Parent.GamepassUI)
 local PetMixerUI = require(script.Parent.PetMixerUI)
 local PetIndexUI = require(script.Parent.PetIndexUI)
 local SideBar = require(script.Parent.SideBar)
+local RightSideBar = require(script.Parent.RightSideBar)
 local BoostButton = require(script.Parent.BoostButton)
 local BoostPanel = require(script.Parent.BoostPanel)
 local TutorialUI = require(script.Parent.TutorialUI)
 local OPPetButton = require(script.Parent.OPPetButton)
+local PlaytimeRewardsPanel = require(script.Parent.PlaytimeRewardsPanel)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
@@ -34,6 +36,7 @@ local TwoXDiamondsButtonService = require(script.Parent.Parent.services.TwoXDiam
 local TwoXHeavenSpeedButtonService = require(script.Parent.Parent.services.TwoXHeavenSpeedButtonService)
 local VIPButtonService = require(script.Parent.Parent.services.VIPButtonService)
 local SendHeavenButtonService = require(script.Parent.Parent.services.SendHeavenButtonService)
+local RewardsService = require(script.Parent.Parent.services.RewardsService)
 
 local function App()
     -- State for UI visibility
@@ -44,10 +47,17 @@ local function App()
     local gamepassVisible, setGamepassVisible = React.useState(false)
     local boostPanelVisible, setBoostPanelVisible = React.useState(false)
     local tutorialVisible, setTutorialVisible = React.useState(false)
+    local playtimeRewardsVisible, setPlaytimeRewardsVisible = React.useState(false)
     local tutorialData, setTutorialData = React.useState({})
     local playerData, setPlayerData = React.useState({
         Resources = { Money = 0, Rebirths = 0 }
     })
+    
+    -- Shared session timer for playtime rewards (created once when app loads)
+    local sharedSessionStartTime = React.useRef(tick())
+    
+    -- Shared session claimed rewards state (resets when app reloads)
+    local sharedSessionClaimedRewards, setSharedSessionClaimedRewards = React.useState({})
     
     -- Subscribe to data changes
     React.useEffect(function()
@@ -186,6 +196,15 @@ local function App()
         end
     end, {})
     
+    -- Set up rewards service
+    React.useEffect(function()
+        RewardsService:Initialize()
+        
+        return function()
+            RewardsService:Cleanup()
+        end
+    end, {})
+    
     -- Handle rebirth UI close
     local function handleRebirthClose()
         setRebirthUIVisible(false)
@@ -254,6 +273,16 @@ local function App()
             end
         }),
         
+        -- Right side navigation
+        RightSideBar = React.createElement(RightSideBar, {
+            onPlaytimeRewardsClick = function()
+                setPlaytimeRewardsVisible(function(prev) return not prev end)
+            end,
+            sharedSessionStartTime = sharedSessionStartTime.current,
+            sharedSessionClaimedRewards = sharedSessionClaimedRewards,
+            setSharedSessionClaimedRewards = setSharedSessionClaimedRewards
+        }),
+        
         -- UI Components
         TopStats = React.createElement(TopStatsUI),
         PetInventory = React.createElement(PetInventoryUI, {
@@ -304,6 +333,33 @@ local function App()
             onClose = handleTutorialClose,
             onNext = handleTutorialNext,
             onSkip = handleTutorialSkip
+        }) or nil,
+        
+        PlaytimeRewardsPanel = playtimeRewardsVisible and React.createElement(PlaytimeRewardsPanel, {
+            isVisible = playtimeRewardsVisible,
+            onClose = function()
+                setPlaytimeRewardsVisible(false)
+            end,
+            onClaimReward = function(timeMinutes, sessionTime)
+                -- Mark as claimed in shared state first
+                setSharedSessionClaimedRewards(function(prev)
+                    local newClaimed = {}
+                    for k, v in pairs(prev) do
+                        newClaimed[k] = v
+                    end
+                    newClaimed[timeMinutes] = true
+                    return newClaimed
+                end)
+                
+                -- Fire remote event to claim reward with session time validation
+                local claimPlaytimeRewardRemote = ReplicatedStorage:FindFirstChild("ClaimPlaytimeReward")
+                if claimPlaytimeRewardRemote then
+                    claimPlaytimeRewardRemote:FireServer(timeMinutes, sessionTime)
+                end
+            end,
+            sharedSessionStartTime = sharedSessionStartTime.current,
+            sharedSessionClaimedRewards = sharedSessionClaimedRewards,
+            setSharedSessionClaimedRewards = setSharedSessionClaimedRewards
         }) or nil,
         
         -- OP Pet Purchase Button (always visible on top right)

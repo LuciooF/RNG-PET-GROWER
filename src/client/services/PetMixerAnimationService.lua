@@ -572,7 +572,7 @@ function PetMixerAnimationService:CreateMixingTimerGUI(mixer, mixerModel)
     timerLabel.Name = "TimerText"
     timerLabel.Size = UDim2.new(1, 0, 1, 0)
     timerLabel.BackgroundTransparency = 1
-    timerLabel.Font = Enum.Font.GothamBold
+    timerLabel.Font = Enum.Font.FredokaOne
     timerLabel.Text = "Mixing..."
     timerLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
     timerLabel.TextSize = 36
@@ -906,7 +906,7 @@ function PetMixerAnimationService:CreateDoneGUI(mixerModel)
     doneLabel.Name = "DoneText"
     doneLabel.Size = UDim2.new(1, 0, 1, 0)
     doneLabel.BackgroundTransparency = 1
-    doneLabel.Font = Enum.Font.GothamBold
+    doneLabel.Font = Enum.Font.FredokaOne
     doneLabel.Text = "Done!"
     doneLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     doneLabel.TextSize = 42 -- Slightly bigger (was 36)

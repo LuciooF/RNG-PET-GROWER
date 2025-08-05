@@ -45,7 +45,7 @@ local function OPPetButton(props)
         end
     end
     
-    -- Create pet model for viewport (copying PetInventoryUI method exactly)
+    -- Create pet model for viewport (using same approach as PlaytimeRewardsPanel)
     local function createPetModel()
         local petsFolder = ReplicatedStorage:FindFirstChild("Pets")
         if not petsFolder then return nil end
@@ -53,68 +53,41 @@ local function OPPetButton(props)
         local petModelTemplate = petsFolder:FindFirstChild(featuredOPPet.ModelName)
         if not petModelTemplate then return nil end
         
+        -- Clone model WITHOUT SCALING (Baby size = scale 1)
         local clonedModel = petModelTemplate:Clone()
         clonedModel.Name = "PetModel"
         
-        -- Use same scaling and processing as PetInventoryUI
-        local scaleFactor = 4.2 -- Same as PetInventoryUI for consistency
-        
-        for _, descendant in pairs(clonedModel:GetDescendants()) do
-            if descendant:IsA("BasePart") then
-                descendant.Size = descendant.Size * scaleFactor
-                descendant.CanCollide = false
-                descendant.Anchored = true -- Anchored for viewport
-                descendant.Massless = true
-                -- Make parts visible with original materials preserved (same as PetInventoryUI)
-                descendant.Transparency = math.max(0, descendant.Transparency - 0.3) -- Reduce transparency
-                -- Keep original material unless it's invisible (same as PetInventoryUI)
-                if descendant.Material == Enum.Material.ForceField then
-                    descendant.Material = Enum.Material.Plastic
-                end
+        -- Prepare model
+        for _, part in pairs(clonedModel:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+                part.Anchored = true
+                part.Massless = true
             end
         end
         
-        -- Use 160 degrees rotation for showing faces correctly (same as PetInventoryUI)
-        local rotationAngle = 160
-        
-        -- Move entire model to origin using MoveTo, then rotate all parts (same as PetInventoryUI)
-        clonedModel:MoveTo(Vector3.new(0, 0, 0))
-        
-        -- Then apply rotation to each part around the origin (same as PetInventoryUI)
-        for _, descendant in pairs(clonedModel:GetDescendants()) do
-            if descendant:IsA("BasePart") then
-                -- Rotate each part around the origin
-                local rotationCFrame = CFrame.Angles(0, math.rad(rotationAngle), 0)
-                local currentPos = descendant.Position
-                local rotatedPos = rotationCFrame * currentPos
-                descendant.Position = rotatedPos
-                
-                -- Also rotate the part's orientation
-                descendant.CFrame = CFrame.new(rotatedPos) * rotationCFrame * (descendant.CFrame - descendant.Position)
-            end
-        end
+        -- Position and rotate model using PivetTo (180 degrees the other way)
+        clonedModel:PivotTo(CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(20), math.rad(-60), 0)) -- 180 degrees opposite of 120
         
         return clonedModel
     end
     
-    -- Setup viewport camera (matching PetInventoryUI style)
+    -- Setup viewport camera (highest quality possible)
     local function setupViewportCamera(viewportFrame, petModel)
         if not viewportFrame or not petModel then return end
         
+        -- Setup camera for MAXIMUM quality with proper sizing
         local camera = Instance.new("Camera")
         camera.CameraType = Enum.CameraType.Scriptable
+        camera.CFrame = CFrame.new(0.1, -0.15, 15) -- Back to previous distance
+        camera.FieldOfView = 70 -- Back to previous FOV to show whole pet
         camera.Parent = viewportFrame
         viewportFrame.CurrentCamera = camera
         
-        local modelCFrame, modelSize = petModel:GetBoundingBox()
-        local maxSize = math.max(modelSize.X, modelSize.Y, modelSize.Z)
-        
-        -- Use same camera positioning as PetInventoryUI
-        local distance = maxSize * 1.8 -- Good distance to see full model
-        local cameraPosition = modelCFrame.Position + Vector3.new(distance * 0.7, distance * 0.4, distance * 0.7)
-        
-        -- Point camera at center of model
-        camera.CFrame = CFrame.lookAt(cameraPosition, modelCFrame.Position)
+        -- Set lighting with reduced brightness
+        viewportFrame.LightDirection = Vector3.new(0, -0.1, -1).Unit
+        viewportFrame.Ambient = Color3.fromRGB(180, 180, 180) -- Reduced from 255 to 180 for less brightness
+        viewportFrame.LightColor = Color3.fromRGB(220, 220, 220) -- Reduced from 255 to 220
     end
     
     -- Animation refs
@@ -138,7 +111,7 @@ local function OPPetButton(props)
             )
             
             local breathingTween = TweenService:Create(viewport, breathingInfo, {
-                Size = UDim2.new(1.95, 0, 1.95, 0) -- Breathe between 1.9 and 1.95
+                Size = UDim2.new(1.45, 0, 1.45, 0) -- Breathe between 1.4 and 1.45
             })
             
             breathingTween:Play()
@@ -180,7 +153,7 @@ local function OPPetButton(props)
     
     -- Calculate responsive size and position (20% from edges)
     local screenSize = ScreenUtils.getScreenSize()
-    local buttonSize = math.min(screenSize.X * 0.18, screenSize.Y * 0.18) -- Made even bigger: 18% of smaller screen dimension
+    local buttonSize = math.min(screenSize.X * 0.18, screenSize.Y * 0.18) -- Back to 18% for original button size
     local xPosition = screenSize.X * 0.8 - buttonSize -- 20% from right edge
     local yPosition = screenSize.Y * 0.2 -- 20% from top
     
@@ -227,8 +200,8 @@ local function OPPetButton(props)
         -- Pet viewport with breathing animation (made 2x bigger!)
         PetViewport = React.createElement("ViewportFrame", {
             Name = "PetViewport",
-            Size = UDim2.new(1.9, 0, 1.9, 0), -- 2x bigger: 190% of button size!
-            Position = UDim2.new(-0.45, 0, -0.45, 0), -- Centered with the larger size
+            Size = UDim2.new(1.4, 0, 1.4, 0), -- Reduced from 1.9 to 1.4 - smaller pet
+            Position = UDim2.new(-0.2, 0, -0.2, 0), -- Adjusted position for smaller size
             BackgroundTransparency = 1,
             ZIndex = 4,
             ref = viewportRef,
@@ -262,7 +235,7 @@ local function OPPetButton(props)
             TextSize = ScreenUtils.TEXT_SIZES.HEADER() + 8, -- MUCH bigger text
             TextStrokeTransparency = 0,
             TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline for visibility
-            Font = Enum.Font.GothamBold,
+            Font = Enum.Font.FredokaOne,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
             ZIndex = 7,
@@ -292,7 +265,7 @@ local function OPPetButton(props)
             TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 6, -- MUCH bigger text
             TextStrokeTransparency = 0,
             TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline for visibility
-            Font = Enum.Font.GothamBold,
+            Font = Enum.Font.FredokaOne,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
             ZIndex = 7,
@@ -338,7 +311,7 @@ local function OPPetButton(props)
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- MUCH bigger text
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline for visibility
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 ZIndex = 8,

@@ -172,7 +172,7 @@ function RebirthButtonService:CreateRebirthButtonGUI()
     progressLabel.Size = UDim2.new(1, 0, 1, 0)
     progressLabel.Position = UDim2.new(0, 0, 0, 0)
     progressLabel.BackgroundTransparency = 1 -- No background like processing counter
-    progressLabel.Font = Enum.Font.GothamBold
+    progressLabel.Font = Enum.Font.FredokaOne
     progressLabel.Text = "$0 / $500" -- Will be updated dynamically with correct cost
     progressLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     progressLabel.TextSize = 24 -- Smaller than billboard, similar to processing counter

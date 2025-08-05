@@ -131,7 +131,7 @@ function SendHeavenButtonService:CreateSendHeavenButtonGUI()
     processorLabel.Size = UDim2.new(0, 80, 1, 0) -- Width for "Processor!" text
     processorLabel.Position = UDim2.new(0, 40, 0, 0) -- Right next to icon
     processorLabel.BackgroundTransparency = 1
-    processorLabel.Font = Enum.Font.GothamBold
+    processorLabel.Font = Enum.Font.FredokaOne
     processorLabel.Text = "Processor!"
     processorLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color to match heaven theme
     processorLabel.TextSize = 20 -- Match other button text sizes

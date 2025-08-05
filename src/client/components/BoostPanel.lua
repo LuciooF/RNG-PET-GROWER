@@ -210,7 +210,7 @@ local function BoostPanel(props)
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2, -- Responsive text
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     ZIndex = 202,
@@ -252,7 +252,7 @@ local function BoostPanel(props)
                     Text = string.format("📊 Total Boost: %sx", NumberFormatter.formatBoost(totalMultiplier)),
                     TextColor3 = totalMultiplier > 1 and Color3.fromRGB(64, 224, 208) or Color3.fromRGB(100, 100, 100), -- Turquoise like Pet UI
                     TextSize = ScreenUtils.TEXT_SIZES.HEADER() + 4, -- Bigger text size
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 1, -- Remove outline
@@ -268,7 +268,7 @@ local function BoostPanel(props)
                     Text = string.format("🐾 Pet Boost: %sx", NumberFormatter.formatBoost(petBoostMultiplier)),
                     TextColor3 = petBoostMultiplier > 1 and Color3.fromRGB(50, 200, 100) or Color3.fromRGB(120, 120, 120), -- Green theme
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3, -- Bigger text size
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 1, -- Remove outline
@@ -284,7 +284,7 @@ local function BoostPanel(props)
                     Text = string.format("🌈 OP PET BOOST: %sx", NumberFormatter.formatBoost(opPetBoostMultiplier)),
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3, -- Same size as other boosts
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0, -- Black stroke for visibility
@@ -317,7 +317,7 @@ local function BoostPanel(props)
                         "💎 Gamepasses: 1x",
                     TextColor3 = gamepassMultiplier > 1 and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 120), -- Gold theme like Pet UI badges
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3, -- Bigger text size
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 1, -- Remove outline
@@ -333,7 +333,7 @@ local function BoostPanel(props)
                     Text = string.format("🔄 Rebirth Boost: %sx", NumberFormatter.formatBoost(rebirthMultiplier)),
                     TextColor3 = rebirthMultiplier > 1 and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(120, 120, 120), -- Pink theme for rebirths
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3, -- Same size as other boosts
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 1, -- Remove outline

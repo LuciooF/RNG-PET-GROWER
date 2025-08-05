@@ -353,7 +353,7 @@ local function PetInventoryUI(props)
                     Text = "x" .. petGroup.Quantity,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2, -- Even bigger text
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0, -- Add text outline
@@ -383,7 +383,7 @@ local function PetInventoryUI(props)
                     Text = "EQUIPPED",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 0.9, -- Bigger text
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0, -- Add text outline
@@ -402,7 +402,7 @@ local function PetInventoryUI(props)
                 Text = "x" .. NumberFormatter.formatBoost(finalBoost),
                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient overlay
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 TextScaled = true, -- Match pet name scaling
@@ -430,7 +430,7 @@ local function PetInventoryUI(props)
                 Text = petGroup.Name,
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or rarityColor, -- White for OP pets to show gradient
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Increased from MEDIUM
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 TextScaled = true,
@@ -558,7 +558,7 @@ local function PetInventoryUI(props)
                 Text = hoveredPet.Name,
                 TextColor3 = Color3.fromRGB(50, 50, 50),
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger title
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
             }),
@@ -571,7 +571,7 @@ local function PetInventoryUI(props)
                 Text = "Rarity: " .. hoveredPet.Rarity,
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or rarityColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
             }, {
@@ -598,7 +598,7 @@ local function PetInventoryUI(props)
                 Text = "Variation: " .. hoveredPet.Variation,
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or variationColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
             }, {
@@ -655,7 +655,7 @@ local function PetInventoryUI(props)
                     Text = "Value: " .. NumberFormatter.format(finalValue),
                     TextColor3 = Color3.fromRGB(50, 50, 50),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                     ZIndex = 1002,
                 })
@@ -684,7 +684,7 @@ local function PetInventoryUI(props)
                     Text = "x" .. NumberFormatter.formatBoost(finalBoost),
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextScaled = true, -- Match pet name scaling
@@ -796,7 +796,7 @@ local function PetInventoryUI(props)
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Bigger
                     TextStrokeTransparency = 0, -- Black outline
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     ZIndex = 7,
@@ -899,7 +899,7 @@ local function PetInventoryUI(props)
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2,
                         TextStrokeTransparency = equippedTab == "Regular" and 0 or 0.5,
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         ZIndex = 8,
                         [React.Event.Activated] = function()
                             setEquippedTab("Regular")
@@ -922,7 +922,7 @@ local function PetInventoryUI(props)
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2,
                         TextStrokeTransparency = equippedTab == "OP" and 0 or 0.5,
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         ZIndex = 8,
                         [React.Event.Activated] = function()
                             setEquippedTab("OP")
@@ -956,7 +956,7 @@ local function PetInventoryUI(props)
                     Text = "Best pets automatically get equipped!\nThe boost affects the money production!",
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger text
-                    Font = Enum.Font.GothamBold, -- Bold for emphasis
+                    Font = Enum.Font.FredokaOne, -- Bold for emphasis
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -1104,7 +1104,7 @@ local function PetInventoryUI(props)
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- Much bigger section title
                     TextStrokeTransparency = 0, -- Black outline
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     ZIndex = 7,
@@ -1168,7 +1168,7 @@ local function PetInventoryUI(props)
                 Text = "OP (Robux) Pets do not occupy equipped pets slots!\nThey provide boosts without taking regular pet slots!",
                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.3, -- Even bigger text
-                Font = Enum.Font.GothamBold, -- Bold for emphasis
+                Font = Enum.Font.FredokaOne, -- Bold for emphasis
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),

@@ -153,7 +153,7 @@ function AutoHeavenService:CreateCountdownGUI()
     countdownLabel.Name = "CountdownText"
     countdownLabel.Size = UDim2.new(1, 0, 1, 0)
     countdownLabel.BackgroundTransparency = 1
-    countdownLabel.Font = Enum.Font.GothamBold
+    countdownLabel.Font = Enum.Font.FredokaOne
     countdownLabel.Text = "Processing in 30s"
     countdownLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
     countdownLabel.TextSize = 18

@@ -212,7 +212,7 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
         requirementLabel.Size = UDim2.new(0, 100, 1, 0)
         requirementLabel.Position = UDim2.new(0, 40, 0, 0)
         requirementLabel.BackgroundTransparency = 1
-        requirementLabel.Font = Enum.Font.GothamBold
+        requirementLabel.Font = Enum.Font.FredokaOne
         requirementLabel.Text = "Requires 3\nRebirths"
         requirementLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red for requirement
         requirementLabel.TextSize = 16
@@ -249,7 +249,7 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
         mixerLabel.Size = UDim2.new(0, 80, 1, 0)
         mixerLabel.Position = UDim2.new(0, 40, 0, 0)
         mixerLabel.BackgroundTransparency = 1
-        mixerLabel.Font = Enum.Font.GothamBold
+        mixerLabel.Font = Enum.Font.FredokaOne
         mixerLabel.Text = "Pet Mixer"
         mixerLabel.TextColor3 = Color3.fromRGB(255, 140, 0) -- Orange color for mixer
         mixerLabel.TextSize = 20

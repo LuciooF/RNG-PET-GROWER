@@ -64,7 +64,7 @@ function PetBoostDisplayService:CreateBoostGUI()
     titleLabel.Text = "💪 Total Boost: +0%"
     titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleLabel.TextScaled = true
-    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = mainFrame
     
@@ -77,7 +77,7 @@ function PetBoostDisplayService:CreateBoostGUI()
     petBoostLabel.Text = "Pets: +0%"
     petBoostLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green color
     petBoostLabel.TextScaled = true
-    petBoostLabel.Font = Enum.Font.GothamBold
+    petBoostLabel.Font = Enum.Font.FredokaOne
     petBoostLabel.TextXAlignment = Enum.TextXAlignment.Left
     petBoostLabel.Parent = mainFrame
     
@@ -90,7 +90,7 @@ function PetBoostDisplayService:CreateBoostGUI()
     gamepassBoostLabel.Text = "Gamepasses: +0%"
     gamepassBoostLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
     gamepassBoostLabel.TextScaled = true
-    gamepassBoostLabel.Font = Enum.Font.GothamBold
+    gamepassBoostLabel.Font = Enum.Font.FredokaOne
     gamepassBoostLabel.TextXAlignment = Enum.TextXAlignment.Left
     gamepassBoostLabel.Parent = mainFrame
     

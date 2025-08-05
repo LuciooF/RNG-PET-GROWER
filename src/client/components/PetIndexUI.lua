@@ -277,7 +277,7 @@ local function PetIndexUI(props)
                 Text = isCollected and petName or "???",
                 TextColor3 = isCollected and PetConstants.getRarityColor(petRarity) or Color3.fromRGB(255, 100, 100),
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as Pet Inventory
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 TextScaled = true,
@@ -294,7 +294,7 @@ local function PetIndexUI(props)
                 Text = "1 in " .. (PetConstants.getRarityChance and NumberFormatter.format(PetConstants.getRarityChance(petRarity)) or "???"),
                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Same size as boost text in Pet Inventory
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 TextStrokeTransparency = 0,
@@ -397,7 +397,7 @@ local function PetIndexUI(props)
                     end)() or "???",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2, -- Same size as Pet Inventory quantity text
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0, -- Add text outline
@@ -482,7 +482,7 @@ local function PetIndexUI(props)
                         Text = variation,
                         TextColor3 = hasVariation and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(120, 120, 120),
                         TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 1,
-                        Font = hasVariation and Enum.Font.GothamBold or Enum.Font.Gotham,
+                        Font = hasVariation and Enum.Font.FredokaOne or Enum.Font.Gotham,
                         TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                         TextYAlignment = Enum.TextYAlignment.Center,
                         TextTruncate = Enum.TextTruncate.AtEnd,
@@ -497,7 +497,7 @@ local function PetIndexUI(props)
                         Text = "1 in " .. (PetConstants.getCombinedRarityChance and NumberFormatter.format(PetConstants.getCombinedRarityChance(petConfig.Rarity, variation)) or "???"),
                         TextColor3 = Color3.fromRGB(60, 60, 60),
                         TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 5, -- Even bigger text
-                        Font = Enum.Font.GothamBold, -- Bold for emphasis
+                        Font = Enum.Font.FredokaOne, -- Bold for emphasis
                         TextXAlignment = Enum.TextXAlignment.Right,
                         TextYAlignment = Enum.TextYAlignment.Center,
                         ZIndex = 1002,
@@ -548,7 +548,7 @@ local function PetIndexUI(props)
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3,
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
             }),
@@ -562,7 +562,7 @@ local function PetIndexUI(props)
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 1,
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
             }),
@@ -576,7 +576,7 @@ local function PetIndexUI(props)
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
             }),
@@ -655,7 +655,7 @@ local function PetIndexUI(props)
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2, -- Bigger text for better readability
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = isSelected and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(255, 255, 255),
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 ZIndex = 104,
@@ -803,7 +803,7 @@ local function PetIndexUI(props)
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     ZIndex = 103,
@@ -892,7 +892,7 @@ local function PetIndexUI(props)
                 Text = "Here you can see how rare your pets really are!",
                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 TextStrokeTransparency = 0,

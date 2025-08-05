@@ -136,7 +136,7 @@ function TeleportService:CreateTeleportGUI()
         requirementLabel.Size = UDim2.new(1, 0, 0.6, 0) -- Lower 60% for text
         requirementLabel.Position = UDim2.new(0, 0, 0.4, 0) -- Below the bigger icon
         requirementLabel.BackgroundTransparency = 1 -- No background
-        requirementLabel.Font = Enum.Font.GothamBold
+        requirementLabel.Font = Enum.Font.FredokaOne
         requirementLabel.Text = TELEPORT_REBIRTH_REQUIREMENT .. " rebirths\nneeded"
         requirementLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Bright yellow for high contrast on purple
         requirementLabel.TextScaled = true -- Scale text to fit the GUI size

@@ -5,6 +5,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local DataService = require(script.Parent.DataService)
 local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
+local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 local GamepassService = {}
 GamepassService.__index = GamepassService
@@ -134,9 +135,9 @@ end
 
 -- Debug function to grant gamepass without purchase (for testing)
 function GamepassService:DebugGrantGamepass(player, gamepassName)
-    -- Security check: Only allow authorized user
-    if player.UserId ~= 7273741008 then
-        warn("GamepassService: Unauthorized debug gamepass request from", player.Name, "UserID:", player.UserId)
+    -- Security check: Only allow authorized users
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "debug gamepass grant")
         return false
     end
     

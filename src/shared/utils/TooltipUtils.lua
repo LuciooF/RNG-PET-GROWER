@@ -155,7 +155,7 @@ function TooltipUtils.createHoverButton(buttonProps, tooltipText)
             TextStrokeTransparency = 0, -- Black outline
             TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
             TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-            Font = Enum.Font.GothamBold,
+            Font = Enum.Font.FredokaOne,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
             ZIndex = 1000, -- Very high Z-index to appear above everything

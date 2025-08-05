@@ -148,7 +148,7 @@ local function ErrorMessage()
             TextStrokeTransparency = 0, -- No transparency on outline
             TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
             TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2, -- 2x bigger text size
-            Font = Enum.Font.GothamBold,
+            Font = Enum.Font.FredokaOne,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
             TextWrapped = true, -- Enable text wrapping for multiple lines

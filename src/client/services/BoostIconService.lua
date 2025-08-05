@@ -130,7 +130,7 @@ function BoostIconService:CreateBoostIcon()
     boostLabel.Position = UDim2.new(0, -5, 1, -35) -- Fixed positioning: slightly left of button, 35px from bottom
     boostLabel.BackgroundTransparency = 0.5 -- Semi-transparent background for debugging
     boostLabel.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green background for debugging
-    boostLabel.Font = Enum.Font.GothamBold
+    boostLabel.Font = Enum.Font.FredokaOne
     boostLabel.Text = "1.00x"
     boostLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow for boost
     boostLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() -- Responsive text size

@@ -9,9 +9,7 @@ local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local TooltipUtils = require(ReplicatedStorage.utils.TooltipUtils)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local SoundService = game:GetService("SoundService")
-
--- Restrict debug access to specific user ID
-local AUTHORIZED_USER_ID = 7273741008
+local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -175,7 +173,7 @@ local function SideBar(props)
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 TextSize = 10,
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 ZIndex = 53
@@ -213,9 +211,9 @@ local function SideBar(props)
         end
     }, "Rebirths")
     
-    -- 5. Debug (only for authorized user)
+    -- 5. Debug (only for authorized users)
     local localPlayer = Players.LocalPlayer
-    if localPlayer and localPlayer.UserId == AUTHORIZED_USER_ID then
+    if AuthorizationUtils.isAuthorized(localPlayer) then
         buttons[5] = TooltipUtils.createHoverButton({
             Name = "E_DebugButton",
             Size = buttonSize,
@@ -279,7 +277,7 @@ local function SideBar(props)
                 Text = string.format("%sx", NumberFormatter.formatBoost(totalBoostMultiplier)), -- Use formatted numbers
                 TextColor3 = Color3.fromRGB(0, 0, 0),
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Made bigger text
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 TextScaled = true,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,

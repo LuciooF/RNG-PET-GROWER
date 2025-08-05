@@ -87,7 +87,7 @@ function AreaTemplateSetupService:CreateDoorSurfaceGui(door, level, doorNumber)
     textLabel.Text = "Level " .. level .. "\n\nDoor " .. doorNumber
     textLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange - visible on both red and green
     textLabel.TextSize = 72 -- Larger text size
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextStrokeTransparency = 0
     textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     textLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -192,7 +192,7 @@ function AreaTemplateSetupService:CreateTubeNumberSurfaceGui(tubePlot, tubePlotN
     end
     
     textLabel.Text = ordinalText
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextSize = 36
     textLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange text
     textLabel.TextStrokeTransparency = 0
@@ -270,7 +270,7 @@ function AreaTemplateSetupService:CreateTeleportInstructionGUIs(areaTemplate)
         requirementLabel.Size = UDim2.new(0, 300, 1, 0) -- Wider for bigger text
         requirementLabel.Position = UDim2.new(0.5, -50, 0, 0) -- Right next to icon
         requirementLabel.BackgroundTransparency = 1 -- No background
-        requirementLabel.Font = Enum.Font.GothamBold
+        requirementLabel.Font = Enum.Font.FredokaOne
         requirementLabel.Text = "20 rebirths\nneeded" -- Split into two lines for bigger text
         requirementLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Bright yellow for high contrast on purple
         requirementLabel.TextSize = 360 -- 10x bigger text size (was 36, now 360)
@@ -327,7 +327,7 @@ function AreaTemplateSetupService:CreatePetMixerRequirementGUIs(areaTemplate)
         requirementLabel.Name = "RequirementText"
         requirementLabel.Size = UDim2.new(1, 0, 1, 0)
         requirementLabel.BackgroundTransparency = 1
-        requirementLabel.Font = Enum.Font.GothamBold
+        requirementLabel.Font = Enum.Font.FredokaOne
         requirementLabel.Text = "Need 3 rebirths\\nto use mixer!"
         requirementLabel.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
         requirementLabel.TextSize = 48
@@ -363,7 +363,7 @@ function AreaTemplateSetupService:CreateRebirthInstructionGUI(areaTemplate)
     local instructionLabel = Instance.new("TextLabel")
     instructionLabel.Size = UDim2.new(1, 0, 1, 0)
     instructionLabel.BackgroundTransparency = 1
-    instructionLabel.Font = Enum.Font.GothamBold
+    instructionLabel.Font = Enum.Font.FredokaOne
     instructionLabel.Text = "Rebirth here for\nmore power!"
     instructionLabel.TextColor3 = Color3.fromRGB(255, 200, 100) -- Orange/gold color
     instructionLabel.TextSize = 18
@@ -423,7 +423,7 @@ function AreaTemplateSetupService:CreateGamepassButtonGUI(areaTemplate, buttonNa
     titleLabel.Size = UDim2.new(1, -40, 0, 20)
     titleLabel.Position = UDim2.new(0, 40, 0, 5)
     titleLabel.BackgroundTransparency = 1
-    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.Text = buttonText
     titleLabel.TextColor3 = buttonColor
     titleLabel.TextSize = 16
@@ -508,7 +508,7 @@ function AreaTemplateSetupService:CreateOwnedSurfaceGUI(button)
     ownedLabel.Name = "OwnedText"
     ownedLabel.Size = UDim2.new(1, 0, 1, 0)
     ownedLabel.BackgroundTransparency = 1
-    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Font = Enum.Font.FredokaOne
     ownedLabel.Text = "OWNED"
     ownedLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
     ownedLabel.TextSize = 48
@@ -575,7 +575,7 @@ function AreaTemplateSetupService:CreateVIPStandGUI(areaTemplate)
     titleLabel.Size = UDim2.new(1, 0, 0.15, 0)
     titleLabel.Position = UDim2.new(0, 0, 0.3, 0) -- Moved up slightly
     titleLabel.BackgroundTransparency = 1
-    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.Text = "VIP"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
     titleLabel.TextSize = 32 -- Larger text for better visibility
@@ -607,7 +607,7 @@ function AreaTemplateSetupService:CreateVIPStandGUI(areaTemplate)
     priceLabel.Size = UDim2.new(1, 0, 0.15, 0)
     priceLabel.Position = UDim2.new(0, 0, 0.75, 0)
     priceLabel.BackgroundTransparency = 1
-    priceLabel.Font = Enum.Font.GothamBold
+    priceLabel.Font = Enum.Font.FredokaOne
     priceLabel.Text = "Loading..."
     priceLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow
     priceLabel.TextSize = 24 -- Larger price text
@@ -623,7 +623,7 @@ function AreaTemplateSetupService:CreateVIPStandGUI(areaTemplate)
     ownedLabel.Size = UDim2.new(1, 0, 0.15, 0)
     ownedLabel.Position = UDim2.new(0, 0, 0.75, 0)
     ownedLabel.BackgroundTransparency = 1
-    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Font = Enum.Font.FredokaOne
     ownedLabel.Text = "OWNED"
     ownedLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green
     ownedLabel.TextSize = 28 -- Larger OWNED text

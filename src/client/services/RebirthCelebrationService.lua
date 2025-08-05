@@ -102,7 +102,7 @@ function RebirthCelebrationService:PlayRebirthCelebration()
     congratsText.TextSize = 28
     congratsText.TextStrokeTransparency = 0
     congratsText.TextStrokeColor3 = Color3.fromRGB(138, 43, 226) -- Purple outline
-    congratsText.Font = Enum.Font.GothamBold
+    congratsText.Font = Enum.Font.FredokaOne
     congratsText.TextXAlignment = Enum.TextXAlignment.Center
     congratsText.TextYAlignment = Enum.TextYAlignment.Center
     congratsText.TextTransparency = 1 -- Start invisible

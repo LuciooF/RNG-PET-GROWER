@@ -157,7 +157,7 @@ function TwoXHeavenSpeedButtonService:UpdateBillboardInfo(billboard)
     nameLabel.Size = UDim2.new(1, 0, 0, 20)
     nameLabel.Position = UDim2.new(0, 0, 0, 50)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Font = Enum.Font.FredokaOne
     nameLabel.Text = gamepassName
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.TextSize = 14
@@ -192,7 +192,7 @@ function TwoXHeavenSpeedButtonService:UpdateBillboardInfo(billboard)
     priceLabel.Size = UDim2.new(0, 50, 1, 0)
     priceLabel.Position = UDim2.new(0.5, -5, 0, 0)
     priceLabel.BackgroundTransparency = 1
-    priceLabel.Font = Enum.Font.GothamBold
+    priceLabel.Font = Enum.Font.FredokaOne
     priceLabel.Text = tostring(price)
     priceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     priceLabel.TextSize = 14
@@ -255,7 +255,7 @@ function TwoXHeavenSpeedButtonService:AddOwnedSurfaceGUI()
     ownedLabel.Name = "OwnedText"
     ownedLabel.Size = UDim2.new(1, 0, 1, 0)
     ownedLabel.BackgroundTransparency = 1
-    ownedLabel.Font = Enum.Font.GothamBold
+    ownedLabel.Font = Enum.Font.FredokaOne
     ownedLabel.Text = "OWNED"
     ownedLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow for visibility
     ownedLabel.TextSize = 32 -- Standardized text size

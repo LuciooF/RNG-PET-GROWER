@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 
 local DataService = require(script.Parent.DataService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
+local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 local StateService = {}
 StateService.__index = StateService
@@ -89,9 +90,9 @@ function StateService:SyncPlayerDataToClient(player)
 end
 
 function StateService:HandleResourceUpdateRequest(player, resourceType, amount)
-    -- Security check: Only allow authorized user for debug resource updates
-    if player.UserId ~= 7273741008 then
-        warn("StateService: Unauthorized resource update request from", player.Name, "UserID:", player.UserId)
+    -- Security check: Only allow authorized users for debug resource updates
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "debug resource update")
         return
     end
     

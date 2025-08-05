@@ -516,7 +516,7 @@ function AreaService:CreateAreaNameplate(assignedPlayer, areaNumber)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextSize = 24
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     textLabel.TextStrokeTransparency = 0

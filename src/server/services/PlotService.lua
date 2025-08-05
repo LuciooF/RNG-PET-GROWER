@@ -701,7 +701,7 @@ function PlotService:AddPurchasedSurfaceGui(area, plot)
     textLabel.Position = UDim2.new(0, 0, 0.3, 0) -- Position in the middle (30% from top)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = "Owned"
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextSize = 32 -- Smaller text to fit with level/door text
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     textLabel.TextStrokeTransparency = 0
@@ -761,7 +761,7 @@ function PlotService:AddLevelDoorSurfaceGui(plot, plotNumber)
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = "Level " .. level .. "\n\nDoor " .. doorNumber
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextSize = 36
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow text
     textLabel.TextStrokeTransparency = 0
@@ -836,7 +836,7 @@ function PlotService:AddTubeNumberSurfaceGui(tubePlot, tubePlotNumber)
     end
     
     textLabel.Text = ordinalText
-    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Font = Enum.Font.FredokaOne
     textLabel.TextSize = 36
     textLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange text to match tube plots
     textLabel.TextStrokeTransparency = 0
@@ -1998,7 +1998,7 @@ function PlotService:UpdateCounterGUI(areaName, count)
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.Position = UDim2.new(0, 0, 0, 0)
         textLabel.BackgroundTransparency = 1
-        textLabel.Font = Enum.Font.GothamBold
+        textLabel.Font = Enum.Font.FredokaOne
         textLabel.TextSize = 36
         textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         textLabel.TextStrokeTransparency = 0
@@ -2055,7 +2055,7 @@ function PlotService:UpdateProcessingCounter(areaName, processingCount)
         textLabel.Name = "ProcessingCounterText"
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.BackgroundTransparency = 1
-        textLabel.Font = Enum.Font.GothamBold
+        textLabel.Font = Enum.Font.FredokaOne
         textLabel.TextSize = 32
         textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         textLabel.TextStrokeTransparency = 0

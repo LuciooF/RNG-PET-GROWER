@@ -164,7 +164,7 @@ local function TutorialPanel(props)
                     Text = "🎯 Tutorial - Step " .. currentStep .. "/" .. #tutorialData.steps,
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- Clean white text
                     TextSize = ScreenUtils.TEXT_SIZES.HEADER(),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0,
@@ -225,7 +225,7 @@ local function TutorialPanel(props)
                     Text = progressText,
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
                     TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 0,
@@ -259,7 +259,7 @@ local function TutorialPanel(props)
                     Text = step.title or "Step " .. currentStep,
                     TextColor3 = Color3.fromRGB(20, 20, 20),
                     TextSize = ScreenUtils.TEXT_SIZES.HEADER() + 2,
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Top,
                     TextWrapped = true,
@@ -306,7 +306,7 @@ local function TutorialPanel(props)
                     Text = isLastStep and "Finish" or "Next",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     ZIndex = 202,
                     [React.Event.Activated] = onNext,
                 }, {
@@ -349,7 +349,7 @@ local function TutorialPanel(props)
                     Text = "⚠️ WARNING",
                     TextColor3 = Color3.fromRGB(200, 50, 50),
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4,
-                    Font = Enum.Font.GothamBold,
+                    Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     ZIndex = 302,
                 }),
@@ -392,7 +392,7 @@ local function TutorialPanel(props)
                         Text = "Stay in Tutorial",
                         TextColor3 = Color3.fromRGB(255, 255, 255),
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         ZIndex = 302,
                         [React.Event.Activated] = handleCancel,
                     }, {
@@ -408,7 +408,7 @@ local function TutorialPanel(props)
                         Text = confirmAction == "close" and "Close" or "Skip",
                         TextColor3 = Color3.fromRGB(255, 255, 255),
                         TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                        Font = Enum.Font.GothamBold,
+                        Font = Enum.Font.FredokaOne,
                         ZIndex = 302,
                         [React.Event.Activated] = handleConfirm,
                     }, {

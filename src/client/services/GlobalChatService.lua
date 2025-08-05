@@ -53,7 +53,7 @@ function GlobalChatService:DisplayGlobalMessage(message)
             StarterGui:SetCore("ChatMakeSystemMessage", {
                 Text = plainMessage,
                 Color = Color3.fromRGB(255, 215, 0), -- Gold color for announcements
-                Font = Enum.Font.GothamBold,
+                Font = Enum.Font.FredokaOne,
                 FontSize = Enum.FontSize.Size18
             })
         end
