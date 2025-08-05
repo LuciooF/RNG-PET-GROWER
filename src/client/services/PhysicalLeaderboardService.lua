@@ -424,8 +424,16 @@ function PhysicalLeaderboardService:PopulateLeaderboardEntries(guiManager, leade
         entryFrame.Name = "Entry_" .. displayIndex
         entryFrame.Size = UDim2.new(1, -16, 0, entryHeight)
         entryFrame.Position = UDim2.new(0, 8, 0, yPosition + 5)
-        entryFrame.BackgroundColor3 = entryData.playerId == player.UserId and Color3.fromRGB(100, 150, 255) or Color3.fromRGB(255, 255, 255)
-        entryFrame.BackgroundTransparency = entryData.playerId == player.UserId and 0.3 or 0.8
+        -- Position-based background colors matching UI leaderboard
+        entryFrame.BackgroundColor3 = entryData.rank == 1 and Color3.fromRGB(255, 215, 0) or -- Gold
+                                     entryData.rank == 2 and Color3.fromRGB(192, 192, 192) or -- Silver  
+                                     entryData.rank == 3 and Color3.fromRGB(205, 127, 50) or -- Bronze
+                                     entryData.playerId == player.UserId and Color3.fromRGB(100, 150, 255) or -- Current player
+                                     Color3.fromRGB(255, 255, 255) -- Default white
+        -- Adjust transparency - make top 3 more visible, current player highlighted
+        entryFrame.BackgroundTransparency = entryData.rank <= 3 and 0.2 or -- Top 3 positions more opaque
+                                           entryData.playerId == player.UserId and 0.3 or -- Current player
+                                           0.8 -- Default
         entryFrame.BorderSizePixel = 0
         entryFrame.Parent = guiManager.scrollFrame
 

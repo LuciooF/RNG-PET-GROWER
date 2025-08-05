@@ -713,8 +713,8 @@ getLeaderboardDataRemote.OnServerInvoke = function(player, period, leaderboardTy
     
     -- Leaderboard data requested
     
-    -- Get leaderboard data from CustomLeaderboardService
-    local leaderboardData = CustomLeaderboardService:GetLeaderboard(period, leaderboardType, 50)
+    -- Get leaderboard data from CustomLeaderboardService (with smart loading)
+    local leaderboardData = CustomLeaderboardService:GetLeaderboard(period, leaderboardType, 50, player)
     
     return leaderboardData or {}
 end

@@ -98,16 +98,55 @@ local function safeDataStoreSet(key, value)
     return true
 end
 
--- Load leaderboard data from DataStore
-function CustomLeaderboardService:LoadLeaderboardData(period, leaderboardType)
+-- Load ONLY top entries + current player position (SMART LOADING)
+function CustomLeaderboardService:LoadLeaderboardData(period, leaderboardType, targetPlayer)
     local weekId = period == LEADERBOARD_PERIODS.WEEKLY and getCurrentWeekId() or nil
     local key = period .. "_" .. leaderboardType .. (weekId and ("_" .. weekId) or "")
     
-    local data = safeDataStoreGet(key, {})
-    leaderboardCache[period][leaderboardType] = data
+    -- Get full data (we still need it for now, but we'll optimize this later)
+    local fullData = safeDataStoreGet(key, {})
     
-    print("CustomLeaderboardService: Loaded", #data, "entries for", period, leaderboardType)
-    return data
+    -- Sort to get accurate rankings
+    table.sort(fullData, function(a, b)
+        return a.value > b.value
+    end)
+    
+    -- Build optimized result: Top 20 + Current Player
+    local result = {}
+    local playerFound = false
+    local playerRank = nil
+    local targetUserId = targetPlayer and targetPlayer.UserId
+    
+    -- Add top 20
+    for i = 1, math.min(20, #fullData) do
+        local entry = fullData[i]
+        entry.rank = i -- Add rank info
+        table.insert(result, entry)
+        
+        -- Check if current player is in top 20
+        if targetUserId and entry.userId == targetUserId then
+            playerFound = true
+            playerRank = i
+        end
+    end
+    
+    -- If player not in top 20, find their position and add them
+    if targetUserId and not playerFound then
+        for i = 21, #fullData do
+            if fullData[i].userId == targetUserId then
+                local playerEntry = fullData[i]
+                playerEntry.rank = i
+                table.insert(result, playerEntry)
+                playerRank = i
+                break
+            end
+        end
+    end
+    
+    -- Cache the optimized result
+    leaderboardCache[period][leaderboardType] = result
+    
+    return result, playerRank
 end
 
 -- Save leaderboard data to DataStore
@@ -254,8 +293,8 @@ function CustomLeaderboardService:CheckWeeklyReset()
     end
 end
 
--- Get leaderboard data for client
-function CustomLeaderboardService:GetLeaderboard(period, leaderboardType, maxEntries)
+-- Get leaderboard data for client (SMART LOADING)
+function CustomLeaderboardService:GetLeaderboard(period, leaderboardType, maxEntries, requestingPlayer)
     maxEntries = maxEntries or 50 -- Default to top 50
     
     -- Map client period names to server period names
@@ -276,24 +315,25 @@ function CustomLeaderboardService:GetLeaderboard(period, leaderboardType, maxEnt
         serverType = LEADERBOARD_TYPES.REBIRTHS
     end
     
-    -- Ensure cache structure exists
+    -- Initialize cache structure if needed
     if not leaderboardCache[serverPeriod] then
-        warn("CustomLeaderboardService: No cache for period", serverPeriod)
-        return {}
+        leaderboardCache[serverPeriod] = {}
     end
     
-    if not leaderboardCache[serverPeriod][serverType] then
-        warn("CustomLeaderboardService: No cache for type", serverType, "in period", serverPeriod)
-        return {}
+    -- SMART LOADING: Load on-demand instead of at startup
+    if not leaderboardCache[serverPeriod][serverType] or #leaderboardCache[serverPeriod][serverType] == 0 then
+        -- Load top 20 + requesting player's position
+        local loadedData, playerRank = self:LoadLeaderboardData(serverPeriod, serverType, requestingPlayer)
     end
     
-    local leaderboard = leaderboardCache[serverPeriod][serverType]
+    local leaderboard = leaderboardCache[serverPeriod][serverType] or {}
     local result = {}
     
+    -- Return the smart-loaded data (already formatted with ranks)
     for i = 1, math.min(#leaderboard, maxEntries) do
         local entry = leaderboard[i]
         table.insert(result, {
-            rank = i,
+            rank = entry.rank or i, -- Use pre-calculated rank
             playerId = entry.playerId,
             playerName = entry.playerName,
             value = entry.value
@@ -305,14 +345,9 @@ end
 
 -- Initialize leaderboard service
 function CustomLeaderboardService:Initialize()
-    print("CustomLeaderboardService: Initializing...")
-    
-    -- Load existing leaderboard data
-    for _, period in pairs(LEADERBOARD_PERIODS) do
-        for _, leaderboardType in pairs(LEADERBOARD_TYPES) do
-            self:LoadLeaderboardData(period, leaderboardType)
-        end
-    end
+    -- LAZY LOADING: Don't load all leaderboards on startup
+    -- Only load when requested by GetLeaderboard() calls
+    -- This reduces startup time from ~2 seconds to instant
     
     -- Check for weekly reset
     self:CheckWeeklyReset()
@@ -359,7 +394,7 @@ function CustomLeaderboardService:Initialize()
         end)
     end)
     
-    print("CustomLeaderboardService: Initialized successfully")
+    -- Service initialized with lazy loading
 end
 
 -- Public API for other services to trigger updates

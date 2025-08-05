@@ -34,6 +34,12 @@ function LeaderboardService:CreateLeaderstats(player)
     rebirths.Value = 0
     rebirths.Parent = leaderstats
     
+    -- Create Diamonds stat (secondary sort)
+    local diamonds = Instance.new("StringValue")
+    diamonds.Name = "Diamonds"
+    diamonds.Value = "0"
+    diamonds.Parent = leaderstats
+    
     -- Create Money stat (display only, formatted)
     local money = Instance.new("StringValue")
     money.Name = "Money"
@@ -41,7 +47,7 @@ function LeaderboardService:CreateLeaderstats(player)
     money.Parent = leaderstats
     
     -- Leaderstats created
-    return leaderstats, rebirths, money
+    return leaderstats, rebirths, diamonds, money
 end
 
 -- Update leaderstats with current player data
@@ -57,10 +63,16 @@ function LeaderboardService:UpdateLeaderstats(player, playerData)
     end
     
     local rebirthsStat = leaderstats:FindFirstChild("Rebirths")
+    local diamondsStat = leaderstats:FindFirstChild("Diamonds")
     local moneyStat = leaderstats:FindFirstChild("Money")
     
     if rebirthsStat and playerData.Resources and playerData.Resources.Rebirths then
         rebirthsStat.Value = playerData.Resources.Rebirths
+    end
+    
+    if diamondsStat and playerData.Resources and playerData.Resources.Diamonds then
+        local formattedDiamonds = formatNumber(playerData.Resources.Diamonds)
+        diamondsStat.Value = formattedDiamonds
     end
     
     if moneyStat and playerData.Resources and playerData.Resources.Money then
@@ -74,7 +86,7 @@ function LeaderboardService:OnPlayerAdded(player)
     -- Player joined
     
     -- Create leaderstats immediately
-    local leaderstats, rebirthsStat, moneyStat = self:CreateLeaderstats(player)
+    local leaderstats, rebirthsStat, diamondsStat, moneyStat = self:CreateLeaderstats(player)
     
     -- Store references for easy access
     player:SetAttribute("LeaderboardInitialized", true)
