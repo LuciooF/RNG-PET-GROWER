@@ -117,6 +117,10 @@ task.spawn(function()
     -- Initialize favorite prompt service (shows favorite prompt after 1 minute)
     local FavoritePromptService = require(script.Parent.services.FavoritePromptService)
     FavoritePromptService:Initialize()
+    
+    -- Initialize player rank GUI service (shows rank above players' heads)
+    local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
+    PlayerRankGUIService:Initialize()
 end)
 
 -- Create a dedicated ScreenGui for React (fixed mobile controls issue)

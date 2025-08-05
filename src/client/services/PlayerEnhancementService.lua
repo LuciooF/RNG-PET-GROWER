@@ -197,7 +197,7 @@ local function setupCharacter(newCharacter)
     lastPosition = rootPart.Position
     lastTrailTime = tick()
     
-    print("PlayerEnhancementService: Character setup complete for", player.Name)
+    -- Character enhancement setup complete
 end
 
 function PlayerEnhancementService:Initialize()

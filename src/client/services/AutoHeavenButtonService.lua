@@ -98,14 +98,14 @@ function AutoHeavenButtonService:FindAutoHeavenButton()
                     autoHeavenButtonPart = retryButtonPart
                     self:UpdateGamepassGUI()
                     self:SetupProximityDetection()
-                    print("AutoHeavenButtonService: AutoSendHeaven button found on retry!")
+                    -- Button found on retry
                 end
             end
         end)
         return
     end
     
-    print("AutoHeavenButtonService: Successfully found AutoSendHeaven button!")
+    -- AutoSendHeaven button found
     
     -- Update existing template GUI with ownership status
     self:UpdateGamepassGUI()

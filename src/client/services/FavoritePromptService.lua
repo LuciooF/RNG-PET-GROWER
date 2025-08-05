@@ -18,7 +18,7 @@ function FavoritePromptService:Initialize()
         end
     end)
     
-    print("FavoritePromptService: Initialized")
+    -- Service initialized
 end
 
 function FavoritePromptService:Cleanup()

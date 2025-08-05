@@ -21,7 +21,7 @@ end
 
 -- Create leaderstats for a player
 function LeaderboardService:CreateLeaderstats(player)
-    print("LeaderboardService: Creating leaderstats for", player.Name)
+    -- Creating leaderstats
     
     -- Create leaderstats folder
     local leaderstats = Instance.new("Folder")
@@ -40,7 +40,7 @@ function LeaderboardService:CreateLeaderstats(player)
     money.Value = "0"
     money.Parent = leaderstats
     
-    print("LeaderboardService: Leaderstats created for", player.Name)
+    -- Leaderstats created
     return leaderstats, rebirths, money
 end
 
@@ -71,7 +71,7 @@ end
 
 -- Initialize leaderstats when player joins
 function LeaderboardService:OnPlayerAdded(player)
-    print("LeaderboardService: Player joined -", player.Name)
+    -- Player joined
     
     -- Create leaderstats immediately
     local leaderstats, rebirthsStat, moneyStat = self:CreateLeaderstats(player)
@@ -84,14 +84,12 @@ end
 
 -- Cleanup when player leaves
 function LeaderboardService:OnPlayerRemoving(player)
-    print("LeaderboardService: Player leaving -", player.Name)
+    -- Player leaving
     -- Leaderstats are automatically cleaned up by Roblox
 end
 
 -- Initialize the service
 function LeaderboardService:Initialize()
-    print("LeaderboardService: Initializing...")
-    
     -- Connect to player events
     Players.PlayerAdded:Connect(function(player)
         self:OnPlayerAdded(player)
@@ -107,8 +105,6 @@ function LeaderboardService:Initialize()
             self:OnPlayerAdded(player)
         end
     end
-    
-    print("LeaderboardService: Initialized successfully")
 end
 
 -- Update leaderstats for all players with their current data

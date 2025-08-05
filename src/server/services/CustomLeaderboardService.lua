@@ -258,8 +258,6 @@ end
 function CustomLeaderboardService:GetLeaderboard(period, leaderboardType, maxEntries)
     maxEntries = maxEntries or 50 -- Default to top 50
     
-    print("CustomLeaderboardService:GetLeaderboard called with:", period, leaderboardType)
-    
     -- Map client period names to server period names
     local serverPeriod = period
     if period == "All-Time" then
@@ -277,8 +275,6 @@ function CustomLeaderboardService:GetLeaderboard(period, leaderboardType, maxEnt
     elseif leaderboardType == "Rebirths" then
         serverType = LEADERBOARD_TYPES.REBIRTHS
     end
-    
-    print("CustomLeaderboardService: Mapped to server values:", serverPeriod, serverType)
     
     -- Ensure cache structure exists
     if not leaderboardCache[serverPeriod] then

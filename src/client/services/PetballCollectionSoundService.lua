@@ -20,12 +20,8 @@ local availableSounds = {}
 local lastSoundTime = 0
 
 function PetballCollectionSoundService:Initialize()
-    print("PetballCollectionSoundService: Initializing petball collection sounds...")
-    
     -- Create sound pool to handle multiple simultaneous collections
     self:CreateSoundPool()
-    
-    print("PetballCollectionSoundService: Service initialized")
 end
 
 function PetballCollectionSoundService:CreateSoundPool()
@@ -48,7 +44,7 @@ function PetballCollectionSoundService:CreateSoundPool()
         end)
     end
     
-    print("PetballCollectionSoundService: Created sound pool with", MAX_CONCURRENT_SOUNDS, "sounds")
+    -- Sound pool created
 end
 
 

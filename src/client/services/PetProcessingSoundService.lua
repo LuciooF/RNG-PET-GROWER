@@ -21,15 +21,11 @@ local availableSounds = {}
 local lastSoundTime = 0
 
 function PetProcessingSoundService:Initialize()
-    print("PetProcessingSoundService: Initializing pet processing sounds...")
-    
     -- Create sound pool to handle multiple simultaneous processing
     self:CreateSoundPool()
     
     -- Listen for pet processing events
     self:SetupProcessingListener()
-    
-    print("PetProcessingSoundService: Service initialized")
 end
 
 function PetProcessingSoundService:CreateSoundPool()
@@ -53,7 +49,7 @@ function PetProcessingSoundService:CreateSoundPool()
         end)
     end
     
-    print("PetProcessingSoundService: Created sound pool with", MAX_CONCURRENT_SOUNDS, "sounds at", SOUND_SPEED .. "x speed")
+    -- Sound pool created
 end
 
 function PetProcessingSoundService:SetupProcessingListener()
@@ -72,7 +68,7 @@ function PetProcessingSoundService:SetupProcessingListener()
         self:PlayProcessingSound()
     end)
     
-    print("PetProcessingSoundService: Processing listener set up")
+    -- Processing listener set up
 end
 
 function PetProcessingSoundService:PlayProcessingSound()

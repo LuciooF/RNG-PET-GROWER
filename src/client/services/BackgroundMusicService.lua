@@ -14,8 +14,6 @@ local MUSIC_VOLUME = 0.1
 local FADE_TIME = 2 -- Seconds for fade in/out
 
 function BackgroundMusicService:Initialize()
-    print("BackgroundMusicService: Initializing background music...")
-    
     -- Create the background music sound
     backgroundMusic = Instance.new("Sound")
     backgroundMusic.Name = "BackgroundMusic"
@@ -40,14 +38,10 @@ function BackgroundMusicService:Initialize()
             self:StartMusic()
         end
     end)
-    
-    print("BackgroundMusicService: Background music service initialized")
 end
 
 function BackgroundMusicService:StartMusic()
     if not backgroundMusic then return end
-    
-    print("BackgroundMusicService: Starting background music...")
     
     -- Start playing the music
     backgroundMusic:Play()
@@ -59,7 +53,7 @@ end
 function BackgroundMusicService:FadeIn()
     if not backgroundMusic then return end
     
-    print("BackgroundMusicService: Fading in music...")
+    -- Fading in music
     
     -- Create fade in tween
     local TweenService = game:GetService("TweenService")

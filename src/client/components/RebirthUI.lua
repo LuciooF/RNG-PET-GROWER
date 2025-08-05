@@ -7,6 +7,7 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local RebirthUtils = require(ReplicatedStorage.utils.RebirthUtils)
+local RankUtils = require(ReplicatedStorage.utils.RankUtils)
 
 -- Developer Product ID for Robux rebirth
 local ROBUX_REBIRTH_DEV_PRODUCT_ID = 3353655412
@@ -237,10 +238,28 @@ function RebirthUI.new(props)
                         ZIndex = 1007,
                     }),
                     
+                    -- Current Rank display (below title)
+                    CurrentRank = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, -20, 0, 25),
+                        Position = ScreenUtils.udim2(0, 10, 0, 35),
+                        BackgroundTransparency = 1,
+                        Text = (function()
+                            local currentRank = RankUtils.getCurrentRank(currentRebirths)
+                            return string.format("%s %s %s", currentRank.emoji, currentRank.name, currentRank.emoji)
+                        end)(),
+                        TextColor3 = Color3.fromRGB(255, 215, 0), -- Gold text for current rank
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 6, -- Bigger than other text
+                        TextStrokeTransparency = 0, -- Black outline
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.FredokaOne, -- Bold
+                        TextXAlignment = Enum.TextXAlignment.Center,
+                        ZIndex = 1007,
+                    }),
+                    
                     -- Rebirth icon and text
                     RebirthIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 35),
+                        Position = ScreenUtils.udim2(0, 10, 0, 65), -- Moved down further for rank
                         BackgroundTransparency = 1,
                         Image = IconAssets.getIcon("UI", "REBIRTH"),
                         ScaleType = Enum.ScaleType.Fit,
@@ -248,7 +267,7 @@ function RebirthUI.new(props)
                     }),
                     RebirthText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 35),
+                        Position = ScreenUtils.udim2(0, 35, 0, 65), -- Moved down further for rank
                         BackgroundTransparency = 1,
                         Text = string.format("Rebirths: %d", currentRebirths),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -263,7 +282,7 @@ function RebirthUI.new(props)
                     -- Level icon and text
                     LevelIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 58),
+                        Position = ScreenUtils.udim2(0, 10, 0, 88), -- Moved down further
                         BackgroundTransparency = 1,
                         Image = "rbxassetid://119453749882559", -- Grab Yellow Outline
                         ScaleType = Enum.ScaleType.Fit,
@@ -271,7 +290,7 @@ function RebirthUI.new(props)
                     }),
                     LevelText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 58),
+                        Position = ScreenUtils.udim2(0, 35, 0, 88), -- Moved down further
                         BackgroundTransparency = 1,
                         Text = string.format("Level: %d", currentRebirths + 1),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -286,7 +305,7 @@ function RebirthUI.new(props)
                     -- Money icon and text
                     MoneyIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 80),
+                        Position = ScreenUtils.udim2(0, 10, 0, 110), -- Moved down further
                         BackgroundTransparency = 1,
                         Image = IconAssets.getIcon("CURRENCY", "MONEY"),
                         ScaleType = Enum.ScaleType.Fit,
@@ -294,7 +313,7 @@ function RebirthUI.new(props)
                     }),
                     MoneyText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 80),
+                        Position = ScreenUtils.udim2(0, 35, 0, 110), -- Moved down further
                         BackgroundTransparency = 1,
                         Text = string.format("Money: %s", NumberFormatter.format(props.playerMoney or 0)),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -309,7 +328,7 @@ function RebirthUI.new(props)
                     -- Current Multiplier icon and text
                     CurrentMultiplierIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 102),
+                        Position = ScreenUtils.udim2(0, 10, 0, 132),
                         BackgroundTransparency = 1,
                         Image = "rbxassetid://118906329469728", -- Multiplier icon
                         ScaleType = Enum.ScaleType.Fit,
@@ -318,7 +337,7 @@ function RebirthUI.new(props)
                     }),
                     CurrentMultiplierText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 102),
+                        Position = ScreenUtils.udim2(0, 35, 0, 132),
                         BackgroundTransparency = 1,
                         Text = string.format("Multiplier: %sx", NumberFormatter.formatBoost(1 + (currentRebirths * 0.5))),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -372,10 +391,32 @@ function RebirthUI.new(props)
                         ZIndex = 1007,
                     }),
                     
+                    -- Next Rank display (below title)
+                    NextRank = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, -20, 0, 25),
+                        Position = ScreenUtils.udim2(0, 10, 0, 35),
+                        BackgroundTransparency = 1,
+                        Text = (function()
+                            local nextRank = RankUtils.getNextRank(currentRebirths)
+                            if nextRank then
+                                return string.format("%s %s %s", nextRank.emoji, nextRank.name, nextRank.emoji)
+                            else
+                                return "🌀 MAX RANK 🌀"
+                            end
+                        end)(),
+                        TextColor3 = Color3.fromRGB(100, 255, 100), -- Bright green for next rank
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 6, -- Bigger than other text
+                        TextStrokeTransparency = 0, -- Black outline
+                        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                        Font = Enum.Font.FredokaOne, -- Bold
+                        TextXAlignment = Enum.TextXAlignment.Center,
+                        ZIndex = 1007,
+                    }),
+                    
                     -- After Rebirth icon and text
                     AfterRebirthIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 35),
+                        Position = ScreenUtils.udim2(0, 10, 0, 65), -- Moved down further for rank
                         BackgroundTransparency = 1,
                         Image = IconAssets.getIcon("UI", "REBIRTH"),
                         ScaleType = Enum.ScaleType.Fit,
@@ -383,7 +424,7 @@ function RebirthUI.new(props)
                     }),
                     AfterRebirthText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 35),
+                        Position = ScreenUtils.udim2(0, 35, 0, 65), -- Moved down further for rank
                         BackgroundTransparency = 1,
                         Text = string.format("Rebirths: %d", currentRebirths + 1),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -398,7 +439,7 @@ function RebirthUI.new(props)
                     -- After Level icon and text
                     AfterLevelIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 58),
+                        Position = ScreenUtils.udim2(0, 10, 0, 88),
                         BackgroundTransparency = 1,
                         Image = "rbxassetid://119453749882559", -- Grab Yellow Outline
                         ScaleType = Enum.ScaleType.Fit,
@@ -406,7 +447,7 @@ function RebirthUI.new(props)
                     }),
                     AfterLevelText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 58),
+                        Position = ScreenUtils.udim2(0, 35, 0, 88),
                         BackgroundTransparency = 1,
                         Text = string.format("Level: %d", currentRebirths + 2),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -421,7 +462,7 @@ function RebirthUI.new(props)
                     -- After Money icon and text
                     AfterMoneyIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 80),
+                        Position = ScreenUtils.udim2(0, 10, 0, 110),
                         BackgroundTransparency = 1,
                         Image = IconAssets.getIcon("CURRENCY", "MONEY"),
                         ScaleType = Enum.ScaleType.Fit,
@@ -429,7 +470,7 @@ function RebirthUI.new(props)
                     }),
                     AfterMoneyText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 80),
+                        Position = ScreenUtils.udim2(0, 35, 0, 110),
                         BackgroundTransparency = 1,
                         Text = "Money: $0",
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
@@ -444,7 +485,7 @@ function RebirthUI.new(props)
                     -- After Multiplier icon and text
                     AfterMultiplierIcon = React.createElement("ImageLabel", {
                         Size = ScreenUtils.udim2(0, 20, 0, 20),
-                        Position = ScreenUtils.udim2(0, 10, 0, 102),
+                        Position = ScreenUtils.udim2(0, 10, 0, 132),
                         BackgroundTransparency = 1,
                         Image = "rbxassetid://118906329469728", -- Multiplier icon
                         ScaleType = Enum.ScaleType.Fit,
@@ -453,7 +494,7 @@ function RebirthUI.new(props)
                     }),
                     AfterMultiplierText = React.createElement("TextLabel", {
                         Size = ScreenUtils.udim2(1, -40, 0, 20),
-                        Position = ScreenUtils.udim2(0, 35, 0, 102),
+                        Position = ScreenUtils.udim2(0, 35, 0, 132),
                         BackgroundTransparency = 1,
                         Text = string.format("Multiplier: %sx", NumberFormatter.formatBoost(1 + ((currentRebirths + 1) * 0.5))),
                         TextColor3 = Color3.fromRGB(255, 255, 255), -- White text

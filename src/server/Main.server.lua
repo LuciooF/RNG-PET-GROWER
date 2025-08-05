@@ -36,7 +36,7 @@ CustomLeaderboardService:Initialize()
 local function performRebirth(player, skipMoneyCheck)
     skipMoneyCheck = skipMoneyCheck or false
     
-    print("Main: Rebirth request from", player.Name)
+    -- Processing rebirth request
     
     -- Check if player has enough money (unless skipping for Robux purchase)
     local playerData = DataService:GetPlayerData(player)
@@ -96,7 +96,7 @@ local function performRebirth(player, skipMoneyCheck)
         end
     end)
     
-    print("Main: Rebirth completed for", player.Name, "- now has", currentRebirths + 1, "rebirths")
+    -- Rebirth completed successfully
     return true
 end
 
@@ -711,7 +711,7 @@ getLeaderboardDataRemote.OnServerInvoke = function(player, period, leaderboardTy
         return {}
     end
     
-    print("Main: Leaderboard data request from", player.Name, "for", period, leaderboardType)
+    -- Leaderboard data requested
     
     -- Get leaderboard data from CustomLeaderboardService
     local leaderboardData = CustomLeaderboardService:GetLeaderboard(period, leaderboardType, 50)
