@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local DataSyncService = require(script.Parent.DataSyncService)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 
 local PopupService = {}
 PopupService.__index = PopupService
@@ -98,28 +99,35 @@ function PopupService:ShowPopup(resourceType, amount, iconAsset)
     -- Store reference to active popup
     activePopups[resourceType] = popupGui
     
-    -- Create popup frame
+    -- Create popup frame with visible background
     local popupFrame = Instance.new("Frame")
     popupFrame.Name = "PopupFrame"
-    popupFrame.Size = UDim2.new(0, 150, 0, 30)
-    popupFrame.BackgroundTransparency = 1
+    popupFrame.Size = UDim2.new(0, ScreenUtils.getProportionalSize(160), 0, ScreenUtils.getProportionalSize(40)) -- Slightly larger for better visibility
+    popupFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Dark background
+    popupFrame.BackgroundTransparency = 0.3 -- Semi-transparent
+    popupFrame.BorderSizePixel = 0
     popupFrame.Parent = popupGui
+    
+    -- Add rounded corners
+    local popupCorner = Instance.new("UICorner")
+    popupCorner.CornerRadius = UDim.new(0, ScreenUtils.getProportionalSize(8))
+    popupCorner.Parent = popupFrame
     
     -- Position based on resource type (under the corresponding stat in top UI)
     -- TopStatsUI is centered at top with stats side by side
     if resourceType == "Diamonds" then
-        popupFrame.Position = UDim2.new(0.5, -200, 0, 100) -- Under diamonds (left side of center)
+        popupFrame.Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(200), 0, ScreenUtils.getProportionalSize(100)) -- Under diamonds (left side of center)
     elseif resourceType == "Money" then
-        popupFrame.Position = UDim2.new(0.5, 0, 0, 100) -- Under money (center)
+        popupFrame.Position = UDim2.new(0.5, 0, 0, ScreenUtils.getProportionalSize(100)) -- Under money (center)
     elseif resourceType == "Rebirths" then
-        popupFrame.Position = UDim2.new(0.5, 200, 0, 100) -- Under rebirths (right side of center)
+        popupFrame.Position = UDim2.new(0.5, ScreenUtils.getProportionalSize(200), 0, ScreenUtils.getProportionalSize(100)) -- Under rebirths (right side of center)
     end
     
     -- Create icon
     local popupIcon = Instance.new("ImageLabel")
     popupIcon.Name = "PopupIcon"
-    popupIcon.Size = UDim2.new(0, 20, 0, 20)
-    popupIcon.Position = UDim2.new(0, 0, 0.5, -10)
+    popupIcon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(24), 0, ScreenUtils.getProportionalSize(24))
+    popupIcon.Position = UDim2.new(0, ScreenUtils.getProportionalSize(8), 0.5, -ScreenUtils.getProportionalSize(12))
     popupIcon.BackgroundTransparency = 1
     popupIcon.Image = iconAsset
     popupIcon.ScaleType = Enum.ScaleType.Fit
@@ -128,12 +136,12 @@ function PopupService:ShowPopup(resourceType, amount, iconAsset)
     -- Create text label
     local popupLabel = Instance.new("TextLabel")
     popupLabel.Name = "PopupLabel"
-    popupLabel.Size = UDim2.new(0, 120, 1, 0)
-    popupLabel.Position = UDim2.new(0, 25, 0, 0) -- Right next to icon
+    popupLabel.Size = UDim2.new(0, ScreenUtils.getProportionalSize(120), 1, 0)
+    popupLabel.Position = UDim2.new(0, ScreenUtils.getProportionalSize(36), 0, 0) -- Right next to icon with proper spacing
     popupLabel.BackgroundTransparency = 1
     popupLabel.Font = Enum.Font.FredokaOne
     popupLabel.Text = "+" .. NumberFormatter.format(amount)
-    popupLabel.TextSize = 18
+    popupLabel.TextSize = ScreenUtils.getTextSize(20) -- Slightly larger text
     popupLabel.TextStrokeTransparency = 0
     popupLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     popupLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -151,7 +159,7 @@ function PopupService:ShowPopup(resourceType, amount, iconAsset)
     
     -- Animation: Slide up and fade out
     local startPosition = popupFrame.Position
-    local endPosition = UDim2.new(startPosition.X.Scale, startPosition.X.Offset, startPosition.Y.Scale, startPosition.Y.Offset - 30)
+    local endPosition = UDim2.new(startPosition.X.Scale, startPosition.X.Offset, startPosition.Y.Scale, startPosition.Y.Offset - ScreenUtils.getProportionalSize(30))
     
     -- Start with 0 transparency, end with full transparency
     popupFrame.BackgroundTransparency = 1

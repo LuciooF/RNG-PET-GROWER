@@ -22,6 +22,8 @@ local BoostPanel = require(script.Parent.BoostPanel)
 local TutorialUI = require(script.Parent.TutorialUI)
 local OPPetButton = require(script.Parent.OPPetButton)
 local PlaytimeRewardsPanel = require(script.Parent.PlaytimeRewardsPanel)
+local LeaderboardPanel = require(script.Parent.LeaderboardPanel)
+local LeaderboardButton = require(script.Parent.LeaderboardButton)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
@@ -48,6 +50,7 @@ local function App()
     local boostPanelVisible, setBoostPanelVisible = React.useState(false)
     local tutorialVisible, setTutorialVisible = React.useState(false)
     local playtimeRewardsVisible, setPlaytimeRewardsVisible = React.useState(false)
+    local leaderboardVisible, setLeaderboardVisible = React.useState(false)
     local tutorialData, setTutorialData = React.useState({})
     local playerData, setPlayerData = React.useState({
         Resources = { Money = 0, Rebirths = 0 }
@@ -362,8 +365,23 @@ local function App()
             setSharedSessionClaimedRewards = setSharedSessionClaimedRewards
         }) or nil,
         
+        -- Leaderboard Panel
+        LeaderboardPanel = leaderboardVisible and React.createElement(LeaderboardPanel, {
+            isVisible = leaderboardVisible,
+            onClose = function()
+                setLeaderboardVisible(false)
+            end
+        }) or nil,
+        
         -- OP Pet Purchase Button (always visible on top right)
-        OPPetButton = React.createElement(OPPetButton)
+        OPPetButton = React.createElement(OPPetButton),
+        
+        -- Leaderboard Button (right side, below playtime rewards)
+        LeaderboardButton = React.createElement(LeaderboardButton, {
+            onLeaderboardClick = function()
+                setLeaderboardVisible(function(prev) return not prev end)
+            end
+        })
     })
 end
 

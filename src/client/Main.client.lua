@@ -109,6 +109,10 @@ task.spawn(function()
     -- Initialize player enhancement service (speed boost + trail)
     local PlayerEnhancementService = require(script.Parent.services.PlayerEnhancementService)
     PlayerEnhancementService:Initialize()
+    
+    -- Initialize physical leaderboard service (workspace GUI surfaces)
+    local PhysicalLeaderboardService = require(script.Parent.services.PhysicalLeaderboardService)
+    PhysicalLeaderboardService:Initialize()
 end)
 
 -- Create a dedicated ScreenGui for React (fixed mobile controls issue)

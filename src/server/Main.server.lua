@@ -17,6 +17,7 @@ local OPPetService = require(ServerScriptService.services.OPPetService)
 local AnnouncementService = require(ServerScriptService.services.AnnouncementService)
 local PlaytimeTrackingService = require(ServerScriptService.services.PlaytimeTrackingService)
 local PlaytimeRewardsService = require(ServerScriptService.services.PlaytimeRewardsService)
+local CustomLeaderboardService = require(ServerScriptService.services.CustomLeaderboardService)
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 DataService:Initialize()
@@ -29,6 +30,7 @@ OPPetService:Initialize()
 AnnouncementService:Initialize()
 PlaytimeTrackingService:Initialize()
 PlaytimeRewardsService:Initialize()
+CustomLeaderboardService:Initialize()
 
 -- Rebirth function (shared by both money and Robux rebirth)
 local function performRebirth(player, skipMoneyCheck)
@@ -402,6 +404,22 @@ if not claimPlaytimeRewardRemote then
     claimPlaytimeRewardRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote event for leaderboard data requests
+local getLeaderboardDataRemote = ReplicatedStorage:FindFirstChild("GetLeaderboardData")
+if not getLeaderboardDataRemote then
+    getLeaderboardDataRemote = Instance.new("RemoteFunction")
+    getLeaderboardDataRemote.Name = "GetLeaderboardData"
+    getLeaderboardDataRemote.Parent = ReplicatedStorage
+end
+
+-- Create remote event for leaderboard manual refresh (authorized users only)
+local refreshLeaderboardRemote = ReplicatedStorage:FindFirstChild("RefreshLeaderboard")
+if not refreshLeaderboardRemote then
+    refreshLeaderboardRemote = Instance.new("RemoteEvent")
+    refreshLeaderboardRemote.Name = "RefreshLeaderboard"
+    refreshLeaderboardRemote.Parent = ReplicatedStorage
+end
+
 
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
@@ -686,5 +704,49 @@ claimPlaytimeRewardRemote.OnServerEvent:Connect(function(player, timeMinutes, se
     end
 end)
 
+-- Handle leaderboard data requests from client
+getLeaderboardDataRemote.OnServerInvoke = function(player, period, leaderboardType)
+    if not player or not period or not leaderboardType then
+        warn("Main: Invalid leaderboard data request from", player and player.Name or "unknown")
+        return {}
+    end
+    
+    print("Main: Leaderboard data request from", player.Name, "for", period, leaderboardType)
+    
+    -- Get leaderboard data from CustomLeaderboardService
+    local leaderboardData = CustomLeaderboardService:GetLeaderboard(period, leaderboardType, 50)
+    
+    return leaderboardData or {}
+end
+
+-- Notify CustomLeaderboardService when player data changes
+local originalUpdatePlayerResources = DataService.UpdatePlayerResources
+DataService.UpdatePlayerResources = function(self, player, resourceType, amount)
+    local result = originalUpdatePlayerResources(self, player, resourceType, amount)
+    
+    -- Notify leaderboard service of the change
+    if result and (resourceType == "Money" or resourceType == "Diamonds" or resourceType == "Rebirths") then
+        CustomLeaderboardService:NotifyPlayerDataChanged(player)
+    end
+    
+    return result
+end
+
+-- Handle leaderboard manual refresh from authorized users
+refreshLeaderboardRemote.OnServerEvent:Connect(function(player)
+    if not player then
+        warn("Main: Invalid leaderboard refresh request")
+        return
+    end
+    
+    print("Main: Leaderboard refresh request from", player.Name)
+    
+    local success = CustomLeaderboardService:ForceRefresh(player)
+    if success then
+        print("Main: Leaderboard refresh completed for", player.Name)
+    else
+        warn("Main: Leaderboard refresh denied for", player.Name)
+    end
+end)
 
 -- StateService handles the other remote events, we just need pet collection here

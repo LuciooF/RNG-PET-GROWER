@@ -533,9 +533,9 @@ local function PlaytimeRewardsPanel(props)
             end
         }),
         
-        -- Main panel - taller and with VISIBLE black outline
+        -- Main panel - taller and with VISIBLE black outline and rounded corners
         MainPanel = React.createElement("Frame", { -- Changed from TextButton to Frame
-            Size = ScreenUtils.udim2(0.6, 0, 0.65, 0), -- Taller (0.55->0.65) and compact width
+            Size = ScreenUtils.udim2(0.6, 0, 0.6, 0), -- Reduced height slightly (0.65->0.6) for better fit
             Position = ScreenUtils.udim2(0.5, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundColor3 = Color3.fromRGB(248, 248, 248), -- Very light grey background
@@ -543,7 +543,7 @@ local function PlaytimeRewardsPanel(props)
             ZIndex = 100
         }, {
             Corner = React.createElement("UICorner", {
-                CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(20)) -- RESPONSIVE corner radius
+                CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(25)) -- More rounded corners for outer UI
             }),
             
             -- VISIBLE Black outline for the main panel - MUST be visible!
@@ -667,7 +667,10 @@ local function PlaytimeRewardsPanel(props)
                 BackgroundTransparency = 1,
                 ScrollBarThickness = ScreenUtils.getProportionalSize(8), -- RESPONSIVE scrollbar thickness
                 ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
-                CanvasSize = UDim2.new(0, 0, 0, (cardSize * rows) + (cardPadding * (rows - 1)) + (contentPadding * 2)), -- Already responsive (uses calculated sizes)
+                ScrollingDirection = Enum.ScrollingDirection.Y, -- Ensure vertical scrolling only
+                ScrollingEnabled = true, -- Explicitly enable scrolling
+                -- Calculate for worst case: assume 3 columns on small screens, 21 rewards = 7 rows
+                CanvasSize = UDim2.new(0, 0, 0, math.ceil(#allRewards / 3) * (cardSize + cardPadding) + (2 * contentPadding) + 200),
                 ZIndex = 101
             }, {
                 ContentPadding = React.createElement("UIPadding", {

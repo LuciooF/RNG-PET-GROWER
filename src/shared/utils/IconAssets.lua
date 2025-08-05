@@ -11,6 +11,7 @@ IconAssets.UI = {
     BOOST = "rbxassetid://94893203982408",
     X_BUTTON = "rbxassetid://127395587086818",
     SQUIGGLE = "rbxassetid://132069338925805", -- Pet card background squiggle (white version)
+    TROPHY = "rbxassetid://109359695542141", -- Leaderboard trophy icon
     -- Add more UI icons here as needed
     -- SHOP = "rbxassetid://...",
     -- CLOSE = "rbxassetid://...",
