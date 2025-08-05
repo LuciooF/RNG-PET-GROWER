@@ -140,9 +140,6 @@ function ComingSoonGUIService:Initialize()
                 self:ProcessPlayerArea(child)
             end
         end)
-        
-        -- Process leaderboard in center map
-        self:ProcessLeaderboard()
     end)
 end
 
@@ -176,42 +173,6 @@ function ComingSoonGUIService:ProcessPlayerArea(playerArea)
     end
 end
 
-function ComingSoonGUIService:ProcessLeaderboard()
-    -- Find leaderboard in center map
-    local center = Workspace:WaitForChild("Center", 10)
-    if not center then
-        return
-    end
-    
-    local tycoonMap = center:WaitForChild("TycoonMap", 10)
-    if not tycoonMap then
-        return
-    end
-    
-    local leaderboards = tycoonMap:WaitForChild("Leaderboards", 10)
-    if not leaderboards then
-        return
-    end
-    
-    local middleLeaderboard = leaderboards:WaitForChild("MiddleLeaderboard", 10)
-    if not middleLeaderboard then
-        return
-    end
-    
-    local cube = middleLeaderboard:WaitForChild("Cube.048", 10)
-    if not cube then
-        return
-    end
-    
-    -- Check if GUI already exists
-    if not cube:FindFirstChild("ComingSoonGUI") then
-        -- Create with custom distance for leaderboard (4x normal distance)
-        createComingSoonGUI(cube, "Leaderboards\nComing Soon!", Vector3.new(0, 8, 0), {
-            show = 160, -- Show when within 160 studs (4x40)
-            hide = 200  -- Hide when beyond 200 studs (4x50)
-        })
-    end
-end
 
 function ComingSoonGUIService:Cleanup()
     -- Cleanup is handled by individual GUI connections

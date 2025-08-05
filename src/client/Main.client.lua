@@ -113,6 +113,10 @@ task.spawn(function()
     -- Initialize physical leaderboard service (workspace GUI surfaces)
     local PhysicalLeaderboardService = require(script.Parent.services.PhysicalLeaderboardService)
     PhysicalLeaderboardService:Initialize()
+    
+    -- Initialize favorite prompt service (shows favorite prompt after 1 minute)
+    local FavoritePromptService = require(script.Parent.services.FavoritePromptService)
+    FavoritePromptService:Initialize()
 end)
 
 -- Create a dedicated ScreenGui for React (fixed mobile controls issue)
