@@ -4,7 +4,7 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local DataSyncService = require(script.Parent.DataSyncService)
+local store = require(ReplicatedStorage.store)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
@@ -294,15 +294,29 @@ function PlotGUIService:CreateTubePlotGUI(area, tubePlot, tubePlotNumber)
     }
 end
 
--- Update all plot GUIs based on current player data
+-- Update all plot GUIs based on current player data from Rodux store
 function PlotGUIService:UpdateAllGUIs()
-    local playerData = DataSyncService:GetPlayerData()
-    if not playerData then return end
+    local playerData = store:getState().player
+    if not playerData then 
+        -- No player data available yet
+        return 
+    end
     
     local playerMoney = playerData.Resources.Money or 0
     local playerRebirths = playerData.Resources.Rebirths or 0
     local ownedPlots = playerData.OwnedPlots or {}
     local ownedTubes = playerData.OwnedTubes or {}
+    
+    -- Updating plot GUIs with current player data
+    
+    -- Debug: Print owned plots array
+    if #ownedPlots > 0 then
+        local plotsList = {}
+        for _, plotNumber in pairs(ownedPlots) do
+            table.insert(plotsList, tostring(plotNumber))
+        end
+        -- Processing owned plots
+    end
     
     -- Create sets for faster lookup
     local ownedPlotsSet = {}
@@ -522,10 +536,23 @@ function PlotGUIService:Initialize()
         -- Scan and create GUIs
         self:ScanAndCreateGUIs()
         
-        -- Subscribe to data changes to keep GUIs updated
-        local unsubscribe = DataSyncService:Subscribe(function(newState)
+        -- Subscribe to Rodux store changes to keep GUIs updated
+        -- Subscribing to store changes
+        local unsubscribe = store.changed:connect(function(newState, oldState)
             if newState.player then
+                -- Always update when player data changes (temporary for debugging)
+                -- Store changed, updating GUIs
                 self:UpdateAllGUIs()
+                
+                -- TODO: Add back performance optimization after debugging
+                -- local oldPlayer = oldState.player  
+                -- if not oldPlayer or 
+                --    newState.player.Resources.Money ~= oldPlayer.Resources.Money or
+                --    newState.player.Resources.Rebirths ~= oldPlayer.Resources.Rebirths or
+                --    -- Need better array comparison for OwnedPlots/OwnedTubes
+                --    then
+                --     self:UpdateAllGUIs()
+                -- end
             end
         end)
         

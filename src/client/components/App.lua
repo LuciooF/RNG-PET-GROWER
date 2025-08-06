@@ -24,6 +24,7 @@ local OPPetButton = require(script.Parent.OPPetButton)
 local PlaytimeRewardsPanel = require(script.Parent.PlaytimeRewardsPanel)
 local LeaderboardPanel = require(script.Parent.LeaderboardPanel)
 local LeaderboardButton = require(script.Parent.LeaderboardButton)
+local CrazyChestUI = require(script.Parent.CrazyChestUI)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
@@ -36,6 +37,7 @@ local PetMixerAnimationService = require(script.Parent.Parent.services.PetMixerA
 local TwoXMoneyButtonService = require(script.Parent.Parent.services.TwoXMoneyButtonService)
 local TwoXDiamondsButtonService = require(script.Parent.Parent.services.TwoXDiamondsButtonService)
 local TwoXHeavenSpeedButtonService = require(script.Parent.Parent.services.TwoXHeavenSpeedButtonService)
+local CrazyChestService = require(script.Parent.Parent.services.CrazyChestService)
 local VIPButtonService = require(script.Parent.Parent.services.VIPButtonService)
 local SendHeavenButtonService = require(script.Parent.Parent.services.SendHeavenButtonService)
 local RewardsService = require(script.Parent.Parent.services.RewardsService)
@@ -52,6 +54,7 @@ local function App()
     local playtimeRewardsVisible, setPlaytimeRewardsVisible = React.useState(false)
     local leaderboardVisible, setLeaderboardVisible = React.useState(false)
     local tutorialData, setTutorialData = React.useState({})
+    local crazyChestProps, setCrazyChestProps = React.useState(CrazyChestService:GetUIProps())
     local playerData, setPlayerData = React.useState({
         Resources = { Money = 0, Rebirths = 0 }
     })
@@ -205,6 +208,24 @@ local function App()
         
         return function()
             RewardsService:Cleanup()
+        end
+    end, {})
+    
+    -- Crazy chest service is initialized in Main.client.lua
+    -- No need to initialize again here
+    
+    -- Update crazy chest props periodically (throttled)
+    React.useEffect(function()
+        local lastUpdate = 0
+        local connection = game:GetService("RunService").Heartbeat:Connect(function()
+            if tick() - lastUpdate > 0.1 then -- Update every 100ms instead of every frame
+                lastUpdate = tick()
+                setCrazyChestProps(CrazyChestService:GetUIProps())
+            end
+        end)
+        
+        return function()
+            connection:Disconnect()
         end
     end, {})
     
@@ -381,7 +402,10 @@ local function App()
             onLeaderboardClick = function()
                 setLeaderboardVisible(function(prev) return not prev end)
             end
-        })
+        }),
+        
+        -- Crazy Chest UI (conditional rendering based on visibility)
+        CrazyChestUI = React.createElement(CrazyChestUI.new, crazyChestProps)
     })
 end
 

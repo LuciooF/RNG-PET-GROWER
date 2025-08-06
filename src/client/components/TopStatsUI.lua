@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 
 local React = require(ReplicatedStorage.Packages.react)
-local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+local store = require(ReplicatedStorage.store)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local SoundService = game:GetService("SoundService")
@@ -36,21 +36,26 @@ local function TopStatsUI()
         OwnedGamepasses = {}
     })
     
-    -- Subscribe to data changes
+    -- Subscribe directly to Rodux store changes
     React.useEffect(function()
-        -- Get initial data
-        local initialData = DataSyncService:GetPlayerData()
-        if initialData then
-            setPlayerData(initialData)
+        -- Get initial data from store
+        local initialState = store:getState()
+        if initialState.player then
+            setPlayerData(initialState.player)
+            print("TopStatsUI: Initial data loaded - Money:", initialState.player.Resources.Money, "Diamonds:", initialState.player.Resources.Diamonds)
         end
         
-        local unsubscribe = DataSyncService:Subscribe(function(newState)
+        -- Subscribe to store changes
+        local unsubscribe = store.changed:connect(function(newState, oldState)
             if newState.player then
                 setPlayerData(newState.player)
+                -- State updated, refreshing display
             end
         end)
         
-        return unsubscribe
+        return function()
+            unsubscribe()
+        end
     end, {})
     
     -- Check if player owns a specific gamepass

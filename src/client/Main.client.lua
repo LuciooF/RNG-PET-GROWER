@@ -45,18 +45,15 @@ task.spawn(function()
         attempts = attempts + 1
     end
     
-    -- Initialize data sync service first
-    local DataSyncService = require(script.Parent.services.DataSyncService)
-    DataSyncService:Initialize()
-    
-    -- Wait for initial data to be available before initializing gamepass services
-    local playerData = DataSyncService:GetPlayerData()
+    -- Wait for initial data to be available in Rodux store (server will sync automatically)
+    local store = require(game.ReplicatedStorage.store)
+    local playerData = store:getState().player
     local maxWaitTime = 10 -- Maximum 10 seconds
     local waitStart = tick()
     
     while not playerData and (tick() - waitStart) < maxWaitTime do
         task.wait(0.5)
-        playerData = DataSyncService:GetPlayerData()
+        playerData = store:getState().player
     end
     
     if not playerData then
@@ -121,6 +118,10 @@ task.spawn(function()
     -- Initialize player rank GUI service (shows rank above players' heads)
     local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
     PlayerRankGUIService:Initialize()
+    
+    -- Initialize crazy chest service (chest interactions in player area)
+    local CrazyChestService = require(script.Parent.services.CrazyChestService)
+    CrazyChestService:Initialize()
 end)
 
 -- Create a dedicated ScreenGui for React (fixed mobile controls issue)

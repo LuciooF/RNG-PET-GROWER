@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 
-local DataSyncService = require(script.Parent.DataSyncService)
+local store = require(ReplicatedStorage.store)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 
 local RebirthCelebrationService = {}
@@ -22,7 +22,7 @@ local previousRebirths = 0
 
 function RebirthCelebrationService:Initialize()
     -- Subscribe to data changes to detect rebirth increases
-    local unsubscribe = DataSyncService:Subscribe(function(newState)
+    local unsubscribe = store.changed:connect(function(newState, oldState)
         if newState.player then
             self:CheckForRebirthIncrease(newState.player)
         end
@@ -31,7 +31,7 @@ function RebirthCelebrationService:Initialize()
     connections.dataSubscription = unsubscribe
     
     -- Initialize previous rebirth count
-    local initialData = DataSyncService:GetPlayerData()
+    local initialData = store:getState().player
     if initialData and initialData.Resources then
         previousRebirths = initialData.Resources.Rebirths or 0
     end

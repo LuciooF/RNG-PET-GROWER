@@ -191,10 +191,10 @@ end
 
 -- Set up subscription to player data changes for progress updates
 function RebirthButtonService:SetupDataSubscription()
-    local DataSyncService = require(script.Parent.DataSyncService)
+    local store = require(ReplicatedStorage.store)
     
     -- Subscribe to data changes to update progress display
-    local unsubscribe = DataSyncService:Subscribe(function(newState)
+    local unsubscribe = store.changed:connect(function(newState, oldState)
         if newState.player then
             self:UpdateProgressDisplay()
         end
@@ -208,9 +208,9 @@ end
 function RebirthButtonService:UpdateProgressDisplay()
     if not self.progressLabel then return end
     
-    -- Get player data from DataSyncService
-    local DataSyncService = require(script.Parent.DataSyncService)
-    local playerData = DataSyncService:GetPlayerData()
+    -- Get player data from Rodux store
+    local store = require(ReplicatedStorage.store)
+    local playerData = store:getState().player
     
     if playerData and playerData.Resources then
         local currentMoney = playerData.Resources.Money or 0

@@ -90,9 +90,8 @@ function PlaytimeTrackingService:UpdatePlayerSession(player)
             session.totalMinutes = profile.Data.PlaytimeMinutes
             session.lastUpdateTime = currentTime
             
-            -- Sync to client
-            local StateService = require(script.Parent.StateService)
-            StateService:BroadcastPlayerDataUpdate(player)
+            -- Sync to client (DataService auto-syncs)
+            DataService:SyncPlayerDataToClient(player)
         end
     end
 end

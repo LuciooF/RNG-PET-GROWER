@@ -7,7 +7,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Initialize data services first
 local DataService = require(ServerScriptService.services.DataService)
-local StateService = require(ServerScriptService.services.StateService)
 local PetService = require(ServerScriptService.services.PetService)
 local PlotService = require(ServerScriptService.services.PlotService)
 local GamepassService = require(ServerScriptService.services.GamepassService)
@@ -21,7 +20,6 @@ local CustomLeaderboardService = require(ServerScriptService.services.CustomLead
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 DataService:Initialize()
-StateService:Initialize()
 PetService:Initialize()
 GamepassService:Initialize()
 PetMixerService:Initialize()
@@ -31,6 +29,10 @@ AnnouncementService:Initialize()
 PlaytimeTrackingService:Initialize()
 PlaytimeRewardsService:Initialize()
 CustomLeaderboardService:Initialize()
+
+-- Initialize Crazy Chest service
+local CrazyChestService = require(ServerScriptService.services.CrazyChestService)
+CrazyChestService:Initialize()
 
 -- Rebirth function (shared by both money and Robux rebirth)
 local function performRebirth(player, skipMoneyCheck)
@@ -82,8 +84,11 @@ local function performRebirth(player, skipMoneyCheck)
     -- Clear spawned pet balls in player's area
     PlotService:ClearAllPetBallsInPlayerArea(player)
     
-    -- Sync updated data to client
-    StateService:BroadcastPlayerDataUpdate(player)
+    -- Sync updated data to client Rodux store
+    DataService:SyncPlayerDataToClient(player)
+    
+    -- Notify PlotService about the rebirth reset
+    PlotService:OnPlayerDataReset(player)
     
     -- Re-initialize the player's area to update visuals
     PlotService:ReinitializePlayerArea(player)
@@ -128,9 +133,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
     return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
--- Set up callback so StateService syncs data when ProfileStore loads
+-- Set up callback for when ProfileStore loads (DataService already auto-syncs)
 DataService.OnPlayerDataLoaded = function(player)
-    StateService:BroadcastPlayerDataUpdate(player)
+    -- DataService:LoadPlayerProfile already syncs to client, no manual sync needed
     -- Initialize doors and tubes for owned plots when data loads
     PlotService:InitializePlayerDoors(player)
     -- Validate gamepass ownership against Roblox (async, non-blocking)
@@ -177,34 +182,7 @@ PlotService:Initialize()
 -- Set up remote event handlers
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Copy config files to ReplicatedStorage for client access
-local configFolder = ReplicatedStorage:FindFirstChild("config")
-if not configFolder then
-    configFolder = Instance.new("Folder")
-    configFolder.Name = "config"
-    configFolder.Parent = ReplicatedStorage
-end
-
--- Copy config files from ServerStorage to ReplicatedStorage for client access
-pcall(function()
-    local serverConfigPath = ServerScriptService.Parent.ReplicatedStorage.Shared.config
-    
-    -- Copy PetSpawnConfig if it exists
-    local petSpawnConfig = serverConfigPath:FindFirstChild("PetSpawnConfig")
-    if petSpawnConfig then
-        local copy = petSpawnConfig:Clone()
-        copy.Parent = configFolder
-        print("Main: Copied PetSpawnConfig to ReplicatedStorage.config")
-    end
-    
-    -- Copy VariationConfig if it exists 
-    local variationConfig = serverConfigPath:FindFirstChild("VariationConfig")
-    if variationConfig then
-        local copy = variationConfig:Clone()
-        copy.Parent = configFolder
-        print("Main: Copied VariationConfig to ReplicatedStorage.config")
-    end
-end)
+-- Config files are automatically available in ReplicatedStorage.config from src/shared/config
 
 -- Create or get remote event for pet collection
 local collectPetRemote = ReplicatedStorage:FindFirstChild("CollectPet")
@@ -420,6 +398,14 @@ if not refreshLeaderboardRemote then
     refreshLeaderboardRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote event for debug commands
+local debugCommandRemote = ReplicatedStorage:FindFirstChild("DebugCommand")
+if not debugCommandRemote then
+    debugCommandRemote = Instance.new("RemoteEvent")
+    debugCommandRemote.Name = "DebugCommand"
+    debugCommandRemote.Parent = ReplicatedStorage
+end
+
 
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
@@ -438,8 +424,7 @@ collectPetRemote.OnServerEvent:Connect(function(player, petData)
         local finalDiamonds = PetService:ApplyGamepassMultipliers(player, baseDiamonds, "Diamonds")
         DataService:UpdatePlayerResources(player, "Diamonds", finalDiamonds)
         
-        -- Sync updated data to client
-        StateService:BroadcastPlayerDataUpdate(player)
+        -- DataService methods already auto-sync to client, no manual sync needed
     else
         -- Pet not added due to inventory limit or other issue
         -- Error message already sent by DataService:AddPetToPlayer
@@ -461,11 +446,13 @@ resetPlayerDataRemote.OnServerEvent:Connect(function(player)
     -- Reset player data to template
     local success = DataService:ResetPlayerData(player)
     if success then
+        -- Clear spawned pet balls in player's area (same as rebirth)
+        PlotService:ClearAllPetBallsInPlayerArea(player)
+        
         -- Reset pet ball area data for this player
         PlotService:ResetPlayerAreaData(player)
         
-        -- Sync updated data to client
-        StateService:BroadcastPlayerDataUpdate(player)
+        -- DataService:ResetPlayerData already auto-syncs, no manual sync needed
         
         -- Re-initialize the player's area to update visuals
         PlotService:ReinitializePlayerArea(player)
@@ -614,7 +601,7 @@ updateTutorialProgressRemote.OnServerEvent:Connect(function(player, tutorialProg
         return
     end
     
-    print("Main: Tutorial progress update from", player.Name, tutorialProgress)
+    -- Tutorial progress updated
     
     local profile = DataService:GetPlayerProfile(player)
     if not profile then
@@ -634,8 +621,8 @@ updateTutorialProgressRemote.OnServerEvent:Connect(function(player, tutorialProg
         profile.Data.TutorialProgress.active = false
     end
     
-    -- Sync to client
-    StateService:BroadcastPlayerDataUpdate(player)
+    -- Sync to client Rodux store
+    DataService:SyncPlayerDataToClient(player)
 end)
 
 -- Handle OP pet purchase from client
@@ -749,4 +736,126 @@ refreshLeaderboardRemote.OnServerEvent:Connect(function(player)
     end
 end)
 
--- StateService handles the other remote events, we just need pet collection here
+-- Handle debug commands from client (admin authorization required)
+debugCommandRemote.OnServerEvent:Connect(function(player, commandType, ...)
+    -- IMPORTANT: Only allow authorized players to use debug commands
+    if not AuthorizationUtils.isAuthorized(player) then
+        AuthorizationUtils.logUnauthorizedAccess(player, "Debug Commands")
+        return
+    end
+    
+    print("Main: Debug command", commandType, "from authorized player", player.Name)
+    
+    -- Handle different debug command types
+    if commandType == "AddMoney" then
+        local amount = ... -- First additional argument
+        if type(amount) == "number" and amount > 0 then
+            local success = DataService:UpdatePlayerResources(player, "Money", amount)
+            if success then
+                print("Main: Added", amount, "money to", player.Name)
+            end
+        else
+            warn("Main: Invalid money amount for debug command:", amount)
+        end
+        
+    elseif commandType == "AddDiamonds" then
+        local amount = ...
+        if type(amount) == "number" and amount > 0 then
+            local success = DataService:UpdatePlayerResources(player, "Diamonds", amount)
+            if success then
+                print("Main: Added", amount, "diamonds to", player.Name)
+            end
+        else
+            warn("Main: Invalid diamond amount for debug command:", amount)
+        end
+        
+    elseif commandType == "ResetPlayerData" then
+        local success = DataService:ResetPlayerData(player)
+        if success then
+            -- Clear spawned pet balls in player's area (same as rebirth)
+            PlotService:ClearAllPetBallsInPlayerArea(player)
+            
+            -- Reset pet ball area data for this player
+            PlotService:ResetPlayerAreaData(player)
+            
+            -- Re-initialize the player's area to update visuals
+            PlotService:ReinitializePlayerArea(player)
+            
+            print("Main: Reset player data for", player.Name)
+        else
+            warn("Main: Failed to reset player data for", player.Name)
+        end
+        
+    elseif commandType == "StartTutorial" then
+        -- Start tutorial - this should be server-controlled for consistency
+        local success = DataService:SetTutorialState(player, true, 1) -- Start at step 1
+        if success then
+            print("Main: Started tutorial for", player.Name)
+            -- Tutorial state is synced via the DataService call
+        else
+            warn("Main: Failed to start tutorial for", player.Name)
+        end
+        
+    elseif commandType == "StopTutorial" then
+        -- Stop tutorial - this should be server-controlled for consistency  
+        local success = DataService:SetTutorialState(player, false, nil) -- Stop tutorial
+        if success then
+            print("Main: Stopped tutorial for", player.Name)
+            -- Tutorial state is synced via the DataService call
+        else
+            warn("Main: Failed to stop tutorial for", player.Name)
+        end
+        
+    elseif commandType == "GiveRebirth" then
+        -- Give instant rebirth without money check
+        local success = performRebirth(player, true) -- Skip money check for debug
+        if success then
+            print("Main: Gave debug rebirth to", player.Name)
+        else
+            warn("Main: Failed to give debug rebirth to", player.Name)
+        end
+        
+    elseif commandType == "CreateCustomPet" then
+        -- Create custom pet with specified stats
+        local petName, boost, value = ...
+        if not petName or not boost or not value then
+            warn("Main: Invalid custom pet parameters")
+            return
+        end
+        
+        -- Create custom pet data
+        local HttpService = game:GetService("HttpService")
+        local customPet = {
+            ID = HttpService:GenerateGUID(false),
+            Name = tostring(petName),
+            Rarity = {
+                RarityName = "Debug",
+                RarityChance = 100,
+                RarityColor = Color3.fromRGB(255, 255, 0) -- Yellow for debug pets
+            },
+            Variation = {
+                VariationName = "Debug",
+                VariationChance = 100,
+                VariationColor = Color3.fromRGB(255, 255, 0), -- Yellow for debug pets
+                VariationMultiplier = 1
+            },
+            BaseValue = tonumber(value) or 500,
+            BaseBoost = tonumber(boost) or 1.5,
+            FinalValue = tonumber(value) or 500,
+            FinalBoost = tonumber(boost) or 1.5,
+        }
+        
+        -- Add pet to player's inventory
+        local success, result = DataService:AddPetToPlayer(player, customPet)
+        if success then
+            print("Main: Created custom pet for", player.Name, "- Name:", petName, "Boost:", boost, "Value:", value)
+        else
+            warn("Main: Failed to create custom pet for", player.Name, "- Reason:", result)
+        end
+        
+    else
+        warn("Main: Unknown debug command type:", commandType)
+    end
+end)
+
+-- All remote events are now handled directly here with DataService auto-sync

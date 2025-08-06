@@ -12,25 +12,37 @@ local player = Players.LocalPlayer
 local remoteEvents = {}
 
 function DataSyncService:Initialize()
+    -- Initializing DataSyncService
+    
     -- Wait for remote events to be created by server (they might be directly in ReplicatedStorage)
     local remotesFolder = ReplicatedStorage:FindFirstChild("RemoteEvents")
     
+    -- Checking for RemoteEvents folder
+    
+    -- Scanning ReplicatedStorage for remotes
+    
     if remotesFolder then
         -- Get remote event references from folder
+        -- Looking in RemoteEvents folder
         remoteEvents.SyncPlayerData = remotesFolder:WaitForChild("SyncPlayerData", 5)
         remoteEvents.UpdateResource = remotesFolder:WaitForChild("UpdateResource", 5)  
         remoteEvents.RequestData = remotesFolder:WaitForChild("RequestData", 5)
     else
         -- Look for remote events directly in ReplicatedStorage
+        -- Looking directly in ReplicatedStorage
         remoteEvents.SyncPlayerData = ReplicatedStorage:WaitForChild("SyncPlayerData", 5)
         remoteEvents.UpdateResource = ReplicatedStorage:WaitForChild("UpdateResource", 5)
         remoteEvents.RequestData = ReplicatedStorage:WaitForChild("RequestData", 5)
     end
     
+    -- Checking for required remotes
+    
     if not remoteEvents.SyncPlayerData then
         warn("DataSyncService: Required remote events not found!")
         return
     end
+    
+    -- Remote events found successfully
     
     -- Set up remote event handlers
     self:SetupRemoteHandlers()
@@ -41,10 +53,15 @@ function DataSyncService:Initialize()
 end
 
 function DataSyncService:SetupRemoteHandlers()
+    -- Setting up remote handlers
+    
     -- Handle data updates from server
     remoteEvents.SyncPlayerData.OnClientEvent:Connect(function(playerData)
+        -- Received data sync from server
         self:UpdateClientState(playerData)
     end)
+    
+    -- Remote handlers connected
 end
 
 function DataSyncService:RequestDataFromServer()
@@ -52,8 +69,15 @@ function DataSyncService:RequestDataFromServer()
 end
 
 function DataSyncService:UpdateClientState(playerData)
+    -- Updating Redux store
     -- Update Redux store with server data
     store:dispatch(Actions.setPlayerData(playerData))
+    
+    -- Verify the update
+    local newState = store:getState()
+    if newState.player and newState.player.Resources then
+        -- Redux store updated successfully
+    end
 end
 
 -- Client-side helper methods that sync with server
@@ -61,8 +85,13 @@ function DataSyncService:UpdateResource(resourceType, amount)
     -- Update local state immediately for responsive UI
     store:dispatch(Actions.updateResources(resourceType, amount))
     
-    -- Send to server for persistence
-    remoteEvents.UpdateResource:FireServer(resourceType, amount)
+    -- Send to server for persistence - find remote directly
+    local updateResourceRemote = ReplicatedStorage:FindFirstChild("UpdateResource")
+    if updateResourceRemote then
+        updateResourceRemote:FireServer(resourceType, amount)
+    else
+        warn("DataSyncService: UpdateResource remote not found")
+    end
 end
 
 function DataSyncService:GetPlayerData()

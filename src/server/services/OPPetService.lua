@@ -4,7 +4,6 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 
 local DataService = require(script.Parent.DataService)
-local StateService = require(script.Parent.StateService)
 local OPPetConfig = require(ReplicatedStorage.config.OPPetConfig)
 
 local OPPetService = {}
@@ -68,7 +67,7 @@ function OPPetService:AddOPPetToPlayer(player, opPet)
     -- No need to manage equipped status since they're always active
     
     -- Sync data to client
-    StateService:BroadcastPlayerDataUpdate(player)
+    DataService:SyncPlayerDataToClient(player)
     
     return true
 end

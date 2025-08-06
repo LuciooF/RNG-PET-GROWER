@@ -42,7 +42,10 @@ local PROFILE_TEMPLATE = {
         active = false
     },
     PlaytimeMinutes = 0, -- Total playtime in minutes
-    ClaimedPlaytimeRewards = {} -- Array of claimed playtime reward times (e.g., {5, 10, 15})
+    ClaimedPlaytimeRewards = {}, -- Array of claimed playtime reward times (e.g., {5, 10, 15})
+    CrazyChest = { -- Crazy chest reward system
+        PendingReward = nil -- Stored pending reward from chest opening
+    }
 }
 
 local DATASTORE_NAME = "PlayerData"
@@ -90,6 +93,9 @@ function DataService:LoadPlayerProfile(player)
             
             -- Initialize player data
             self:InitializePlayerData(player, profile.Data)
+            
+            -- Send initial data to client Rodux store
+            self:SyncPlayerDataToClient(player)
             
             -- Trigger initial data sync callback if set
             if self.OnPlayerDataLoaded then
@@ -139,16 +145,56 @@ end
 function DataService:UpdatePlayerResources(player, resourceType, amount)
     local profile = Profiles[player]
     if profile and profile.Data.Resources[resourceType] then
-        profile.Data.Resources[resourceType] = profile.Data.Resources[resourceType] + amount
+        local oldValue = profile.Data.Resources[resourceType]
+        profile.Data.Resources[resourceType] = oldValue + amount
+        -- Resource updated successfully
+        
+        -- Sync updated data to client immediately via Rodux
+        self:SyncPlayerDataToClient(player)
+        
         return true
     end
     return false
+end
+
+-- Sync player data to client via Rodux store
+function DataService:SyncPlayerDataToClient(player)
+    local profile = Profiles[player]
+    if not profile then 
+        warn("DataService: Cannot sync - no profile for", player.Name)
+        return 
+    end
+    
+    -- Find or create UpdatePlayerData remote event for Rodux
+    local updateDataRemote = ReplicatedStorage:FindFirstChild("UpdatePlayerData")
+    if not updateDataRemote then
+        updateDataRemote = Instance.new("RemoteEvent")
+        updateDataRemote.Name = "UpdatePlayerData"
+        updateDataRemote.Parent = ReplicatedStorage
+    end
+    
+    -- Syncing player data to client
+    
+    -- Send updated data to client Rodux store
+    local success, error = pcall(function()
+        updateDataRemote:FireClient(player, profile.Data)
+    end)
+    
+    if not success then
+        warn("DataService: Failed to sync to Rodux for", player.Name, "Error:", error)
+    else
+        -- Successfully synced to client
+    end
 end
 
 function DataService:SetPlayerResource(player, resourceType, amount)
     local profile = Profiles[player]
     if profile and profile.Data.Resources[resourceType] then
         profile.Data.Resources[resourceType] = amount
+        
+        -- Sync updated data to client immediately
+        self:SyncPlayerDataToClient(player)
+        
         return true
     end
     return false
@@ -160,6 +206,10 @@ function DataService:AddPet(player, petData)
         -- Sanitize pet data for DataStore compatibility
         local sanitizedPet = PetUtils.sanitizePetForStorage(petData)
         table.insert(profile.Data.Pets, sanitizedPet)
+        
+        -- Auto-sync to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
         return true
     end
     return false
@@ -171,6 +221,10 @@ function DataService:EquipPet(player, petData)
         -- Sanitize pet data for DataStore compatibility
         local sanitizedPet = PetUtils.sanitizePetForStorage(petData)
         table.insert(profile.Data.EquippedPets, sanitizedPet)
+        
+        -- Sync updated data to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
         return true
     end
     return false
@@ -180,6 +234,11 @@ function DataService:AddOwnedTube(player, tubeNumber)
     local profile = Profiles[player]
     if profile then
         table.insert(profile.Data.OwnedTubes, tubeNumber)
+        -- Tube added successfully
+        
+        -- Sync to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
         return true
     end
     return false
@@ -189,6 +248,11 @@ function DataService:AddOwnedPlot(player, plotNumber)
     local profile = Profiles[player]
     if profile then
         table.insert(profile.Data.OwnedPlots, plotNumber)
+        -- Plot added successfully
+        
+        -- Sync to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
         return true
     end
     return false
@@ -270,6 +334,9 @@ function DataService:AddPetToPlayer(player, petData)
         -- Schedule debounced auto-equip to handle rapid pet additions
         self:ScheduleDebouncedAutoEquip(player)
         
+        -- Sync updated pet data to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
         return true, "success"
     end
     return false, "profile_not_found"
@@ -343,10 +410,255 @@ function DataService:ResetPlayerData(player)
             active = false
         }
         
-        print("DataService: Reset player data for", player.Name, "- including pet index, tutorial, and all progress")
+        -- Player data reset successfully
+        
+        -- IMPORTANT: Sync reset data to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
+        -- Notify PlotService to reset door colors for this player
+        local PlotService = require(script.Parent.PlotService)
+        PlotService:OnPlayerDataReset(player)
+        
         return true
     end
     return false
+end
+
+function DataService:SetTutorialState(player, isActive, currentStep)
+    local profile = Profiles[player]
+    if profile then
+        profile.Data.TutorialProgress = profile.Data.TutorialProgress or {
+            currentStep = 1,
+            completedSteps = {},
+            active = false
+        }
+        
+        profile.Data.TutorialProgress.active = isActive
+        if currentStep then
+            profile.Data.TutorialProgress.currentStep = currentStep
+        end
+        
+        -- Tutorial state updated
+        
+        -- Sync to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
+        return true
+    end
+    return false
+end
+
+-- Enhanced pet management methods for proper architecture
+function DataService:EquipPetById(player, petId, maxEquipped)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Validation: Check max equipped limit
+    if #(profile.Data.EquippedPets or {}) >= maxEquipped then
+        return false, "Maximum equipped pets reached (" .. maxEquipped .. ")"
+    end
+    
+    -- Find pet in inventory
+    local petToEquip = nil
+    for _, pet in pairs(profile.Data.Pets or {}) do
+        if pet.ID == petId then
+            petToEquip = pet
+            break
+        end
+    end
+    
+    if not petToEquip then
+        return false, "Pet not found in inventory"
+    end
+    
+    -- Check if already equipped
+    for _, equippedPet in pairs(profile.Data.EquippedPets or {}) do
+        if equippedPet.ID == petId then
+            return false, "Pet already equipped"
+        end
+    end
+    
+    -- Add to equipped pets
+    table.insert(profile.Data.EquippedPets, petToEquip)
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Pet equipped successfully"
+end
+
+function DataService:UnequipPetById(player, petId)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    local newEquippedPets = {}
+    local found = false
+    
+    for _, pet in pairs(profile.Data.EquippedPets or {}) do
+        if pet.ID ~= petId then
+            table.insert(newEquippedPets, pet)
+        else
+            found = true
+        end
+    end
+    
+    if not found then
+        return false, "Pet not found in equipped pets"
+    end
+    
+    profile.Data.EquippedPets = newEquippedPets
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Pet unequipped successfully"
+end
+
+function DataService:SetEquippedPets(player, newEquippedPets)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Validate all pets exist in inventory
+    local availablePets = {}
+    for _, pet in pairs(profile.Data.Pets or {}) do
+        availablePets[pet.ID] = pet
+    end
+    
+    for _, equippedPet in pairs(newEquippedPets) do
+        if not availablePets[equippedPet.ID] then
+            return false, "Pet not found in inventory: " .. (equippedPet.Name or "Unknown")
+        end
+    end
+    
+    profile.Data.EquippedPets = newEquippedPets
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Equipped pets updated successfully"
+end
+
+function DataService:ProcessPetsToHeaven(player, petsToProcess)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Create lookup for pets being processed
+    local processedIds = {}
+    for _, pet in pairs(petsToProcess) do
+        processedIds[pet.ID] = true
+    end
+    
+    -- Remove processed pets from inventory (keep equipped ones)
+    local equippedPetIds = {}
+    for _, pet in pairs(profile.Data.EquippedPets or {}) do
+        equippedPetIds[pet.ID] = true
+    end
+    
+    local newPetsArray = {}
+    for _, pet in pairs(profile.Data.Pets or {}) do
+        if not processedIds[pet.ID] or equippedPetIds[pet.ID] then
+            table.insert(newPetsArray, pet)
+        end
+    end
+    
+    -- Update data
+    profile.Data.Pets = newPetsArray
+    profile.Data.ProcessingPets = petsToProcess
+    
+    -- Auto-sync to client Rodux store  
+    self:SyncPlayerDataToClient(player)
+    
+    return true, {
+        processedCount = #petsToProcess,
+        newPetCount = #newPetsArray
+    }
+end
+
+function DataService:CompleteHeavenProcessing(player, moneyReward)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    local processedCount = #(profile.Data.ProcessingPets or {})
+    
+    -- Clear processing pets and add money reward
+    profile.Data.ProcessingPets = {}
+    profile.Data.Resources.Money = profile.Data.Resources.Money + moneyReward
+    profile.Data.ProcessedPets = (profile.Data.ProcessedPets or 0) + processedCount
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, {
+        processedCount = processedCount,
+        moneyReward = moneyReward,
+        totalProcessed = profile.Data.ProcessedPets
+    }
+end
+
+function DataService:RemovePetById(player, petId)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Remove from pets collection
+    local newPets = {}
+    local found = false
+    
+    for _, pet in pairs(profile.Data.Pets) do
+        if pet.ID ~= petId then
+            table.insert(newPets, pet)
+        else
+            found = true
+        end
+    end
+    
+    if found then
+        profile.Data.Pets = newPets
+        
+        -- Also remove from equipped pets if equipped
+        self:UnequipPetById(player, petId)
+        
+        -- Auto-sync to client Rodux store
+        self:SyncPlayerDataToClient(player)
+        
+        return true, "Pet removed successfully"
+    end
+    
+    return false, "Pet not found"
+end
+
+function DataService:UpdateProcessingAndMoney(player, newProcessingPets, moneyToAdd, processedCount)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Update processing pets
+    profile.Data.ProcessingPets = newProcessingPets
+    
+    -- Add money reward
+    if moneyToAdd > 0 then
+        profile.Data.Resources.Money = profile.Data.Resources.Money + moneyToAdd
+    end
+    
+    -- Update processed pets counter
+    profile.Data.ProcessedPets = (profile.Data.ProcessedPets or 0) + processedCount
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Processing and money updated successfully"
 end
 
 return DataService

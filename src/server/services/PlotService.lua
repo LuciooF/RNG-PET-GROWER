@@ -6,7 +6,6 @@ local Workspace = game:GetService("Workspace")
 local SoundService = game:GetService("SoundService")
 
 local DataService = require(script.Parent.DataService)
-local StateService = require(script.Parent.StateService)
 
 local PlotService = {}
 PlotService.__index = PlotService
@@ -502,7 +501,7 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
     local success = DataService:UpdatePlayerResources(player, "Money", -plotCost)
     if success then
         DataService:AddOwnedPlot(player, plotNumber)
-        StateService:BroadcastPlayerDataUpdate(player)
+        -- DataService methods automatically sync to client Rodux store
         
         -- Play plot purchase sound with anti-spam protection
         playPurchaseSound(player, PLOT_PURCHASE_SOUND_ID)
@@ -574,7 +573,7 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     local success = DataService:UpdatePlayerResources(player, "Money", -tubePlotCost)
     if success then
         DataService:AddOwnedTube(player, tubePlotNumber)
-        StateService:BroadcastPlayerDataUpdate(player)
+        -- DataService methods automatically sync to client Rodux store
         
         -- Play tube purchase sound with anti-spam protection
         playPurchaseSound(player, TUBE_PURCHASE_SOUND_ID)
@@ -1928,9 +1927,7 @@ function PlotService:CollectPet(player, petBall)
         petBall:Destroy()
     end)
     
-    -- Sync updated data to client
-    local StateService = require(script.Parent.StateService)
-    StateService:BroadcastPlayerDataUpdate(player)
+    -- DataService:AddPetToPlayer automatically syncs to client Rodux store
 end
 
 -- Get area name from door by traversing up the hierarchy
@@ -2571,6 +2568,58 @@ function PlotService:ResetPlayerAreaData(player)
         
         -- Note: Pet ball counters are now handled client-side
     end
+end
+
+-- Called when player data is reset to update door colors
+function PlotService:OnPlayerDataReset(player)
+    -- Updating door colors and plot states after reset
+    
+    local AreaService = require(script.Parent.AreaService)
+    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
+    
+    if not assignedAreaNumber then
+        -- No assigned area found
+        return
+    end
+    
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        return
+    end
+    
+    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
+    if not area then
+        -- Area not found
+        return
+    end
+    
+    -- Resetting door colors after data reset
+    
+    -- Reset all doors to red (locked) since player has no plots now
+    self:ColorAllDoorsInArea(area, Color3.fromRGB(255, 0, 0))
+    
+    -- Hide all tubes since player has no tube plots now
+    self:HideAllTubesInArea(area)
+    
+    -- Stop all pet spawning (player has no owned doors)
+    for doorKey, spawnCoroutine in pairs(spawningDoors) do
+        if doorKey:find(area.Name) then
+            task.cancel(spawnCoroutine)
+            spawningDoors[doorKey] = nil
+            -- Stopped pet spawning
+        end
+    end
+    
+    -- Update plot GUIs to show costs again (since no plots are owned)
+    self:UpdatePlotGUIs(area, player)
+    
+    -- Update plot visibility based on rebirth level (should be 0 now)
+    self:UpdatePlotVisibility(area, player)
+    
+    -- Lock pet mixer back to black since rebirths are now 0
+    self:ColorPetMixerInArea(area, Color3.fromRGB(0, 0, 0))
+    
+    -- Successfully reset all plot states
 end
 
 return PlotService

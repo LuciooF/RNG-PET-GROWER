@@ -7,6 +7,37 @@ local HttpService = game:GetService("HttpService")
 local ClientPetBallService = {}
 ClientPetBallService.__index = ClientPetBallService
 
+-- Helper function to safely extract pet name from pet data
+local function getSafePetName(petData)
+    if not petData.Name then
+        return "Unknown Pet"
+    end
+    
+    if type(petData.Name) == "string" then
+        return petData.Name
+    elseif type(petData.Name) == "table" then
+        -- If it's a table, try to convert it to string or use a fallback
+        return tostring(petData.Name)
+    else
+        return "Unknown Pet"
+    end
+end
+
+-- Helper function to safely extract variation name from pet data
+local function getSafeVariationName(petData)
+    if not petData.Variation then
+        return "Bronze"
+    end
+    
+    if type(petData.Variation) == "string" then
+        return petData.Variation
+    elseif type(petData.Variation) == "table" and petData.Variation.VariationName then
+        return petData.Variation.VariationName
+    else
+        return "Bronze"
+    end
+end
+
 local player = Players.LocalPlayer
 
 -- Configuration
@@ -183,7 +214,7 @@ function ClientPetBallService:CreatePetModel(petData)
     
     if petsFolder then
         -- Use the actual model name from pet data, or fall back to first available pet
-        local modelName = petData.ModelName or petData.Name or "Acid Rain Doggy"
+        local modelName = petData.ModelName or getSafePetName(petData) or "Acid Rain Doggy"
         
         local petModelTemplate = petsFolder:FindFirstChild(modelName)
         if not petModelTemplate then
@@ -294,9 +325,9 @@ function ClientPetBallService:CreatePetNameGUI(petBall, petData)
     nameLabel.Size = UDim2.new(1, 0, 1, 0)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1 -- No background
-    -- Create text with variation and pet name
-    local variationName = petData.Variation or "Bronze"
-    local petName = petData.Name or "Unknown Pet"
+    -- Create text with variation and pet name using helper functions
+    local variationName = getSafeVariationName(petData)
+    local petName = getSafePetName(petData)
     nameLabel.Text = variationName .. "\n" .. petName
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.SourceSansBold

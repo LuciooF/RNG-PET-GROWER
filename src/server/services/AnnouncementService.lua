@@ -48,10 +48,10 @@ function AnnouncementService:Initialize()
         globalChatRemote = Instance.new("RemoteEvent")
         globalChatRemote.Name = "GlobalChatMessage"
         globalChatRemote.Parent = ReplicatedStorage
-        print("AnnouncementService: Created GlobalChatMessage RemoteEvent")
+        -- Created GlobalChatMessage RemoteEvent
     end
     
-    print("AnnouncementService: Initialized")
+    -- AnnouncementService initialized
 end
 
 -- Helper function to find pet config by name (same as popup)

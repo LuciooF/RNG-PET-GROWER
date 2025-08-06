@@ -60,88 +60,16 @@ end
 
 -- Equip a pet for a player
 function PetService:EquipPet(player, petId)
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData then
-        return false, "Player data not found"
-    end
-    
-    -- Check if already at max equipped pets
     local maxEquipped = self:GetMaxEquippedPets(player)
-    if #(playerData.EquippedPets or {}) >= maxEquipped then
-        return false, "Maximum equipped pets reached (" .. maxEquipped .. ")"
-    end
     
-    -- Find the pet in player's collection
-    local petToEquip = nil
-    for _, pet in pairs(playerData.Pets or {}) do
-        if pet.ID == petId then
-            petToEquip = pet
-            break
-        end
-    end
-    
-    if not petToEquip then
-        return false, "Pet not found in inventory"
-    end
-    
-    -- Check if pet is already equipped
-    for _, equippedPet in pairs(playerData.EquippedPets or {}) do
-        if equippedPet.ID == petId then
-            return false, "Pet already equipped"
-        end
-    end
-    
-    -- Add to equipped pets (pet stays in inventory too)
-    local profile = DataService:GetPlayerProfile(player)
-    if not profile then
-        return false, "Player profile not found"
-    end
-    
-    -- Add to EquippedPets array
-    table.insert(profile.Data.EquippedPets, petToEquip)
-    
-    -- Sync data to client
-    local StateService = require(script.Parent.StateService)
-    StateService:BroadcastPlayerDataUpdate(player)
-    
-    return true, "Pet equipped successfully"
+    -- Delegate to DataService - single source of truth with auto-sync
+    return DataService:EquipPetById(player, petId, maxEquipped)
 end
 
 -- Unequip a pet for a player
 function PetService:UnequipPet(player, petId)
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData then
-        return false, "Player data not found"
-    end
-    
-    -- Find and remove from equipped pets
-    local profile = DataService:GetPlayerProfile(player)
-    if not profile then
-        return false, "Player profile not found"
-    end
-    
-    local newEquippedPets = {}
-    local found = false
-    
-    for _, equippedPet in pairs(playerData.EquippedPets or {}) do
-        if equippedPet.ID ~= petId then
-            table.insert(newEquippedPets, equippedPet)
-        else
-            found = true
-        end
-    end
-    
-    if found then
-        profile.Data.EquippedPets = newEquippedPets
-        
-        -- Sync data to client
-        local StateService = require(script.Parent.StateService)
-        StateService:BroadcastPlayerDataUpdate(player)
-        
-        return true, "Pet unequipped successfully"
-    end
-    
-    return false, "Pet not found in equipped pets"
+    -- Delegate to DataService - single source of truth with auto-sync
+    return DataService:UnequipPetById(player, petId)
 end
 
 -- Get best pets from player's collection
@@ -158,27 +86,21 @@ end
 function PetService:AutoEquipBestPets(player, maxEquipped)
     maxEquipped = maxEquipped or 3 -- Default to 3 equipped pets for new design
     
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData then
-        return false
-    end
-    
-    local profile = DataService:GetPlayerProfile(player)
-    if not profile then
-        return false
-    end
-    
-    -- Get best pets from inventory (sorted by boost)
+    -- Get best pets from inventory (business logic only)
     local bestPets = self:GetBestPets(player, maxEquipped)
     
-    -- Replace equipped pets with best pets
-    profile.Data.EquippedPets = bestPets
+    if #bestPets == 0 then
+        return false, "No pets available to equip"
+    end
     
-    -- Sync data to client to update UI
-    local StateService = require(script.Parent.StateService)
-    StateService:BroadcastPlayerDataUpdate(player)
+    -- Delegate to DataService - single source of truth with auto-sync
+    local success, message = DataService:SetEquippedPets(player, bestPets)
     
-    return true
+    if success then
+        -- Auto-equipped best pets
+    end
+    
+    return success, message
 end
 
 -- Calculate total boost from equipped pets AND OP pets
@@ -253,28 +175,8 @@ function PetService:RemovePet(player, petId)
         return false
     end
     
-    -- Remove from pets collection
-    local newPets = {}
-    local found = false
-    
-    for _, pet in pairs(profile.Data.Pets) do
-        if pet.ID ~= petId then
-            table.insert(newPets, pet)
-        else
-            found = true
-        end
-    end
-    
-    if found then
-        profile.Data.Pets = newPets
-        
-        -- Also remove from equipped pets if equipped
-        self:UnequipPet(player, petId)
-        
-        return true
-    end
-    
-    return false
+    -- Delegate to DataService - single source of truth with auto-sync
+    return DataService:RemovePetById(player, petId)
 end
 
 -- Store active heaven processing per player
@@ -360,28 +262,12 @@ function PetService:StartHeavenProcessing(player)
         return false
     end
     
-    -- Move only unequipped pets to ProcessingPets
-    local profile = DataService:GetPlayerProfile(player)
-    if not profile then
-        return false
+    -- Delegate to DataService - single source of truth with auto-sync
+    local success, result = DataService:ProcessPetsToHeaven(player, petsToProcess)
+    
+    if not success then
+        return false, result
     end
-    
-    -- Set ProcessingPets to unequipped pets only
-    profile.Data.ProcessingPets = petsToProcess
-    
-    -- Update Pets array to contain only equipped pets (remove unequipped ones)
-    local newPetsArray = {}
-    for _, pet in pairs(playerData.Pets or {}) do
-        if equippedPetIds[pet.ID] then
-            table.insert(newPetsArray, pet)
-        end
-    end
-    profile.Data.Pets = newPetsArray
-    -- Keep EquippedPets untouched so they remain equipped
-    
-    -- Sync data to client
-    local StateService = require(script.Parent.StateService)
-    StateService:BroadcastPlayerDataUpdate(player)
     
     -- Update processing counter
     self:UpdateProcessingCounter(player)
@@ -427,17 +313,17 @@ end
 
 -- Process one pet per tube
 function PetService:ProcessOnePetPerTube(player, ownedTubes)
-    print(string.format("[PetService] ProcessOnePetPerTube called for %s", player.Name))
+    -- Processing one pet per tube
     
     local profile = DataService:GetPlayerProfile(player)
     if not profile then
-        print(string.format("[PetService] %s - No profile found", player.Name))
+        -- No profile found
         return false
     end
     
     local processingPets = profile.Data.ProcessingPets or {}
     if #processingPets == 0 then
-        print(string.format("[PetService] %s - No pets to process", player.Name))
+        -- No pets to process
         return false -- No more pets to process
     end
     
@@ -446,8 +332,7 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
     local maxProcessThisRound = math.min(#ownedTubes, #processingPets)
     local totalMoneyToAdd = 0 -- Batch money updates to prevent race conditions in multiplayer
     
-    print(string.format("[PetService] %s processing %d pets (%d tubes available)", 
-        player.Name, maxProcessThisRound, #ownedTubes))
+    -- Processing pets through tubes
     
     for i = 1, maxProcessThisRound do
         local pet = processingPets[1] -- Always take first pet
@@ -459,8 +344,7 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
         -- Apply gamepass multipliers (includes equipped pet boost)
         local finalValue = self:ApplyGamepassMultipliers(player, petValue, "Money")
         
-        print(string.format("[PetService] %s pet %d: %s -> Base: %d, Final: %d", 
-            player.Name, i, pet.Name or "Unknown", petValue or 0, finalValue or 0))
+        -- Processing individual pet
         
         -- Accumulate money instead of updating immediately (prevents multiplayer race conditions)
         totalMoneyToAdd = totalMoneyToAdd + finalValue
@@ -483,30 +367,13 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
         profile.Data.ProcessedPets = (profile.Data.ProcessedPets or 0) + 1
     end
     
-    -- Update ProcessingPets
-    profile.Data.ProcessingPets = processingPets
-    
+    -- Delegate to DataService - single source of truth with auto-sync
     if petsProcessed > 0 then
-        print(string.format("[PetService] %s processed %d pets, total money to add: %d", 
-            player.Name, petsProcessed, totalMoneyToAdd))
+        -- Processed pets successfully
         
-        -- Single money update with total amount (prevents multiplayer race conditions)
-        if totalMoneyToAdd > 0 then
-            local success = DataService:UpdatePlayerResources(player, "Money", totalMoneyToAdd)
-            print(string.format("[PetService] %s money update success: %s", player.Name, tostring(success)))
-            
-            -- Log current money after update
-            local playerData = DataService:GetPlayerData(player)
-            if playerData and playerData.Resources then
-                print(string.format("[PetService] %s current money after update: %d", 
-                    player.Name, playerData.Resources.Money or 0))
-            end
-        end
-        
-        -- Sync data to client
-        local StateService = require(script.Parent.StateService)
-        StateService:BroadcastPlayerDataUpdate(player)
-        print(string.format("[PetService] %s data synced to client", player.Name))
+        -- Update processing pets and add money reward (DataService handles sync)
+        local success = DataService:UpdateProcessingAndMoney(player, processingPets, totalMoneyToAdd, petsProcessed)
+        -- Processing update completed
         
         -- Update processing counter
         self:UpdateProcessingCounter(player)
@@ -596,7 +463,7 @@ end
 function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
     local playerData = DataService:GetPlayerData(player)
     if not playerData or not playerData.OwnedGamepasses then
-        print(string.format("[ApplyGamepassMultipliers] %s - No player data or gamepasses, returning base: %d", player.Name, baseValue))
+        -- No gamepass multipliers available
         return baseValue
     end
     
@@ -626,14 +493,12 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
         local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
         local rebirthMultiplier = 1 + (playerRebirths * 0.5)
         
-        print(string.format("[ApplyGamepassMultipliers] %s - Base: %d, GamepassMult: %.2f, PetBoostMult: %.2f, RebirthMult: %.2f", 
-            player.Name, baseValue, gamepassMultiplier, petBoostMultiplier, rebirthMultiplier))
+        -- Calculating multipliers
         
         -- Total calculation matches client: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus
         multiplier = 1 + (petBoostMultiplier - 1) + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
         
-        print(string.format("[ApplyGamepassMultipliers] %s - Final multiplier: %.4f, Result: %d", 
-            player.Name, multiplier, math.floor(baseValue * multiplier)))
+        -- Applied gamepass multipliers
     elseif rewardType == "Diamonds" then
         -- Check for 2x Diamonds gamepass
         if gamepasses.TwoXDiamonds then
@@ -653,7 +518,7 @@ end
 function PetService:GetEquippedPetBoostMultiplier(player)
     local playerData = DataService:GetPlayerData(player)
     if not playerData then
-        print(string.format("[GetEquippedPetBoostMultiplier] %s - No player data, returning 1", player.Name))
+        -- No player data for boost calculation
         return 1 -- No boost if no player data
     end
     
@@ -661,8 +526,7 @@ function PetService:GetEquippedPetBoostMultiplier(player)
     local equippedPetCount = #(playerData.EquippedPets or {})
     local opPetCount = #(playerData.OPPets or {})
     
-    print(string.format("[GetEquippedPetBoostMultiplier] %s - %d equipped pets, %d OP pets", 
-        player.Name, equippedPetCount, opPetCount))
+    -- Calculating boost from equipped and OP pets
     
     -- Add boost from each equipped pet (use BaseBoost, not FinalBoost to avoid double-multiplying)
     for _, equippedPet in pairs(playerData.EquippedPets or {}) do
@@ -674,13 +538,11 @@ function PetService:GetEquippedPetBoostMultiplier(player)
         if petBoost < 1 then
             -- Convert decimal to percentage (0.77 becomes 0.77 = 77% boost)
             boostPercentage = petBoost
-            print(string.format("[GetEquippedPetBoostMultiplier] %s - Equipped pet %s: decimal boost %.4f -> percentage %.4f", 
-                player.Name, equippedPet.Name or "Unknown", petBoost, boostPercentage))
+            -- Converting decimal boost to percentage
         else
             -- Standard conversion (1.77 becomes 0.77 = 77% boost)
             boostPercentage = petBoost - 1
-            print(string.format("[GetEquippedPetBoostMultiplier] %s - Equipped pet %s: multiplier boost %.4f -> percentage %.4f", 
-                player.Name, equippedPet.Name or "Unknown", petBoost, boostPercentage))
+            -- Converting multiplier boost to percentage
         end
         
         totalBoostMultiplier = totalBoostMultiplier + boostPercentage
@@ -692,12 +554,10 @@ function PetService:GetEquippedPetBoostMultiplier(player)
         -- Convert boost to multiplier (e.g., 1000 boost = 999 = 99900% boost)
         local boostPercentage = petBoost - 1 -- 1000 becomes 999 (99900%)
         totalBoostMultiplier = totalBoostMultiplier + boostPercentage
-        print(string.format("[GetEquippedPetBoostMultiplier] %s - OP pet %s: boost %.4f", 
-            player.Name, opPet.Name or "Unknown", petBoost))
+        -- Processing OP pet boost
     end
     
-    print(string.format("[GetEquippedPetBoostMultiplier] %s - Total boost multiplier: %.4f", 
-        player.Name, totalBoostMultiplier))
+    -- Calculated total boost multiplier
     
     return totalBoostMultiplier
 end

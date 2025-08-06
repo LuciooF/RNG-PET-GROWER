@@ -4,7 +4,6 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local DataService = require(script.Parent.DataService)
-local StateService = require(script.Parent.StateService)
 local PetMixerConfig = require(ReplicatedStorage.config.PetMixerConfig)
 -- We'll use basic color mapping for now to avoid circular dependencies
 
@@ -137,7 +136,7 @@ function PetMixerService:StartMixing(player, petIds)
     table.insert(profile.Data.Mixers, mixer)
     
     -- Sync data to client
-    StateService:BroadcastPlayerDataUpdate(player)
+    DataService:SyncPlayerDataToClient(player)
     
     
     return true, mixer
@@ -246,7 +245,7 @@ function PetMixerService:ClaimMixer(player, mixerId)
     table.remove(profile.Data.Mixers, mixerIndex)
     
     -- Sync data to client (this is also done by AddPetToPlayer, but ensure it's called)
-    StateService:BroadcastPlayerDataUpdate(player)
+    DataService:SyncPlayerDataToClient(player)
     
     
     return true, mixer.outputPet
@@ -288,7 +287,7 @@ function PetMixerService:CancelMixer(player, mixerId)
     table.remove(profile.Data.Mixers, mixerIndex)
     
     -- Sync data to client
-    StateService:BroadcastPlayerDataUpdate(player)
+    DataService:SyncPlayerDataToClient(player)
     
     
     return true
@@ -312,7 +311,7 @@ function PetMixerService:CheckMixerCompletions(player)
     
     -- Notify client if there are completions
     if hasCompletions then
-        StateService:BroadcastPlayerDataUpdate(player)
+        DataService:SyncPlayerDataToClient(player)
     end
 end
 

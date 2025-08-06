@@ -36,9 +36,9 @@ function GamepassService:OnGamepassPurchased(player, gamePassId)
         if success then
             -- Added gamepass to player
             
-            -- Sync data to client
-            local StateService = require(script.Parent.StateService)
-            StateService:BroadcastPlayerDataUpdate(player)
+            -- Sync data to client Rodux store
+            local DataService = require(script.Parent.DataService)
+            DataService:SyncPlayerDataToClient(player)
             
             -- Show success message
             self:ShowGamepassMessage(player, "Successfully purchased " .. gamepassConfig.name .. "!")
@@ -152,8 +152,8 @@ function GamepassService:DebugGrantGamepass(player, gamepassName)
         -- DEBUG: Granted gamepass
         
         -- Sync data to client
-        local StateService = require(script.Parent.StateService)
-        StateService:BroadcastPlayerDataUpdate(player)
+        local DataService = require(script.Parent.DataService)
+        DataService:SyncPlayerDataToClient(player)
         
         -- Show success message
         self:ShowGamepassMessage(player, "DEBUG: Granted " .. gamepassConfig.name .. "!")
@@ -197,8 +197,8 @@ function GamepassService:ToggleGamepassSetting(player, settingName)
         -- Toggled gamepass setting
         
         -- Sync data to client
-        local StateService = require(script.Parent.StateService)
-        StateService:BroadcastPlayerDataUpdate(player)
+        local DataService = require(script.Parent.DataService)
+        DataService:SyncPlayerDataToClient(player)
         
         -- Show message to player
         local message = newValue and "Auto Heaven: ON" or "Auto Heaven: OFF"
@@ -213,8 +213,8 @@ function GamepassService:ToggleGamepassSetting(player, settingName)
         -- Toggled gamepass setting
         
         -- Sync data to client
-        local StateService = require(script.Parent.StateService)
-        StateService:BroadcastPlayerDataUpdate(player)
+        local DataService = require(script.Parent.DataService)
+        DataService:SyncPlayerDataToClient(player)
         
         -- Show message to player
         local message = newValue and "Pet Magnet: ON" or "Pet Magnet: OFF"
@@ -264,8 +264,8 @@ function GamepassService:ValidatePlayerGamepasses(player)
     
     -- Sync updated data to client if any changes were made
     if gamepassesChanged then
-        local StateService = require(script.Parent.StateService)
-        StateService:BroadcastPlayerDataUpdate(player)
+        local DataService = require(script.Parent.DataService)
+        DataService:SyncPlayerDataToClient(player)
     end
     
     local ownedGamepasses = self:GetPlayerGamepasses(player)

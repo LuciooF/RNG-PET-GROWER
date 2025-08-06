@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local PathfindingService = game:GetService("PathfindingService")
 
-local DataSyncService = require(script.Parent.DataSyncService)
+local store = require(ReplicatedStorage.store)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local TutorialService = {}
@@ -779,7 +779,7 @@ function TutorialService:GetProgressText()
         return "0%"
     end
     
-    local playerData = DataSyncService:GetPlayerData()
+    local playerData = store:getState().player
     if not playerData then
         return "0%"
     end
@@ -1085,7 +1085,7 @@ end
 
 -- Load tutorial progress from player data
 local function loadTutorialProgress()
-    local playerData = DataSyncService:GetPlayerData()
+    local playerData = store:getState().player
     if playerData and playerData.TutorialProgress then
         local progress = playerData.TutorialProgress
         tutorialData.currentStep = progress.currentStep or 1
@@ -1107,7 +1107,7 @@ function TutorialService:Initialize()
     -- TutorialService initializing
     
     -- Subscribe to data changes for event-driven step completion
-    local unsubscribe = DataSyncService:Subscribe(function(newState)
+    local unsubscribe = store.changed:connect(function(newState, oldState)
         if newState.player then
             -- Load tutorial progress when data updates
             loadTutorialProgress()
@@ -1129,7 +1129,7 @@ function TutorialService:Initialize()
     task.spawn(function()
         task.wait(5) -- Wait for game and data to load
         
-        local playerData = DataSyncService:GetPlayerData()
+        local playerData = store:getState().player
         -- Check if should start tutorial
         
         -- Load existing progress first

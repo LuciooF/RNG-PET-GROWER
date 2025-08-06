@@ -19,7 +19,6 @@ function PlaytimeRewardsService:PerformInstantRebirth(player)
     local DataService = require(script.Parent.DataService)
     local PetService = require(script.Parent.PetService)
     local PlotService = require(script.Parent.PlotService)
-    local StateService = require(script.Parent.StateService)
     local LeaderboardService = require(script.Parent.LeaderboardService)
     
     -- Get player data
@@ -56,7 +55,7 @@ function PlaytimeRewardsService:PerformInstantRebirth(player)
     PlotService:ClearAllPetBallsInPlayerArea(player)
     
     -- Sync updated data to client
-    StateService:BroadcastPlayerDataUpdate(player)
+    DataService:SyncPlayerDataToClient(player)
     
     -- Re-initialize the player's area to update visuals
     PlotService:ReinitializePlayerArea(player)
@@ -163,9 +162,8 @@ function PlaytimeRewardsService:ClaimReward(player, timeMinutes, sessionTime)
     -- For session-based rewards, we don't persistently store claimed rewards
     -- Each session allows claiming all eligible rewards
     
-    -- Sync to client
-    local StateService = require(script.Parent.StateService)
-    StateService:BroadcastPlayerDataUpdate(player)
+    -- Sync to client (DataService auto-syncs)
+    DataService:SyncPlayerDataToClient(player)
     
     print("PlaytimeRewardsService: Player", player.Name, "claimed", reward.amount, reward.type, "for", timeMinutes, "minutes playtime")
     return true, "Reward claimed successfully"

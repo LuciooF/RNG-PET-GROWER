@@ -25,6 +25,15 @@ IconAssets.FEATURES = {
     -- PET_MAGNET = "rbxassetid://...",
 }
 
+-- Particle Effects and Visual Assets
+IconAssets.PARTICLES = {
+    CRAZY_CHEST_REWARD = "rbxassetid://688963157", -- Reward particle effect for crazy chest
+    -- Add more particle effects here as needed
+    -- EXPLOSION = "rbxassetid://...",
+    -- SPARKLE = "rbxassetid://...",
+    -- MAGIC = "rbxassetid://...",
+}
+
 -- Currency Icons
 IconAssets.CURRENCY = {
     MONEY = "rbxassetid://80960000119108",

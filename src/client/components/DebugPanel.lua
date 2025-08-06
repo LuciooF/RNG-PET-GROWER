@@ -1,11 +1,9 @@
--- Modern DebugPanel - Developer tools for testing with modern theme
+-- Enhanced DebugPanel - Developer tools for testing with modern theme and expanded functionality
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 
 local React = require(ReplicatedStorage.Packages.react)
-local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
-local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
@@ -16,7 +14,14 @@ local function DebugPanel(props)
     if not AuthorizationUtils.isAuthorized(localPlayer) then
         return nil -- Don't render debug panel for unauthorized users
     end
+    
     local isVisible, setIsVisible = React.useState(props.visible or false)
+    local selectedTab, setSelectedTab = React.useState("resources")
+    
+    -- State for custom pet creation
+    local petBoost, setPetBoost = React.useState("1.5")
+    local petValue, setPetValue = React.useState("500")
+    local petName, setPetName = React.useState("Debug Pet")
     
     -- Update visibility when props change
     React.useEffect(function()
@@ -42,29 +47,131 @@ local function DebugPanel(props)
         end
     end, {})
     
-    -- Debug functions
-    local function addMoney(amount)
-        DataSyncService:UpdateResource("Money", amount)
-    end
-    
-    local function resetPlayerData()
-        -- Fire remote event to reset data on server
-        local resetDataRemote = ReplicatedStorage:FindFirstChild("ResetPlayerData")
-        if resetDataRemote then
-            resetDataRemote:FireServer()
+    -- Helper function to send debug commands (DRY principle)
+    local function sendDebugCommand(commandType, ...)
+        local debugCommandRemote = ReplicatedStorage:FindFirstChild("DebugCommand") 
+        
+        -- If not found directly, check in RemoteEvents folder
+        if not debugCommandRemote then
+            local remoteEventsFolder = ReplicatedStorage:FindFirstChild("RemoteEvents")
+            if remoteEventsFolder then
+                debugCommandRemote = remoteEventsFolder:FindFirstChild("DebugCommand")
+            end
+        end
+        
+        if debugCommandRemote then
+            debugCommandRemote:FireServer(commandType, ...)
+        else
+            warn("DebugPanel: DebugCommand remote not found for command:", commandType)
         end
     end
     
+    -- Debug functions - Use proper server-authority pattern
+    local function addMoney(amount)
+        sendDebugCommand("AddMoney", amount)
+    end
+    
+    local function addDiamonds(amount)
+        sendDebugCommand("AddDiamonds", amount)
+    end
+    
+    local function giveRebirth()
+        sendDebugCommand("GiveRebirth")
+    end
+    
+    local function createCustomPet()
+        local boost = tonumber(petBoost) or 1.5
+        local value = tonumber(petValue) or 500
+        sendDebugCommand("CreateCustomPet", petName, boost, value)
+    end
+    
+    local function resetPlayerData()
+        sendDebugCommand("ResetPlayerData")
+    end
+    
     local function startTutorial()
-        print("DebugPanel: Starting tutorial manually")
-        TutorialService:StartTutorial()
+        sendDebugCommand("StartTutorial")
     end
     
     local function stopTutorial()
-        print("DebugPanel: Stopping tutorial manually")
-        TutorialService:StopTutorial()
+        sendDebugCommand("StopTutorial")
     end
     
+    -- Helper function to create a styled button
+    local function createButton(props)
+        return React.createElement("TextButton", {
+            Size = props.size or ScreenUtils.udim2(1, 0, 0, 40),
+            BackgroundColor3 = props.color or Color3.fromRGB(100, 150, 255),
+            BorderSizePixel = 0,
+            Text = props.text or "Button",
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+            TextStrokeTransparency = 0,
+            TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+            Font = Enum.Font.FredokaOne,
+            LayoutOrder = props.layoutOrder,
+            ZIndex = 203,
+            [React.Event.Activated] = props.onActivated
+        }, {
+            Corner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 8)
+            }),
+            Outline = React.createElement("UIStroke", {
+                Thickness = props.strokeThickness or 2,
+                Color = Color3.fromRGB(0, 0, 0),
+                Transparency = 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            }),
+        })
+    end
+    
+    -- Helper function to create section headers
+    local function createSectionHeader(text, color, layoutOrder)
+        return React.createElement("TextLabel", {
+            Size = ScreenUtils.udim2(1, 0, 0, 35),
+            BackgroundTransparency = 1,
+            Text = text,
+            TextColor3 = color,
+            TextSize = ScreenUtils.TEXT_SIZES.LARGE() - 2,
+            TextStrokeTransparency = 0,
+            TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+            Font = Enum.Font.FredokaOne,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            LayoutOrder = layoutOrder,
+            ZIndex = 203
+        })
+    end
+    
+    -- Helper function to create tab buttons
+    local function createTabButton(tabId, title, layoutOrder)
+        local isSelected = selectedTab == tabId
+        return React.createElement("TextButton", {
+            Size = ScreenUtils.udim2(0, 100, 0, 35),
+            BackgroundColor3 = isSelected and Color3.fromRGB(0, 162, 255) or Color3.fromRGB(150, 150, 150),
+            BorderSizePixel = 0,
+            Text = title,
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() - 2,
+            TextStrokeTransparency = 0,
+            TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+            Font = Enum.Font.FredokaOne,
+            LayoutOrder = layoutOrder,
+            ZIndex = 203,
+            [React.Event.Activated] = function()
+                setSelectedTab(tabId)
+            end
+        }, {
+            Corner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 6)
+            }),
+            Outline = React.createElement("UIStroke", {
+                Thickness = isSelected and 3 or 2,
+                Color = Color3.fromRGB(0, 0, 0),
+                Transparency = 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            }),
+        })
+    end
     
     if not isVisible then
         return nil -- Don't show anything when not visible - controlled by side button now
@@ -85,11 +192,11 @@ local function DebugPanel(props)
             end
         end,
     }, {
-        -- Modern modal container
+        -- Modern modal container (larger)
         DebugModal = React.createElement("Frame", {
             Name = "DebugModal",
-            Size = ScreenUtils.udim2(0, 400, 0, 400), -- Bigger modern modal
-            Position = ScreenUtils.udim2(0.5, -200, 0.5, -200), -- Center on screen
+            Size = ScreenUtils.udim2(0, 550, 0, 600), -- Much bigger for more content
+            Position = ScreenUtils.udim2(0.5, -275, 0.5, -300), -- Center on screen
             BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
             BackgroundTransparency = 0,
             ZIndex = 201,
@@ -130,8 +237,8 @@ local function DebugPanel(props)
             }, {
                 -- Title Container (centered)
                 TitleContainer = React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(0, 200, 1, 0),
-                    Position = ScreenUtils.udim2(0.5, -100, 0, 0),
+                    Size = ScreenUtils.udim2(0, 250, 1, 0),
+                    Position = ScreenUtils.udim2(0.5, -125, 0, 0),
                     BackgroundTransparency = 1,
                     ZIndex = 204,
                 }, {
@@ -147,12 +254,12 @@ local function DebugPanel(props)
                     
                     -- Title Text
                     Title = React.createElement("TextLabel", {
-                        Size = ScreenUtils.udim2(0, 150, 1, 0),
+                        Size = ScreenUtils.udim2(0, 200, 1, 0),
                         Position = ScreenUtils.udim2(0, 50, 0, 0),
                         BackgroundTransparency = 1,
-                        Text = "Debug Panel",
+                        Text = "Enhanced Debug Panel",
                         TextColor3 = Color3.fromRGB(50, 50, 50), -- Dark text
-                        TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4,
+                        TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 2,
                         TextStrokeTransparency = 0,
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                         Font = Enum.Font.FredokaOne,
@@ -188,206 +295,289 @@ local function DebugPanel(props)
                     }),
                 }),
             }),
-        
-            -- Content area
-            Content = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 1, -80),
-                Position = ScreenUtils.udim2(0, 20, 0, 70),
+            
+            -- Tab navigation
+            TabContainer = React.createElement("Frame", {
+                Size = ScreenUtils.udim2(1, -20, 0, 50),
+                Position = ScreenUtils.udim2(0, 10, 0, 70),
                 BackgroundTransparency = 1,
-                ZIndex = 202
+                ZIndex = 202,
             }, {
-                Layout = React.createElement("UIListLayout", {
+                TabLayout = React.createElement("UIListLayout", {
+                    FillDirection = Enum.FillDirection.Horizontal,
                     SortOrder = Enum.SortOrder.LayoutOrder,
-                    Padding = ScreenUtils.udim(0, 12)
+                    Padding = ScreenUtils.udim(0, 5)
                 }),
                 
-                -- Money section header
-                MoneyLabel = React.createElement("TextLabel", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 30),
-                    BackgroundTransparency = 1,
-                    Text = "Money Controls",
-                    TextColor3 = Color3.fromRGB(0, 162, 255), -- Blue theme
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.FredokaOne,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    LayoutOrder = 1,
-                    ZIndex = 203
-                }),
-            
-                Money100Button = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 35),
-                    BackgroundColor3 = Color3.fromRGB(0, 200, 100), -- Modern green
-                    BorderSizePixel = 0,
-                    Text = "+100 Money",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.FredokaOne,
-                    LayoutOrder = 2,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        addMoney(100)
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
-                    }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 2,
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    }),
-                }),
-            
-                Money1kButton = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 35),
-                    BackgroundColor3 = Color3.fromRGB(0, 180, 100), -- Slightly darker green
-                    BorderSizePixel = 0,
-                    Text = "+1,000 Money",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.FredokaOne,
-                    LayoutOrder = 3,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        addMoney(1000)
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
-                    }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 2,
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    }),
-                }),
-            
-                Money10kButton = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 35),
-                    BackgroundColor3 = Color3.fromRGB(0, 160, 100), -- Darker green
-                    BorderSizePixel = 0,
-                    Text = "+10,000 Money",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.FredokaOne,
-                    LayoutOrder = 4,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        addMoney(10000)
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
-                    }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 2,
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    }),
-                }),
-            
-                -- Data section header
-                DataLabel = React.createElement("TextLabel", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 30),
-                    BackgroundTransparency = 1,
-                    Text = "Data Controls",
-                    TextColor3 = Color3.fromRGB(255, 100, 100), -- Red theme for dangerous operations
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 2,
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.FredokaOne,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    LayoutOrder = 5,
-                    ZIndex = 203
-                }),
-            
-                ResetDataButton = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 40), -- Bigger for dangerous action
-                    BackgroundColor3 = Color3.fromRGB(220, 50, 50), -- Modern red
-                    BorderSizePixel = 0,
-                    Text = "⚠️ Reset All Data",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() + 1,
-                    TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Font = Enum.Font.FredokaOne,
-                    LayoutOrder = 6,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        resetPlayerData()
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
-                    }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 3, -- Thicker outline for danger
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    }),
+                ResourcesTab = createTabButton("resources", "💰 Resources", 1),
+                PetsTab = createTabButton("pets", "🐕 Pets", 2),
+                DataTab = createTabButton("data", "⚠️ Data", 3),
+                UtilsTab = createTabButton("utils", "🔧 Utils", 4),
+            }),
+        
+            -- Scrollable content area
+            ContentScrollFrame = React.createElement("ScrollingFrame", {
+                Size = ScreenUtils.udim2(1, -40, 1, -140),
+                Position = ScreenUtils.udim2(0, 20, 0, 130),
+                BackgroundTransparency = 1,
+                ScrollBarThickness = 8,
+                ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
+                ZIndex = 202,
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                CanvasSize = UDim2.new(0, 0, 0, 0)
+            }, {
+                ContentLayout = React.createElement("UIListLayout", {
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = ScreenUtils.udim(0, 8)
                 }),
                 
-                StartTutorialButton = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 35),
-                    BackgroundColor3 = Color3.fromRGB(100, 150, 255), -- Blue for tutorial
-                    BorderSizePixel = 0,
-                    Text = "🎯 Start Tutorial",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    Font = Enum.Font.FredokaOne,
-                    LayoutOrder = 7,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        startTutorial()
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
-                    }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 2,
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                    }),
+                ContentPadding = React.createElement("UIPadding", {
+                    PaddingTop = ScreenUtils.udim(0, 10),
+                    PaddingBottom = ScreenUtils.udim(0, 10),
+                    PaddingLeft = ScreenUtils.udim(0, 5),
+                    PaddingRight = ScreenUtils.udim(0, 15),
                 }),
                 
-                StopTutorialButton = React.createElement("TextButton", {
-                    Size = ScreenUtils.udim2(1, 0, 0, 35),
-                    BackgroundColor3 = Color3.fromRGB(150, 150, 150), -- Gray for stop
-                    BorderSizePixel = 0,
-                    Text = "⏹️ Stop Tutorial",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
-                    Font = Enum.Font.FredokaOne,
-                    LayoutOrder = 8,
-                    ZIndex = 203,
-                    [React.Event.Activated] = function()
-                        stopTutorial()
-                    end
-                }, {
-                    Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8)
+                -- Resources Tab Content
+                ResourcesContent = selectedTab == "resources" and React.createElement(React.Fragment, nil, {
+                    MoneyHeader = createSectionHeader("💰 Money Controls", Color3.fromRGB(0, 162, 255), 1),
+                    
+                    Money100Button = createButton({
+                        text = "+100 Money",
+                        color = Color3.fromRGB(0, 200, 100),
+                        layoutOrder = 2,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addMoney(100) end
                     }),
-                    Outline = React.createElement("UIStroke", {
-                        Thickness = 2,
-                        Color = Color3.fromRGB(0, 0, 0),
-                        Transparency = 0,
-                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                    
+                    Money1kButton = createButton({
+                        text = "+1,000 Money",
+                        color = Color3.fromRGB(0, 180, 100),
+                        layoutOrder = 3,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addMoney(1000) end
                     }),
-                })
+                    
+                    Money10kButton = createButton({
+                        text = "+10,000 Money",
+                        color = Color3.fromRGB(0, 160, 100),
+                        layoutOrder = 4,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addMoney(10000) end
+                    }),
+                    
+                    Money100kButton = createButton({
+                        text = "+100,000 Money",
+                        color = Color3.fromRGB(0, 140, 100),
+                        layoutOrder = 5,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addMoney(100000) end
+                    }),
+                    
+                    DiamondHeader = createSectionHeader("💎 Diamond Controls", Color3.fromRGB(255, 100, 255), 6),
+                    
+                    Diamonds10Button = createButton({
+                        text = "+10 Diamonds",
+                        color = Color3.fromRGB(200, 0, 200),
+                        layoutOrder = 7,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addDiamonds(10) end
+                    }),
+                    
+                    Diamonds100Button = createButton({
+                        text = "+100 Diamonds",
+                        color = Color3.fromRGB(180, 0, 180),
+                        layoutOrder = 8,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addDiamonds(100) end
+                    }),
+                    
+                    Diamonds1000Button = createButton({
+                        text = "+1,000 Diamonds",
+                        color = Color3.fromRGB(160, 0, 160),
+                        layoutOrder = 9,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = function() addDiamonds(1000) end
+                    }),
+                    
+                    RebirthHeader = createSectionHeader("🔄 Rebirth Controls", Color3.fromRGB(255, 150, 0), 10),
+                    
+                    RebirthButton = createButton({
+                        text = "🔄 +1 Rebirth",
+                        color = Color3.fromRGB(255, 140, 0),
+                        layoutOrder = 11,
+                        size = ScreenUtils.udim2(1, 0, 0, 40),
+                        strokeThickness = 3,
+                        onActivated = giveRebirth
+                    }),
+                }) or nil,
+                
+                -- Pets Tab Content
+                PetsContent = selectedTab == "pets" and React.createElement(React.Fragment, nil, {
+                    PetHeader = createSectionHeader("🐕 Custom Pet Creator", Color3.fromRGB(255, 165, 0), 1),
+                    
+                    -- Pet Name Input
+                    NameLabel = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 25),
+                        BackgroundTransparency = 1,
+                        Text = "Pet Name:",
+                        TextColor3 = Color3.fromRGB(50, 50, 50),
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                        Font = Enum.Font.FredokaOne,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        LayoutOrder = 2,
+                        ZIndex = 203
+                    }),
+                    
+                    NameInput = React.createElement("TextBox", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 35),
+                        BackgroundColor3 = Color3.fromRGB(240, 240, 240),
+                        BorderSizePixel = 0,
+                        Text = petName,
+                        TextColor3 = Color3.fromRGB(50, 50, 50),
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                        Font = Enum.Font.FredokaOne,
+                        PlaceholderText = "Enter pet name...",
+                        LayoutOrder = 3,
+                        ZIndex = 203,
+                        [React.Event.FocusLost] = function(rbx)
+                            setPetName(rbx.Text)
+                        end
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = ScreenUtils.udim(0, 8)
+                        }),
+                        Outline = React.createElement("UIStroke", {
+                            Thickness = 2,
+                            Color = Color3.fromRGB(0, 0, 0),
+                            Transparency = 0,
+                            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                        }),
+                    }),
+                    
+                    -- Pet Boost Input
+                    BoostLabel = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 25),
+                        BackgroundTransparency = 1,
+                        Text = "Pet Boost (multiplier):",
+                        TextColor3 = Color3.fromRGB(50, 50, 50),
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                        Font = Enum.Font.FredokaOne,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        LayoutOrder = 4,
+                        ZIndex = 203
+                    }),
+                    
+                    BoostInput = React.createElement("TextBox", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 35),
+                        BackgroundColor3 = Color3.fromRGB(240, 240, 240),
+                        BorderSizePixel = 0,
+                        Text = petBoost,
+                        TextColor3 = Color3.fromRGB(50, 50, 50),
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                        Font = Enum.Font.FredokaOne,
+                        PlaceholderText = "e.g., 1.5, 10, 100",
+                        LayoutOrder = 5,
+                        ZIndex = 203,
+                        [React.Event.FocusLost] = function(rbx)
+                            setPetBoost(rbx.Text)
+                        end
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = ScreenUtils.udim(0, 8)
+                        }),
+                        Outline = React.createElement("UIStroke", {
+                            Thickness = 2,
+                            Color = Color3.fromRGB(0, 0, 0),
+                            Transparency = 0,
+                            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                        }),
+                    }),
+                    
+                    -- Pet Value Input
+                    ValueLabel = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 25),
+                        BackgroundTransparency = 1,
+                        Text = "Pet Value (money when processed):",
+                        TextColor3 = Color3.fromRGB(50, 50, 50),
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                        Font = Enum.Font.FredokaOne,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        LayoutOrder = 6,
+                        ZIndex = 203
+                    }),
+                    
+                    ValueInput = React.createElement("TextBox", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 35),
+                        BackgroundColor3 = Color3.fromRGB(240, 240, 240),
+                        BorderSizePixel = 0,
+                        Text = petValue,
+                        TextColor3 = Color3.fromRGB(50, 50, 50),
+                        TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                        Font = Enum.Font.FredokaOne,
+                        PlaceholderText = "e.g., 500, 1000, 5000",
+                        LayoutOrder = 7,
+                        ZIndex = 203,
+                        [React.Event.FocusLost] = function(rbx)
+                            setPetValue(rbx.Text)
+                        end
+                    }, {
+                        Corner = React.createElement("UICorner", {
+                            CornerRadius = ScreenUtils.udim(0, 8)
+                        }),
+                        Outline = React.createElement("UIStroke", {
+                            Thickness = 2,
+                            Color = Color3.fromRGB(0, 0, 0),
+                            Transparency = 0,
+                            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                        }),
+                    }),
+                    
+                    -- Create Pet Button
+                    CreatePetButton = createButton({
+                        text = "🐕 Create Custom Pet",
+                        color = Color3.fromRGB(255, 140, 0),
+                        layoutOrder = 8,
+                        size = ScreenUtils.udim2(1, 0, 0, 45),
+                        strokeThickness = 3,
+                        onActivated = createCustomPet
+                    }),
+                }) or nil,
+                
+                -- Data Tab Content
+                DataContent = selectedTab == "data" and React.createElement(React.Fragment, nil, {
+                    DataHeader = createSectionHeader("⚠️ Data Management", Color3.fromRGB(255, 100, 100), 1),
+                    
+                    ResetDataButton = createButton({
+                        text = "⚠️ Reset All Data",
+                        color = Color3.fromRGB(220, 50, 50),
+                        layoutOrder = 2,
+                        size = ScreenUtils.udim2(1, 0, 0, 45),
+                        strokeThickness = 3,
+                        onActivated = resetPlayerData
+                    }),
+                }) or nil,
+                
+                -- Utils Tab Content  
+                UtilsContent = selectedTab == "utils" and React.createElement(React.Fragment, nil, {
+                    TutorialHeader = createSectionHeader("🎯 Tutorial Controls", Color3.fromRGB(100, 150, 255), 1),
+                    
+                    StartTutorialButton = createButton({
+                        text = "🎯 Start Tutorial",
+                        color = Color3.fromRGB(100, 150, 255),
+                        layoutOrder = 2,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = startTutorial
+                    }),
+                    
+                    StopTutorialButton = createButton({
+                        text = "⏹️ Stop Tutorial",
+                        color = Color3.fromRGB(150, 150, 150),
+                        layoutOrder = 3,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = stopTutorial
+                    }),
+                }) or nil,
             })
         })
     })

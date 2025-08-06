@@ -13,7 +13,7 @@ local player = Players.LocalPlayer
 
 -- Sound constants
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
-local CLICK_SOUND_ID = "rbxassetid://6895079972"
+local CLICK_SOUND_ID = "rbxassetid://876939830"
 
 -- Pre-create hover sound for instant playback
 local hoverSound = Instance.new("Sound")
