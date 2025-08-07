@@ -84,7 +84,7 @@ local function createCleanPurchaseModal(props)
             }),
             
             Corner = React.createElement("UICorner", {
-                CornerRadius = ScreenUtils.udim(0, 10),
+                CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
             }),
             
             Stroke = React.createElement("UIStroke", {
@@ -121,7 +121,7 @@ local function createCleanPurchaseModal(props)
                 [React.Event.Activated] = onClose,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 6),
+                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(6)),
                 }),
                 
                 Stroke = React.createElement("UIStroke", {
@@ -584,7 +584,7 @@ local function AnimationCard(props)
         ZIndex = 1011,
     }, {
         Corner = React.createElement("UICorner", {
-            CornerRadius = ScreenUtils.udim(0, 8),
+            CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(8)),
         }),
         
         -- Rainbow gradient background
@@ -791,8 +791,8 @@ function CrazyChestUI.createStaticRewardStrip(rewards, rewardMultiplier, chestLu
         -- Selection indicator (the line that shows where the result will land)
         SelectionIndicator = React.createElement("Frame", {
             Name = "SelectionIndicator",
-            Size = ScreenUtils.udim2(0, 4, 1, -ScreenUtils.getProportionalSize(80)),
-            Position = ScreenUtils.udim2(0.5, -2, 0, ScreenUtils.getProportionalSize(40)),
+            Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(4), 1, -ScreenUtils.getProportionalSize(80)),
+            Position = ScreenUtils.udim2(0.5, -ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(40)),
             BackgroundColor3 = Color3.fromRGB(255, 215, 0), -- Gold like PlaytimeRewards claimed color
             BorderSizePixel = 0,
             ZIndex = 1013, -- Highest z-index to be above cards
@@ -1271,7 +1271,7 @@ function CrazyChestUI.new(props)
                 ZIndex = 1001,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 15)
+                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(15))
                 }),
                 
                 -- Header black outline
@@ -1316,7 +1316,7 @@ function CrazyChestUI.new(props)
                     end,
                 }, {
                     Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 8),
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(8)),
                     }),
                     
                     Stroke = React.createElement("UIStroke", {
@@ -1680,7 +1680,7 @@ function CrazyChestUI.new(props)
                     end,
                 }, {
                     Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 4),
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(4)),
                     }),
                     
                     InnerStroke = React.createElement("UIStroke", {
@@ -1848,8 +1848,8 @@ function CrazyChestUI.new(props)
                                 end
                                 
                                 local contentContainer = Instance.new("Frame")
-                                contentContainer.Size = UDim2.new(1, -20, 1, -ScreenUtils.getProportionalSize(55))
-                                contentContainer.Position = UDim2.new(0, 10, 0, 10)
+                                contentContainer.Size = UDim2.new(1, -ScreenUtils.getProportionalSize(20), 1, -ScreenUtils.getProportionalSize(55))
+                                contentContainer.Position = UDim2.new(0, ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(10))
                                 contentContainer.BackgroundTransparency = 1
                                 contentContainer.ZIndex = 1004
                                 contentContainer.Parent = previewCard
@@ -2049,7 +2049,7 @@ function CrazyChestUI.new(props)
                     end,
                 }, {
                     Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 4),
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(4)),
                     }),
                     
                     InnerStroke = React.createElement("UIStroke", {
@@ -2110,14 +2110,14 @@ function CrazyChestUI.new(props)
             
             -- Top Section: Rewards as horizontal scrolling cards like PlaytimeRewards
             RewardsFrame = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 0.28, 0), -- 28% of modal height (reduced to give button more space)
-                Position = ScreenUtils.udim2(0, 20, 0.12, 0), -- 12% from top (moved up since we removed cost frame)
+                Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 0.28, 0), -- 28% of modal height (reduced to give button more space)
+                Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0.12, 0), -- 12% from top (moved up since we removed cost frame)
                 BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background to match main UI
                 BorderSizePixel = 0,
                 ZIndex = 1001,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 10),
+                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
                 }),
                 
                 -- Title for rewards section
@@ -2135,8 +2135,8 @@ function CrazyChestUI.new(props)
                 
                 -- Horizontal scrolling frame for reward cards
                 RewardsScrollFrame = React.createElement("ScrollingFrame", {
-                    Size = ScreenUtils.udim2(1, -20, 1, -ScreenUtils.getProportionalSize(40)),
-                    Position = ScreenUtils.udim2(0, 10, 0, ScreenUtils.getProportionalSize(35)),
+                    Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(20), 1, -ScreenUtils.getProportionalSize(40)),
+                    Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(35)),
                     BackgroundTransparency = 1,
                     ScrollBarThickness = ScreenUtils.getProportionalSize(4),
                     ScrollBarImageColor3 = Color3.fromRGB(200, 200, 200),
@@ -2190,22 +2190,22 @@ function CrazyChestUI.new(props)
             -- Case Opening Animation Section (bottom half) - with pre-populated cards
             CaseOpeningSection = React.createElement("Frame", {
                 Name = "CaseOpeningSection",
-                Size = ScreenUtils.udim2(1, -40, 0.32, 0), -- 32% of modal height (reduced to give button more space)
-                Position = ScreenUtils.udim2(0, 20, 0.45, 0), -- 45% from top (closer to rewards section)
+                Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 0.32, 0), -- 32% of modal height (reduced to give button more space)
+                Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0.45, 0), -- 45% from top (closer to rewards section)
                 BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background to match main UI
                 BorderSizePixel = 0,
                 ZIndex = 1001,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 10),
+                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
                 }),
                 
             }, CrazyChestUI.createStaticRewardStrip(rewards, props.rewardMultiplier or 1, props.chestLuck)),
             
             -- Open Chest section with dual buttons
             OpenChestSection = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -40, 0.15, 0), -- 15% height for two buttons
-                Position = ScreenUtils.udim2(0, 20, 0.78, 0), -- 78% from top (more space)
+                Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 0.15, 0), -- 15% height for two buttons
+                Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0.78, 0), -- 78% from top (more space)
                 BackgroundTransparency = 1,
                 ZIndex = 1001,
             }, {
@@ -2235,7 +2235,7 @@ function CrazyChestUI.new(props)
                     [React.Event.MouseButton1Click] = robuxButtonEnabled and handleOpenChestRobux or function() end,
                 }, {
                     Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 4),
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(4)),
                     }),
                     
                     InnerStroke = React.createElement("UIStroke", {
@@ -2315,7 +2315,7 @@ function CrazyChestUI.new(props)
                     [React.Event.MouseButton1Click] = diamondButtonEnabled and handleOpenChestDiamonds or function() end,
                 }, {
                     Corner = React.createElement("UICorner", {
-                        CornerRadius = ScreenUtils.udim(0, 4),
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(4)),
                     }),
                     
                     InnerStroke = React.createElement("UIStroke", {
