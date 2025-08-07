@@ -107,14 +107,67 @@ end
 
 -- Set up MarketplaceService ProcessReceipt for developer products
 local ROBUX_REBIRTH_DEV_PRODUCT_ID = 3353655412
+local CRAZY_CHEST_LEVEL_PRODUCT_ID = 3360998824
+local CRAZY_CHEST_LUCK_PRODUCT_ID = 3360998460
+local CRAZY_CHEST_OPEN_PRODUCT_ID = 3361129353
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
+    print("📦 ProcessReceipt called for Product ID:", receiptInfo.ProductId, "Player ID:", receiptInfo.PlayerId)
+    
     -- Check if this is the rebirth dev product
     if receiptInfo.ProductId == ROBUX_REBIRTH_DEV_PRODUCT_ID then
         local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
         if player then
             -- Perform rebirth (skip money check since they paid Robux)
             local success = performRebirth(player, true)
+            if success then
+                return Enum.ProductPurchaseDecision.PurchaseGranted
+            else
+                return Enum.ProductPurchaseDecision.NotProcessedYet
+            end
+        end
+    end
+    
+    -- Check if this is a CrazyChest level upgrade
+    if receiptInfo.ProductId == CRAZY_CHEST_LEVEL_PRODUCT_ID then
+        print("🎯 CrazyChest Level upgrade purchase detected")
+        local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
+        if player then
+            print("🎯 Player found:", player.Name)
+            local success = CrazyChestService:HandleChestUpgradeRobux(player)
+            print("🎯 Level upgrade result:", success)
+            if success then
+                return Enum.ProductPurchaseDecision.PurchaseGranted
+            else
+                return Enum.ProductPurchaseDecision.NotProcessedYet
+            end
+        end
+    end
+    
+    -- Check if this is a CrazyChest luck upgrade
+    if receiptInfo.ProductId == CRAZY_CHEST_LUCK_PRODUCT_ID then
+        print("🍀 CrazyChest Luck upgrade purchase detected")
+        local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
+        if player then
+            print("🍀 Player found:", player.Name)
+            local success = CrazyChestService:HandleLuckUpgradeRobux(player)
+            print("🍀 Luck upgrade result:", success)
+            if success then
+                return Enum.ProductPurchaseDecision.PurchaseGranted
+            else
+                return Enum.ProductPurchaseDecision.NotProcessedYet
+            end
+        end
+    end
+    
+    -- Check if this is a CrazyChest open purchase
+    if receiptInfo.ProductId == CRAZY_CHEST_OPEN_PRODUCT_ID then
+        print("🎰 CrazyChest Open purchase detected")
+        local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
+        if player then
+            print("🎰 Player found:", player.Name)
+            local success = CrazyChestService:HandleChestOpen(player)
+            print("🎰 Chest open result:", success)
             if success then
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             else

@@ -44,6 +44,8 @@ local PROFILE_TEMPLATE = {
     PlaytimeMinutes = 0, -- Total playtime in minutes
     ClaimedPlaytimeRewards = {}, -- Array of claimed playtime reward times (e.g., {5, 10, 15})
     CrazyChest = { -- Crazy chest reward system
+        Level = 1, -- Chest level (starts at 1)
+        Luck = 1, -- Luck multiplier (starts at 1)
         PendingReward = nil -- Stored pending reward from chest opening
     }
 }
@@ -659,6 +661,161 @@ function DataService:UpdateProcessingAndMoney(player, newProcessingPets, moneyTo
     self:SyncPlayerDataToClient(player)
     
     return true, "Processing and money updated successfully"
+end
+
+-- Upgrade crazy chest level with diamond cost
+function DataService:UpgradeCrazyChest(player)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Get current chest data
+    local currentLevel = profile.Data.CrazyChest.Level or 1
+    local upgradeCost = currentLevel * 100 -- Cost increases by 100 diamonds per level (100, 200, 300, etc.)
+    
+    -- Check if player has enough diamonds
+    if not profile.Data.Resources.Diamonds or profile.Data.Resources.Diamonds < upgradeCost then
+        return false, "Not enough diamonds! Need " .. upgradeCost .. " diamonds."
+    end
+    
+    -- Deduct diamonds and upgrade chest level
+    profile.Data.Resources.Diamonds = profile.Data.Resources.Diamonds - upgradeCost
+    profile.Data.CrazyChest.Level = currentLevel + 1
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Chest upgraded to level " .. (currentLevel + 1) .. "!"
+end
+
+-- Get crazy chest level multiplier for rewards
+function DataService:GetChestRewardMultiplier(player)
+    local profile = Profiles[player]
+    if not profile then
+        return 1
+    end
+    
+    local chestLevel = profile.Data.CrazyChest.Level or 1
+    return 1 + (chestLevel - 1) * 0.25 -- 25% increase per level (1x, 1.25x, 1.5x, 1.75x, etc.)
+end
+
+-- Get crazy chest upgrade cost
+function DataService:GetChestUpgradeCost(player)
+    local profile = Profiles[player]
+    if not profile then
+        return 100 -- Default cost for level 1
+    end
+    
+    local currentLevel = profile.Data.CrazyChest.Level or 1
+    return currentLevel * 100 -- Cost increases by 100 diamonds per level
+end
+
+-- Upgrade crazy chest luck with diamond cost
+function DataService:UpgradeCrazyChestLuck(player)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Initialize luck if it doesn't exist (for existing saves)
+    if not profile.Data.CrazyChest.Luck then
+        profile.Data.CrazyChest.Luck = 1
+    end
+    
+    -- Get current luck level
+    local currentLuck = profile.Data.CrazyChest.Luck
+    local upgradeCost = currentLuck * 500 -- Cost increases by 500 diamonds per luck level (more expensive than level upgrade)
+    
+    -- Check if player has enough diamonds
+    if not profile.Data.Resources.Diamonds or profile.Data.Resources.Diamonds < upgradeCost then
+        return false, "Not enough diamonds! Need " .. upgradeCost .. " diamonds."
+    end
+    
+    -- Deduct diamonds and upgrade luck
+    profile.Data.Resources.Diamonds = profile.Data.Resources.Diamonds - upgradeCost
+    profile.Data.CrazyChest.Luck = currentLuck + 1
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Luck upgraded to level " .. (currentLuck + 1) .. "!"
+end
+
+-- Robux version of chest upgrade (no diamond cost)
+function DataService:UpgradeCrazyChestRobux(player)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Get current chest data
+    local currentLevel = profile.Data.CrazyChest.Level or 1
+    
+    -- No diamond cost check - this is a robux purchase
+    -- Upgrade chest level directly
+    profile.Data.CrazyChest.Level = currentLevel + 1
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Chest upgraded to level " .. (currentLevel + 1) .. " via Robux!"
+end
+
+-- Robux version of luck upgrade (no diamond cost)
+function DataService:UpgradeCrazyChestLuckRobux(player)
+    local profile = Profiles[player]
+    if not profile then
+        return false, "Player profile not found"
+    end
+    
+    -- Initialize luck if it doesn't exist (for existing saves)
+    if not profile.Data.CrazyChest.Luck then
+        profile.Data.CrazyChest.Luck = 1
+    end
+    
+    -- Get current luck level
+    local currentLuck = profile.Data.CrazyChest.Luck
+    
+    -- No diamond cost check - this is a robux purchase
+    -- Upgrade luck directly
+    profile.Data.CrazyChest.Luck = currentLuck + 1
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true, "Luck upgraded to level " .. (currentLuck + 1) .. " via Robux!"
+end
+
+-- Get crazy chest luck multiplier
+function DataService:GetChestLuckMultiplier(player)
+    local profile = Profiles[player]
+    if not profile then
+        return 1
+    end
+    
+    -- Initialize luck if it doesn't exist (for existing saves)
+    if not profile.Data.CrazyChest.Luck then
+        profile.Data.CrazyChest.Luck = 1
+    end
+    
+    return profile.Data.CrazyChest.Luck
+end
+
+-- Get crazy chest luck upgrade cost
+function DataService:GetChestLuckUpgradeCost(player)
+    local profile = Profiles[player]
+    if not profile then
+        return 500 -- Default cost for level 1
+    end
+    
+    -- Initialize luck if it doesn't exist
+    if not profile.Data.CrazyChest.Luck then
+        profile.Data.CrazyChest.Luck = 1
+    end
+    
+    local currentLuck = profile.Data.CrazyChest.Luck
+    return currentLuck * 500 -- Cost increases by 500 diamonds per luck level
 end
 
 return DataService

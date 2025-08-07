@@ -41,6 +41,27 @@ function CrazyChestService:Initialize()
         claimRewardRemote.Parent = ReplicatedStorage
     end
     
+    local upgradeChestRemote = ReplicatedStorage:FindFirstChild("UpgradeCrazyChest")
+    if not upgradeChestRemote then
+        upgradeChestRemote = Instance.new("RemoteEvent")
+        upgradeChestRemote.Name = "UpgradeCrazyChest"
+        upgradeChestRemote.Parent = ReplicatedStorage
+    end
+    
+    local upgradeLuckRemote = ReplicatedStorage:FindFirstChild("UpgradeCrazyChestLuck")
+    if not upgradeLuckRemote then
+        upgradeLuckRemote = Instance.new("RemoteEvent")
+        upgradeLuckRemote.Name = "UpgradeCrazyChestLuck"
+        upgradeLuckRemote.Parent = ReplicatedStorage
+    end
+    
+    local upgradeSuccessRemote = ReplicatedStorage:FindFirstChild("CrazyChestUpgradeSuccess")
+    if not upgradeSuccessRemote then
+        upgradeSuccessRemote = Instance.new("RemoteEvent")
+        upgradeSuccessRemote.Name = "CrazyChestUpgradeSuccess"
+        upgradeSuccessRemote.Parent = ReplicatedStorage
+    end
+    
     -- Handle chest opening requests
     openChestRemote.OnServerEvent:Connect(function(player)
         self:HandleChestOpen(player)
@@ -49,6 +70,16 @@ function CrazyChestService:Initialize()
     -- Handle reward claiming after animation
     claimRewardRemote.OnServerEvent:Connect(function(player, roll, rewardType)
         self:ClaimReward(player, roll, rewardType)
+    end)
+    
+    -- Handle chest upgrading
+    upgradeChestRemote.OnServerEvent:Connect(function(player)
+        self:HandleChestUpgrade(player)
+    end)
+    
+    -- Handle luck upgrading
+    upgradeLuckRemote.OnServerEvent:Connect(function(player)
+        self:HandleLuckUpgrade(player)
     end)
 end
 
@@ -90,8 +121,28 @@ function CrazyChestService:HandleChestOpen(player)
     -- Generate random roll (1-100)
     local roll = math.random(1, 100)
     
-    -- Get reward based on roll
-    local reward = CrazyChestConfig.getRewardForRoll(roll)
+    -- Get luck multiplier
+    local luckMultiplier = DataService:GetChestLuckMultiplier(player)
+    
+    -- Get reward based on roll with luck adjustment
+    local baseReward = CrazyChestConfig.getLuckAdjustedRewardForRoll(roll, luckMultiplier)
+    
+    -- Apply chest level multiplier
+    local rewardMultiplier = DataService:GetChestRewardMultiplier(player)
+    local reward = {}
+    
+    -- Copy base reward and apply multiplier
+    for key, value in pairs(baseReward) do
+        reward[key] = value
+    end
+    
+    -- Apply multiplier to reward amounts (but not pet rewards)
+    if reward.type == "money" then
+        reward.money = math.floor(reward.money * rewardMultiplier)
+    elseif reward.type == "diamonds" then
+        reward.diamonds = math.floor(reward.diamonds * rewardMultiplier)
+    end
+    -- Pet rewards don't get multiplied, just their boost values stay the same
     
     -- Store the reward to be claimed after animation
     -- Use a unique key combining player ID and timestamp to handle multiple chests
@@ -104,11 +155,11 @@ function CrazyChestService:HandleChestOpen(player)
     
     -- Log what they will win (but don't give it yet)
     if reward.type == "money" then
-        print("CrazyChestService:", player.Name, "will win", reward.money, "money from chest (pending animation)")
+        -- Player will win money reward
     elseif reward.type == "diamonds" then
-        print("CrazyChestService:", player.Name, "will win", reward.diamonds, "diamonds from chest (pending animation)")
+        -- Player will win diamonds reward
     elseif reward.type == "pet" then
-        print("CrazyChestService:", player.Name, "will win", reward.boost .. "x", reward.petName, "from chest (pending animation)")
+        -- Player will win pet reward
     end
     
     -- Add the reward key to the reward data so client can claim it
@@ -117,7 +168,7 @@ function CrazyChestService:HandleChestOpen(player)
     -- Send result to client for animation
     local chestResultRemote = ReplicatedStorage:FindFirstChild("CrazyChestResult")
     if chestResultRemote then
-        print("CrazyChestService: Sending result to", player.Name, "- Roll:", roll)
+        -- Sending chest result to client
         chestResultRemote:FireClient(player, roll, reward)
     else
         warn("CrazyChestService: CrazyChestResult remote not found!")
@@ -201,5 +252,109 @@ task.spawn(function()
         end
     end
 end)
+
+-- Handle chest upgrade requests
+function CrazyChestService:HandleChestUpgrade(player)
+    print("🎯 CrazyChestService:HandleChestUpgrade called for", player.Name)
+    if not player or not player.Parent then
+        print("🎯 Player validation failed")
+        return false
+    end
+    
+    print("🎯 Calling DataService:UpgradeCrazyChest...")
+    local success, message = DataService:UpgradeCrazyChest(player)
+    print("🎯 DataService upgrade result:", success, message)
+    
+    -- Fire success event to client for sound/UI updates
+    if success then
+        local upgradeSuccessRemote = ReplicatedStorage:FindFirstChild("CrazyChestUpgradeSuccess")
+        if upgradeSuccessRemote then
+            print("🎯 Firing success event to client")
+            upgradeSuccessRemote:FireClient(player, "level")
+        else
+            warn("🎯 CrazyChestUpgradeSuccess remote not found!")
+        end
+    end
+    
+    return success
+end
+
+-- Handle luck upgrade requests
+function CrazyChestService:HandleLuckUpgrade(player)
+    print("🍀 CrazyChestService:HandleLuckUpgrade called for", player.Name)
+    if not player or not player.Parent then
+        print("🍀 Player validation failed")
+        return false
+    end
+    
+    print("🍀 Calling DataService:UpgradeCrazyChestLuck...")
+    local success, message = DataService:UpgradeCrazyChestLuck(player)
+    print("🍀 DataService upgrade result:", success, message)
+    
+    -- Fire success event to client for sound/UI updates
+    if success then
+        local upgradeSuccessRemote = ReplicatedStorage:FindFirstChild("CrazyChestUpgradeSuccess")
+        if upgradeSuccessRemote then
+            print("🍀 Firing success event to client")
+            upgradeSuccessRemote:FireClient(player, "luck")
+        else
+            warn("🍀 CrazyChestUpgradeSuccess remote not found!")
+        end
+    end
+    
+    return success
+end
+
+-- Handle chest upgrade via Robux (no diamond cost)
+function CrazyChestService:HandleChestUpgradeRobux(player)
+    print("🎯💎 CrazyChestService:HandleChestUpgradeRobux called for", player.Name)
+    if not player or not player.Parent then
+        print("🎯💎 Player validation failed")
+        return false
+    end
+    
+    print("🎯💎 Calling DataService:UpgradeCrazyChestRobux...")
+    local success, message = DataService:UpgradeCrazyChestRobux(player)
+    print("🎯💎 DataService robux upgrade result:", success, message)
+    
+    -- Fire success event to client for sound/UI updates
+    if success then
+        local upgradeSuccessRemote = ReplicatedStorage:FindFirstChild("CrazyChestUpgradeSuccess")
+        if upgradeSuccessRemote then
+            print("🎯💎 Firing success event to client")
+            upgradeSuccessRemote:FireClient(player, "level")
+        else
+            warn("🎯💎 CrazyChestUpgradeSuccess remote not found!")
+        end
+    end
+    
+    return success
+end
+
+-- Handle luck upgrade via Robux (no diamond cost)
+function CrazyChestService:HandleLuckUpgradeRobux(player)
+    print("🍀💎 CrazyChestService:HandleLuckUpgradeRobux called for", player.Name)
+    if not player or not player.Parent then
+        print("🍀💎 Player validation failed")
+        return false
+    end
+    
+    print("🍀💎 Calling DataService:UpgradeCrazyChestLuckRobux...")
+    local success, message = DataService:UpgradeCrazyChestLuckRobux(player)
+    print("🍀💎 DataService robux upgrade result:", success, message)
+    
+    -- Fire success event to client for sound/UI updates
+    if success then
+        local upgradeSuccessRemote = ReplicatedStorage:FindFirstChild("CrazyChestUpgradeSuccess")
+        if upgradeSuccessRemote then
+            print("🍀💎 Firing success event to client")
+            upgradeSuccessRemote:FireClient(player, "luck")
+        else
+            warn("🍀💎 CrazyChestUpgradeSuccess remote not found!")
+        end
+    end
+    
+    return success
+end
 
 return CrazyChestService

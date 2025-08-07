@@ -1,6 +1,8 @@
 -- CrazyChestService - Handles client-side crazy chest interactions
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local SoundService = game:GetService("SoundService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local CrazyChestConfig = require(ReplicatedStorage.config.CrazyChestConfig)
@@ -13,6 +15,23 @@ CrazyChestService.__index = CrazyChestService
 
 -- Track if already initialized to prevent duplicate connections
 local clientInitialized = false
+
+-- Upgrade success sound
+local UPGRADE_SUCCESS_SOUND_ID = "rbxassetid://128506762153961"
+
+-- Function to play upgrade success sound
+local function playUpgradeSuccessSound()
+    local sound = Instance.new("Sound")
+    sound.SoundId = UPGRADE_SUCCESS_SOUND_ID
+    sound.Volume = 0.5
+    sound.Parent = SoundService
+    sound:Play()
+    
+    -- Clean up sound after it finishes
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
 
 local player = Players.LocalPlayer
 local chestPart = nil
@@ -101,6 +120,7 @@ function CrazyChestService:SetupRemoteEvents()
     -- Wait for remote events
     local openChestRemote = ReplicatedStorage:WaitForChild("OpenCrazyChest", 10)
     local chestResultRemote = ReplicatedStorage:WaitForChild("CrazyChestResult", 10)
+    local upgradeSuccessRemote = ReplicatedStorage:WaitForChild("CrazyChestUpgradeSuccess", 10)
     
     if not openChestRemote or not chestResultRemote then
         warn("CrazyChestService: Critical remote events not found!")
@@ -109,7 +129,7 @@ function CrazyChestService:SetupRemoteEvents()
     
     -- Handle chest result from server
     connections.chestResult = chestResultRemote.OnClientEvent:Connect(function(roll, reward)
-        print("CrazyChestService: Received result from server - Roll:", roll, "Reward:", reward)
+        -- Received chest result from server
         
         -- Store the reward key for claiming later
         local rewardKey = reward.rewardKey
@@ -160,6 +180,74 @@ function CrazyChestService:SetupRemoteEvents()
             print("CrazyChestService: Ready for next chest opening")
         end)
     end)
+    
+    -- Handle upgrade success from server (for robux purchases)
+    if upgradeSuccessRemote then
+        connections.upgradeSuccess = upgradeSuccessRemote.OnClientEvent:Connect(function(upgradeType)
+            
+            -- Play success sound when upgrade completes
+            playUpgradeSuccessSound()
+            
+            -- Refresh preview cards if visible (wait for actual data sync)
+            if upgradeType == "level" then
+                task.spawn(function()
+                    -- Wait for data to actually sync (poll until level increases)
+                    local startTime = tick()
+                    local maxWaitTime = 2 -- Max 2 seconds
+                    local initialLevel = nil
+                    
+                    while tick() - startTime < maxWaitTime do
+                        local playerData = DataSyncService:GetPlayerData()
+                        local currentLevel = playerData and playerData.CrazyChest and playerData.CrazyChest.Level or 1
+                        
+                        if not initialLevel then
+                            initialLevel = currentLevel - 1 -- We expect it to be 1 higher than before
+                        end
+                        
+                        if currentLevel > initialLevel then
+                                            self:ForceRefreshAllCards()
+                            return
+                        end
+                        
+                        task.wait(0.1)
+                    end
+                    
+                    -- Fallback if data doesn't sync in time
+                    warn("🎯 Data sync timeout - force refreshing anyway")
+                    self:ForceRefreshAllCards()
+                end)
+            elseif upgradeType == "luck" then
+                task.spawn(function()
+                    -- Wait for data to actually sync (poll until luck increases)
+                    local startTime = tick()
+                    local maxWaitTime = 2 -- Max 2 seconds
+                    local initialLuck = nil
+                    
+                    while tick() - startTime < maxWaitTime do
+                        local playerData = DataSyncService:GetPlayerData()
+                        local currentLuck = playerData and playerData.CrazyChest and playerData.CrazyChest.Luck or 1
+                        
+                        if not initialLuck then
+                            initialLuck = currentLuck - 1 -- We expect it to be 1 higher than before
+                        end
+                        
+                        if currentLuck > initialLuck then
+                                            self:ForceRefreshAllCards()
+                            return
+                        end
+                        
+                        task.wait(0.1)
+                    end
+                    
+                    -- Fallback if data doesn't sync in time
+                    warn("🍀 Data sync timeout - force refreshing anyway")
+                    self:ForceRefreshAllCards()
+                end)
+            end
+        end)
+    else
+        warn("CrazyChestUpgradeSuccess remote not found on client!")
+    end
 end
 
 function CrazyChestService:OpenChestUI()
@@ -225,13 +313,258 @@ function CrazyChestService:HandleChestOpen()
     end
 end
 
+-- Upgrade the chest level
+function CrazyChestService:UpgradeChest()
+    local playerData = DataSyncService:GetPlayerData()
+    local chestLevel = playerData and playerData.CrazyChest and playerData.CrazyChest.Level or 1
+    local upgradeCost = chestLevel * 100
+    
+    -- Check if player has enough diamonds (no sound notification)
+    if not playerData or not playerData.Resources or playerData.Resources.Diamonds < upgradeCost then
+        return -- Silently fail if not enough diamonds
+    end
+    
+    -- Send upgrade request to server
+    local upgradeRemote = ReplicatedStorage:FindFirstChild("UpgradeCrazyChest")
+    if upgradeRemote then
+        upgradeRemote:FireServer()
+        
+        -- Play upgrade success sound immediately
+        playUpgradeSuccessSound()
+        
+        -- After upgrade, check if preview cards are currently visible and refresh them
+        task.spawn(function()
+            task.wait(0.1) -- Wait for server response and data sync
+            self:RefreshPreviewCardsIfVisible()
+        end)
+    else
+        warn("CrazyChestService: UpgradeCrazyChest remote not found!")
+    end
+end
+
+-- Upgrade the chest luck
+function CrazyChestService:UpgradeChestLuck()
+    local playerData = DataSyncService:GetPlayerData()
+    local chestLuck = playerData and playerData.CrazyChest and playerData.CrazyChest.Luck or 1
+    local upgradeCost = chestLuck * 500 -- More expensive than level upgrade
+    
+    -- Check if player has enough diamonds (no sound notification)
+    if not playerData or not playerData.Resources or playerData.Resources.Diamonds < upgradeCost then
+        return -- Silently fail if not enough diamonds
+    end
+    
+    -- Send upgrade request to server
+    local upgradeRemote = ReplicatedStorage:FindFirstChild("UpgradeCrazyChestLuck")
+    if upgradeRemote then
+        upgradeRemote:FireServer()
+        
+        -- Play upgrade success sound immediately
+        playUpgradeSuccessSound()
+        
+        -- After upgrade, check if preview cards are currently visible and refresh them
+        task.spawn(function()
+            task.wait(0.1) -- Wait for server response and data sync
+            self:RefreshLuckPreviewCardsIfVisible()
+        end)
+    else
+        warn("CrazyChestService: UpgradeCrazyChestLuck remote not found!")
+    end
+end
+
+-- Robux purchase for chest level upgrade
+function CrazyChestService:UpgradeChestRobux(devProductId)
+    print("CrazyChestService: Attempting robux purchase for chest level upgrade - Product ID:", devProductId)
+    print("CrazyChestService: Player:", player.Name)
+    print("CrazyChestService: MarketplaceService available:", MarketplaceService ~= nil)
+    
+    -- Use MarketplaceService to prompt purchase
+    local success, errorMessage = pcall(function()
+        print("CrazyChestService: About to call PromptProductPurchase...")
+        MarketplaceService:PromptProductPurchase(player, devProductId)
+        print("CrazyChestService: PromptProductPurchase call completed")
+        
+    end)
+    
+    if not success then
+        warn("CrazyChestService: Failed to prompt robux purchase for chest level:", errorMessage)
+    else
+        print("CrazyChestService: Successfully prompted robux purchase for chest level")
+    end
+end
+
+-- Robux purchase for chest opening
+function CrazyChestService:OpenChestRobux(devProductId)
+    print("CrazyChestService: Attempting robux purchase for chest opening - Product ID:", devProductId)
+    print("CrazyChestService: Player:", player.Name)
+    print("CrazyChestService: MarketplaceService available:", MarketplaceService ~= nil)
+    
+    -- Use MarketplaceService to prompt purchase
+    local success, errorMessage = pcall(function()
+        print("CrazyChestService: About to call PromptProductPurchase...")
+        MarketplaceService:PromptProductPurchase(player, devProductId)
+        print("CrazyChestService: PromptProductPurchase call completed")
+    end)
+    
+    if not success then
+        warn("CrazyChestService: Failed to prompt robux purchase for chest opening:", errorMessage)
+    else
+        print("CrazyChestService: Successfully prompted robux purchase for chest opening")
+    end
+end
+
+-- Robux purchase for chest luck upgrade  
+function CrazyChestService:UpgradeChestLuckRobux(devProductId)
+    print("CrazyChestService: Attempting robux purchase for chest luck upgrade - Product ID:", devProductId)
+    print("CrazyChestService: Player:", player.Name)
+    print("CrazyChestService: MarketplaceService available:", MarketplaceService ~= nil)
+    
+    -- Use MarketplaceService to prompt purchase
+    local success, errorMessage = pcall(function()
+        print("CrazyChestService: About to call PromptProductPurchase...")
+        MarketplaceService:PromptProductPurchase(player, devProductId)
+        print("CrazyChestService: PromptProductPurchase call completed")
+        
+    end)
+    
+    if not success then
+        warn("CrazyChestService: Failed to prompt robux purchase for chest luck:", errorMessage)
+    else
+        print("CrazyChestService: Successfully prompted robux purchase for chest luck")
+    end
+end
+
+-- Helper function to refresh preview cards if they're currently visible
+function CrazyChestService:RefreshPreviewCardsIfVisible()
+    -- Find the UI elements
+    local player = game.Players.LocalPlayer
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+    
+    -- Look for preview cards (indicates hovering state)
+    local foundPreviewCards = false
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local function findPreviewCards(parent)
+                for _, child in pairs(parent:GetDescendants()) do
+                    if child.Name and string.find(child.Name, "PreviewCard") then
+                        return true
+                    end
+                end
+                return false
+            end
+            
+            if findPreviewCards(gui) then
+                foundPreviewCards = true
+                break
+            end
+        end
+    end
+    
+    -- If preview cards are visible, trigger a refresh by simulating mouse leave/enter
+    if foundPreviewCards then
+        local modal = playerGui:FindFirstChild("CrazyChestUIOverlay")
+        if modal then
+            local upgradeButton = nil
+            local function findUpgradeButton(parent)
+                for _, child in pairs(parent:GetDescendants()) do
+                    if child:IsA("TextButton") and child.Text and string.find(child.Text, "⬆️") then
+                        return child
+                    end
+                end
+                return nil
+            end
+            
+            upgradeButton = findUpgradeButton(modal)
+            if upgradeButton then
+                -- Trigger mouse leave then enter to refresh preview cards
+                local mouseLeaveEvent = upgradeButton.MouseLeave
+                local mouseEnterEvent = upgradeButton.MouseEnter
+                
+                if mouseLeaveEvent and mouseEnterEvent then
+                    mouseLeaveEvent:Fire()
+                    task.wait(0.05) -- Small delay
+                    mouseEnterEvent:Fire()
+                end
+            end
+        end
+    end
+end
+
+-- Helper function to refresh luck preview cards if they're currently visible
+function CrazyChestService:RefreshLuckPreviewCardsIfVisible()
+    -- Find the UI elements
+    local player = game.Players.LocalPlayer
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+    
+    -- Look for luck preview cards (indicates hovering state)
+    local foundLuckPreviewCards = false
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local function findLuckPreviewCards(parent)
+                for _, child in pairs(parent:GetDescendants()) do
+                    if child.Name and string.find(child.Name, "LuckPreviewCard") then
+                        return true
+                    end
+                end
+                return false
+            end
+            
+            if findLuckPreviewCards(gui) then
+                foundLuckPreviewCards = true
+                break
+            end
+        end
+    end
+    
+    -- If luck preview cards are visible, trigger a refresh by simulating mouse leave/enter
+    if foundLuckPreviewCards then
+        local modal = playerGui:FindFirstChild("CrazyChestUIOverlay")
+        if modal then
+            local luckButton = nil
+            local function findLuckButton(parent)
+                for _, child in pairs(parent:GetDescendants()) do
+                    if child:IsA("TextButton") and child.Text and string.find(child.Text, "🍀") then
+                        return child
+                    end
+                end
+                return nil
+            end
+            
+            luckButton = findLuckButton(modal)
+            if luckButton then
+                -- Trigger mouse leave then enter to refresh preview cards
+                local mouseLeaveEvent = luckButton.MouseLeave
+                local mouseEnterEvent = luckButton.MouseEnter
+                
+                if mouseLeaveEvent and mouseEnterEvent then
+                    mouseLeaveEvent:Fire()
+                    task.wait(0.05) -- Small delay
+                    mouseEnterEvent:Fire()
+                end
+            end
+        end
+    end
+end
+
 function CrazyChestService:GetUIProps()
     local playerData = DataSyncService:GetPlayerData()
+    local chestLevel = playerData and playerData.CrazyChest and playerData.CrazyChest.Level or 1
+    local chestLuck = playerData and playerData.CrazyChest and playerData.CrazyChest.Luck or 1
+    local upgradeCost = chestLevel * 100 -- Same calculation as server
+    local luckUpgradeCost = chestLuck * 500 -- Same calculation as server
     
     return {
         visible = isChestUIOpen,
         playerDiamonds = playerData and playerData.Resources.Diamonds or 0,
         playerRebirths = playerData and playerData.Resources.Rebirths or 0,
+        chestLevel = chestLevel,
+        chestLuck = chestLuck,
+        upgradeCost = upgradeCost,
+        luckUpgradeCost = luckUpgradeCost,
+        canUpgrade = (playerData and playerData.Resources.Diamonds or 0) >= upgradeCost,
+        canUpgradeLuck = (playerData and playerData.Resources.Diamonds or 0) >= luckUpgradeCost,
+        rewardMultiplier = 1 + (chestLevel - 1) * 0.25, -- 25% increase per level (matches server)
         isAnimating = CrazyChestAnimationService.isAnimating, -- Pass animation state to UI
         isRewarding = isRewarding, -- Pass rewarding state to UI
         onClose = function()
@@ -239,6 +572,21 @@ function CrazyChestService:GetUIProps()
         end,
         onOpenChest = function()
             self:HandleChestOpen()
+        end,
+        onUpgradeChest = function()
+            self:UpgradeChest()
+        end,
+        onUpgradeChestLuck = function()
+            self:UpgradeChestLuck()
+        end,
+        onUpgradeChestRobux = function(devProductId)
+            self:UpgradeChestRobux(devProductId)
+        end,
+        onUpgradeChestLuckRobux = function(devProductId)
+            self:UpgradeChestLuckRobux(devProductId)
+        end,
+        onOpenChestRobux = function(devProductId)
+            self:OpenChestRobux(devProductId)
         end
     }
 end
@@ -258,6 +606,23 @@ function CrazyChestService:Cleanup()
     
     -- Cleanup animation service
     CrazyChestAnimationService:Cleanup()
+end
+
+-- Force refresh all cards after upgrade (smooth React-friendly refresh)
+function CrazyChestService:ForceRefreshAllCards()
+    
+    -- Instead of manually clearing DOM elements, let React handle the refresh
+    -- by briefly toggling the UI state - this is much smoother and React-friendly
+    
+    task.spawn(function()
+        
+        -- Ultra-fast close/reopen (10ms - essentially imperceptible to users)
+        -- This forces React to completely re-render with the new luck/level data
+        self:CloseChestUI()
+        task.wait(0.01) -- 10ms - barely a single frame
+        self:OpenChestUI()
+        
+    end)
 end
 
 return CrazyChestService
