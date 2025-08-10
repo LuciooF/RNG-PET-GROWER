@@ -1,23 +1,11 @@
 -- LeaderboardService - Manages Roblox integrated leaderstats
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local LeaderboardService = {}
 
--- Number formatting function to prettify large numbers
-local function formatNumber(number)
-    if number >= 1000000000000 then
-        return string.format("%.1fT", number / 1000000000000)
-    elseif number >= 1000000000 then
-        return string.format("%.1fB", number / 1000000000)
-    elseif number >= 1000000 then
-        return string.format("%.1fM", number / 1000000)
-    elseif number >= 1000 then
-        return string.format("%.1fK", number / 1000)
-    else
-        return tostring(math.floor(number))
-    end
-end
 
 -- Create leaderstats for a player
 function LeaderboardService:CreateLeaderstats(player)
@@ -71,12 +59,12 @@ function LeaderboardService:UpdateLeaderstats(player, playerData)
     end
     
     if diamondsStat and playerData.Resources and playerData.Resources.Diamonds then
-        local formattedDiamonds = formatNumber(playerData.Resources.Diamonds)
+        local formattedDiamonds = NumberFormatter.format(playerData.Resources.Diamonds)
         diamondsStat.Value = formattedDiamonds
     end
     
     if moneyStat and playerData.Resources and playerData.Resources.Money then
-        local formattedMoney = formatNumber(playerData.Resources.Money)
+        local formattedMoney = NumberFormatter.format(playerData.Resources.Money)
         moneyStat.Value = formattedMoney
     end
 end
@@ -172,7 +160,7 @@ end
 
 -- Get formatted money for testing
 function LeaderboardService:FormatMoney(amount)
-    return formatNumber(amount)
+    return NumberFormatter.format(amount)
 end
 
 return LeaderboardService

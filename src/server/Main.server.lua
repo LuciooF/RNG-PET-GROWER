@@ -166,7 +166,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
         local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
         if player then
             print("🎰 Player found:", player.Name)
-            local success = CrazyChestService:HandleChestOpen(player)
+            local success = CrazyChestService:HandleChestOpen(player, true) -- true = Robux purchase
             print("🎰 Chest open result:", success)
             if success then
                 return Enum.ProductPurchaseDecision.PurchaseGranted

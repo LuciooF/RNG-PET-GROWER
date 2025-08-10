@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.react)
 local store = require(ReplicatedStorage.store)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local SoundService = game:GetService("SoundService")
 
 -- Sound configuration
@@ -42,14 +43,12 @@ local function TopStatsUI()
         local initialState = store:getState()
         if initialState.player then
             setPlayerData(initialState.player)
-            print("TopStatsUI: Initial data loaded - Money:", initialState.player.Resources.Money, "Diamonds:", initialState.player.Resources.Diamonds)
         end
         
         -- Subscribe to store changes
         local unsubscribe = store.changed:connect(function(newState, oldState)
             if newState.player then
                 setPlayerData(newState.player)
-                -- State updated, refreshing display
             end
         end)
         
@@ -85,20 +84,6 @@ local function TopStatsUI()
         return false
     end
     
-    -- Format numbers for display with better prettification
-    local function formatNumber(num)
-        if num >= 1000000000000 then
-            return string.format("%.1fT", num / 1000000000000)
-        elseif num >= 1000000000 then
-            return string.format("%.1fB", num / 1000000000)
-        elseif num >= 1000000 then
-            return string.format("%.1fM", num / 1000000)
-        elseif num >= 1000 then
-            return string.format("%.1fK", num / 1000)
-        else
-            return tostring(math.floor(num))
-        end
-    end
     
     return React.createElement("ScreenGui", {
         Name = "TopStatsUI",
@@ -155,7 +140,7 @@ local function TopStatsUI()
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Text = formatNumber(playerData.Resources.Diamonds),
+                    Text = NumberFormatter.format(playerData.Resources.Diamonds),
                     TextXAlignment = Enum.TextXAlignment.Left
                 }, {
                     UIStroke = React.createElement("UIStroke", {
@@ -213,7 +198,7 @@ local function TopStatsUI()
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Text = formatNumber(playerData.Resources.Money),
+                    Text = NumberFormatter.format(playerData.Resources.Money),
                     TextXAlignment = Enum.TextXAlignment.Left
                 }, {
                     UIStroke = React.createElement("UIStroke", {
@@ -271,7 +256,7 @@ local function TopStatsUI()
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                    Text = formatNumber(playerData.Resources.Rebirths),
+                    Text = NumberFormatter.format(playerData.Resources.Rebirths),
                     TextXAlignment = Enum.TextXAlignment.Left
                 }, {
                     UIStroke = React.createElement("UIStroke", {

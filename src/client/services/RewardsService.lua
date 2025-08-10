@@ -38,7 +38,7 @@ local function playRewardSound()
 end
 
 function RewardsService:Initialize()
-    print("RewardsService: Initialized")
+    -- RewardsService ready
 end
 
 -- Show reward popup for any reward type

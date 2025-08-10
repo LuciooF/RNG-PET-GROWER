@@ -356,12 +356,12 @@ function AreaService:SetupPlayerAssignment()
     Players.PlayerAdded:Connect(function(player)
         self:AssignPlayerToArea(player)
         
-        -- Handle respawning - teleport to assigned area
+        -- Handle both initial spawn and respawning - always teleport to assigned area
         player.CharacterAdded:Connect(function(character)
             -- Wait a moment for character to fully load
             task.wait(0.1)
             
-            -- Get assigned area and teleport
+            -- Get assigned area and teleport immediately
             local areaNumber = self:GetPlayerAssignedArea(player)
             if areaNumber then
                 self:TeleportPlayerToArea(player, areaNumber)
@@ -400,8 +400,10 @@ function AreaService:AssignPlayerToArea(player)
             
             -- Player assigned successfully
             
-            -- Teleport player to their assigned area
-            self:TeleportPlayerToArea(player, areaNumber)
+            -- Teleport player to their assigned area (for players who join after server start)
+            if player.Character then
+                self:TeleportPlayerToArea(player, areaNumber)
+            end
             
             -- Update area nameplate
             self:UpdateAreaNameplate(areaNumber)
@@ -429,36 +431,42 @@ function AreaService:GetPlayerAssignedArea(player)
     return AREA_ASSIGNMENTS[player.UserId]
 end
 
+
 function AreaService:TeleportPlayerToArea(player, areaNumber)
-    -- Wait for player character to load
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        player.CharacterAdded:Wait()
+    local character = player.Character
+    if not character then
+        warn(string.format("AreaService: Cannot teleport %s - no character", player.Name))
+        return
     end
     
-    local character = player.Character
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
-    
-    if humanoidRootPart then
-        local areaData = playerAreas[areaNumber]
-        local area = areaData.model
-        
-        -- Find the SpawnPoint in the area
-        local spawnPoint = area:FindFirstChild("SpawnPoint", true)
-        if spawnPoint and spawnPoint:IsA("SpawnLocation") then
-            -- Disable auto-spawning on this SpawnLocation
-            spawnPoint.Enabled = false
-            
-            -- Teleport to SpawnPoint position
-            humanoidRootPart.CFrame = CFrame.new(spawnPoint.Position + Vector3.new(0, 3, 0))
-            -- Player teleported successfully
-        else
-            -- Fallback to area position if no SpawnPoint found
-            local areaPosition = areaData.position
-            humanoidRootPart.CFrame = CFrame.new(areaPosition + Vector3.new(0, 10, 0))
-            -- Player teleported to fallback position
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        -- Wait briefly for HumanoidRootPart to load
+        humanoidRootPart = character:WaitForChild("HumanoidRootPart", 2)
+        if not humanoidRootPart then
+            warn(string.format("AreaService: Could not teleport %s - HumanoidRootPart not found after waiting", player.Name))
+            return
         end
+    end
+    
+    local areaData = playerAreas[areaNumber]
+    if not areaData then
+        warn(string.format("AreaService: Cannot teleport %s - invalid area %d", player.Name, areaNumber))
+        return
+    end
+    
+    local area = areaData.model
+    
+    -- Find the SpawnPoint in the area
+    local spawnPoint = area:FindFirstChild("SpawnPoint", true)
+    if spawnPoint and spawnPoint:IsA("SpawnLocation") then
+        -- Teleport to SpawnPoint position (slightly above to prevent clipping)
+        humanoidRootPart.CFrame = CFrame.new(spawnPoint.Position + Vector3.new(0, 3, 0))
     else
-        warn(string.format("AreaService: Could not teleport %s - HumanoidRootPart not found", player.Name))
+        -- Fallback to area position if no SpawnPoint found
+        local areaPosition = areaData.position
+        humanoidRootPart.CFrame = CFrame.new(areaPosition + Vector3.new(0, 10, 0))
+        warn(string.format("AreaService: Used fallback position for %s in area %d", player.Name, areaNumber))
     end
 end
 

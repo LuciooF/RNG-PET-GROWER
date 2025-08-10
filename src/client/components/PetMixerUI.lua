@@ -1351,7 +1351,7 @@ local function PetMixerUI()
                                             Size = UDim2.new(0.3, 0, 0.5, 0),
                                             Position = UDim2.new(0.4, 0, 0.5, 0),
                                             BackgroundTransparency = 1,
-                                            Text = string.format("1 in %s", rarityChance >= 1000 and string.format("%.0fK", rarityChance/1000) or tostring(rarityChance)),
+                                            Text = string.format("1 in %s", NumberFormatter.format(rarityChance)),
                                             TextColor3 = rarityColor,
                                             TextSize = ScreenUtils.TEXT_SIZES.SMALL() * 0.9,
                                             Font = Enum.Font.Gotham,

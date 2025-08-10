@@ -255,6 +255,43 @@ local TUTORIAL_STEPS = {
         end
     },
     {
+        id = "open_crazy_chest",
+        title = "🎁 Open the Crazy Pet Chest",
+        description = "Great job! Now try the Crazy Pet Chest for amazing rewards! Follow the path to the chest and click on it to open it.",
+        targetType = "chest",
+        pathTarget = function()
+            -- Find Chest in player's area
+            local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+            
+            if playerAreas and character and character:FindFirstChild("HumanoidRootPart") then
+                -- Use PlayerAreaFinder to get the player's assigned area only
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
+                
+                if playerArea then
+                    local environmentals = playerArea:FindFirstChild("Environmentals")
+                    if environmentals then
+                        local chest = environmentals:FindFirstChild("Chest")
+                        if chest then
+                            -- Try to find Container first (the part with the GUI)
+                            local container = chest:FindFirstChild("Container")
+                            if container then
+                                return container
+                            end
+                            -- Fallback to any part in Chest
+                            local part = chest:FindFirstChildWhichIsA("BasePart", true)
+                            if part then
+                                return part
+                            end
+                        end
+                    end
+                end
+            end
+            
+            return nil
+        end
+    },
+    {
         id = "first_rebirth",
         title = "🌟 Perform Your First Rebirth",
         description = "You're ready to rebirth! This will reset your progress but give you permanent bonuses. Walk to the Rebirth button in your area or use the Rebirth UI button on screen.",
@@ -578,6 +615,20 @@ local function updatePathVisual()
     local rootPart = character.HumanoidRootPart
     local startPos = rootPart.Position - Vector3.new(0, 3, 0)  -- Go down 3 studs to reach feet level
     
+    -- Update task progress for distance-based steps (like "open_crazy_chest")
+    if currentStep.id == "open_crazy_chest" then
+        -- Calculate distance-based progress for crazy chest specifically
+        local distance = (targetPos - rootPart.Position).Magnitude
+        local taskProgress = math.max(0, math.min(100, (100 - distance)))
+        tutorialData.taskProgress = taskProgress
+    elseif currentStep.id == "unlock_first_plot" or currentStep.id == "unlock_first_tube" or 
+           currentStep.id == "unlock_next_door" then
+        -- For other distance-based steps, calculate progress similarly
+        local distance = (targetPos - rootPart.Position).Magnitude
+        local taskProgress = math.max(0, math.min(100, (100 - distance)))
+        tutorialData.taskProgress = taskProgress
+    end
+    
     -- Always check if player moved significantly
     if not lastPlayerPosition then
         lastPlayerPosition = startPos
@@ -859,9 +910,49 @@ function TutorialService:GetProgressText()
             
         elseif stepId == "get_rare_pet" then
             if playerData.Pets then
+                local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+                
                 for _, pet in pairs(playerData.Pets) do
-                    if pet.SpawnChance and pet.SpawnChance <= 0.4 then
-                        return "✅ Completed!"
+                    if pet.Rarity and pet.Variation then
+                        -- Get variation name from either string or table
+                        local variationName = pet.Variation
+                        if type(pet.Variation) == "table" and pet.Variation.VariationName then
+                            variationName = pet.Variation.VariationName
+                        end
+                        
+                        -- Calculate combined rarity (pet rarity × variation rarity)
+                        local combinedOdds = PetConstants.getCombinedRarityChance(pet.Rarity, variationName)
+                        
+                        -- Check if combined odds are rarer than 1 in 250
+                        if combinedOdds and combinedOdds > 250 then
+                            return "✅ Completed!"
+                        end
+                    end
+                end
+            end
+            return "❌ Not achieved"
+            
+        elseif stepId == "open_crazy_chest" then
+            -- Check distance to chest for progress
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+                if playerAreas then
+                    local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                    local playerArea = PlayerAreaFinder:FindPlayerArea()
+                    
+                    if playerArea then
+                        local environmentals = playerArea:FindFirstChild("Environmentals")
+                        if environmentals then
+                            local chest = environmentals:FindFirstChild("Chest")
+                            if chest then
+                                local container = chest:FindFirstChild("Container")
+                                if container then
+                                    local distance = (container.Position - character.HumanoidRootPart.Position).Magnitude
+                                    local progress = math.max(0, math.min(100, (100 - distance)))
+                                    return math.floor(progress) .. "%"
+                                end
+                            end
+                        end
                     end
                 end
             end
@@ -887,6 +978,27 @@ end
 
 function TutorialService:GetCurrentStep()
     return TUTORIAL_STEPS[tutorialData.currentStep]
+end
+
+-- Method to mark specific tutorial steps as completed externally
+function TutorialService:CompleteStep(stepId)
+    if not tutorialData.active or tutorialData.completed then
+        return
+    end
+    
+    local currentStep = TUTORIAL_STEPS[tutorialData.currentStep]
+    if currentStep and currentStep.id == stepId then
+        print("TutorialService: Manually completing step:", stepId)
+        currentStep.completed = true
+        
+        -- Advance to next step immediately
+        task.spawn(function()
+            task.wait(0.5) -- Brief delay for visual feedback
+            if tutorialData.active and not tutorialData.completed then
+                self:NextStep()
+            end
+        end)
+    end
 end
 
 -- Check tutorial progress
@@ -960,11 +1072,50 @@ local function calculateTaskProgress(step, playerData)
         return 0
         
     elseif stepId == "get_rare_pet" then
-        -- Check if any pet has rarity > 1000
+        -- Check if any pet is rarer than 1 in 250 using combined rarity
         if playerData.Pets then
+            local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+            
             for _, pet in pairs(playerData.Pets) do
-                if pet.SpawnChance and pet.SpawnChance <= 0.4 then -- 1 in 250 or rarer (0.4%)
-                    return 100
+                if pet.Rarity and pet.Variation then
+                    -- Get variation name from either string or table
+                    local variationName = pet.Variation
+                    if type(pet.Variation) == "table" and pet.Variation.VariationName then
+                        variationName = pet.Variation.VariationName
+                    end
+                    
+                    -- Calculate combined rarity (pet rarity × variation rarity)
+                    local combinedOdds = PetConstants.getCombinedRarityChance(pet.Rarity, variationName)
+                    
+                    -- Check if combined odds are rarer than 1 in 250
+                    if combinedOdds and combinedOdds > 250 then
+                        return 100
+                    end
+                end
+            end
+        end
+        return 0
+        
+    elseif stepId == "open_crazy_chest" then
+        -- Check distance to chest for progress
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+            if playerAreas then
+                local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+                local playerArea = PlayerAreaFinder:FindPlayerArea()
+                
+                if playerArea then
+                    local environmentals = playerArea:FindFirstChild("Environmentals")
+                    if environmentals then
+                        local chest = environmentals:FindFirstChild("Chest")
+                        if chest then
+                            local container = chest:FindFirstChild("Container")
+                            if container then
+                                local distance = (container.Position - character.HumanoidRootPart.Position).Magnitude
+                                return math.max(0, math.min(100, (100 - distance)))
+                            end
+                        end
+                    end
                 end
             end
         end
@@ -1041,20 +1192,35 @@ function TutorialService:CheckStepCompletion(playerData)
         
     elseif stepId == "get_rare_pet" then
         if playerData.Pets then
+            -- Import PetConstants for combined rarity calculation
+            local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+            
             for _, pet in pairs(playerData.Pets) do
-                -- Debug: Check what data we have
-                if pet.SpawnChance then
-                    print("TutorialService: Checking pet", pet.Name or "Unknown", "with SpawnChance", pet.SpawnChance)
-                    if pet.SpawnChance <= 0.4 then -- 1 in 250 or rarer (0.4%)
-                        print("TutorialService: Found rare pet!", pet.Name, "with SpawnChance", pet.SpawnChance)
+                if pet.Rarity and pet.Variation then
+                    -- Get variation name from either string or table
+                    local variationName = pet.Variation
+                    if type(pet.Variation) == "table" and pet.Variation.VariationName then
+                        variationName = pet.Variation.VariationName
+                    end
+                    
+                    -- Calculate combined rarity (pet rarity × variation rarity)
+                    local combinedOdds = PetConstants.getCombinedRarityChance(pet.Rarity, variationName)
+                    
+                    -- Check if combined odds are rarer than 1 in 250
+                    if combinedOdds and combinedOdds > 250 then
                         stepCompleted = true
                         break
                     end
-                else
-                    print("TutorialService: Pet", pet.Name or "Unknown", "has no SpawnChance field")
                 end
             end
         end
+        
+    elseif stepId == "open_crazy_chest" then
+        -- Check if player has opened the crazy chest at least once
+        -- This could be tracked via a server remote event or by checking if player has spent diamonds on chest
+        -- For now, we'll complete this step manually or when player actually interacts with chest
+        -- The step will be completed when the tutorial system detects chest interaction
+        stepCompleted = false -- This will be set to true via external trigger when chest is opened
         
     elseif stepId == "first_rebirth" then
         stepCompleted = playerData.Resources and playerData.Resources.Rebirths >= 1
@@ -1127,10 +1293,14 @@ function TutorialService:Initialize()
     
     -- Auto-start tutorial for new players
     task.spawn(function()
-        task.wait(5) -- Wait for game and data to load
-        
+        -- Wait for player data to be available (much shorter than 5 seconds)
         local playerData = store:getState().player
-        -- Check if should start tutorial
+        local attempts = 0
+        while not playerData and attempts < 20 do -- Max 2 seconds wait
+            task.wait(0.1)
+            playerData = store:getState().player
+            attempts = attempts + 1
+        end
         
         -- Load existing progress first
         loadTutorialProgress()

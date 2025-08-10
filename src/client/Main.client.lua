@@ -45,6 +45,18 @@ task.spawn(function()
         attempts = attempts + 1
     end
     
+    -- Initialize crazy chest service immediately after PlayerAreas exist (doesn't need player data)
+    local CrazyChestService = require(script.Parent.services.CrazyChestService)
+    CrazyChestService:Initialize()
+    
+    -- Initialize chest level GUI service immediately after PlayerAreas exist
+    local ChestLevelGUIService = require(script.Parent.services.ChestLevelGUIService)
+    ChestLevelGUIService:Initialize()
+    
+    -- Initialize tutorial service immediately after PlayerAreas exist (doesn't need player data for pathfinding)
+    local TutorialService = require(script.Parent.services.TutorialService)
+    TutorialService:Initialize()
+    
     -- Wait for initial data to be available in Rodux store (server will sync automatically)
     local store = require(game.ReplicatedStorage.store)
     local playerData = store:getState().player
@@ -119,9 +131,6 @@ task.spawn(function()
     local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
     PlayerRankGUIService:Initialize()
     
-    -- Initialize crazy chest service (chest interactions in player area)
-    local CrazyChestService = require(script.Parent.services.CrazyChestService)
-    CrazyChestService:Initialize()
 end)
 
 -- Create a dedicated ScreenGui for React (fixed mobile controls issue)

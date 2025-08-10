@@ -118,6 +118,7 @@ local function createComingSoonGUI(part, text, offset, customDistances)
     return billboardGui
 end
 
+
 function ComingSoonGUIService:Initialize()
     -- Wait for PlayerAreas to be created and process each one
     task.spawn(function()
@@ -144,22 +145,10 @@ function ComingSoonGUIService:Initialize()
 end
 
 function ComingSoonGUIService:ProcessPlayerArea(playerArea)
-    -- Find and process Chest in player area
+    -- Find and process items in player area
     local environmentals = playerArea:FindFirstChild("Environmentals")
     if environmentals then
-        -- Process Chest
-        local chest = environmentals:FindFirstChild("Chest")
-        if chest then
-            local container = chest:FindFirstChild("Container")
-            if container then
-                -- Check if GUI already exists
-                if not container:FindFirstChild("ComingSoonGUI") then
-                    createComingSoonGUI(container, "Crazy Pet Chest!\nComing Soon...", Vector3.new(0, 8, 0))
-                end
-            end
-        end
-        
-        -- Process EggPodium2
+        -- Process EggPodium2 (Chest is now handled by ChestLevelGUIService)
         local eggPodium = environmentals:FindFirstChild("EggPodium2")
         if eggPodium then
             local egg = eggPodium:FindFirstChild("Egg")

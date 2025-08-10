@@ -45,8 +45,8 @@ local function createCleanPurchaseModal(props)
     
     -- Add padding: 37.5% left + 10% right = 47.5% padding total
     -- Add extra minimum padding for short robux prices
-    local robuxTextWidth = math.max(0.18, baseRobuxWidth / 0.525) -- Higher minimum for robux to ensure adequate padding
-    local diamondTextWidth = math.max(0.15, baseDiamondWidth / 0.525) -- Standard minimum for diamonds
+    local robuxTextWidth = math.max(0.18, baseRobuxWidth / 0.4) -- Increased padding (was 0.525)
+    local diamondTextWidth = math.max(0.15, baseDiamondWidth / 0.4) -- Increased padding (was 0.525)
     
     -- Ensure buttons don't get too wide
     robuxTextWidth = math.min(robuxTextWidth, 0.35)
@@ -306,9 +306,14 @@ local function RewardCard(props)
     local layoutOrder = props.layoutOrder
     local isChanceBackgroundTransparent = props.isChanceBackgroundTransparent or false
     local rewardMultiplier = props.rewardMultiplier or 1
+    local totalCards = props.totalCards or 8
+    
+    -- Calculate dynamic width: leave 20% for spacing/margins, divide remaining 80% by number of cards
+    local cardWidthPercent = 0.8 / totalCards -- 80% divided by number of cards
     
     return React.createElement("Frame", {
-        Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(130), 1, -ScreenUtils.getProportionalSize(10)),
+        Size = UDim2.new(cardWidthPercent, 0, 0, ScreenUtils.getProportionalSize(176)), -- 10% bigger: 160 * 1.1 = 176
+        -- Removed AutomaticSize so all cards have same height
         BackgroundColor3 = reward.color or Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = (reward.special == "rainbow" or (reward.special == "black_market" or reward.special == "black_market_rainbow_text")) and 0.3 or 0.7,
         BorderSizePixel = 0,
@@ -378,17 +383,19 @@ local function RewardCard(props)
         
         -- Content container
         ContentContainer = React.createElement("Frame", {
-            Size = UDim2.new(1, 0, 1, -ScreenUtils.getProportionalSize(55)),
-            Position = UDim2.new(0, 0, 0, 0),
-            BackgroundTransparency = 1,
+            Name = "ContentContainer",
+            Size = UDim2.new(1, 0, 0, 0), -- Full width, let AutomaticSize determine height
+            AutomaticSize = Enum.AutomaticSize.Y, -- Size to fit content height
+            Position = UDim2.new(0, 0, 0, 0), -- Top left position
+            BackgroundTransparency = 1, -- Transparent
             ZIndex = 1004,
         }, {
             -- Padding
             Padding = React.createElement("UIPadding", {
-                PaddingTop = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
-                PaddingBottom = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
-                PaddingLeft = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
-                PaddingRight = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10)),
+                PaddingTop = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(11)), -- 10% bigger: 10 * 1.1 = 11
+                PaddingBottom = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(11)),
+                PaddingLeft = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(11)),
+                PaddingRight = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(11)),
             }),
             
             -- Layout
@@ -396,14 +403,14 @@ local function RewardCard(props)
                 FillDirection = Enum.FillDirection.Vertical,
                 HorizontalAlignment = Enum.HorizontalAlignment.Center,
                 VerticalAlignment = Enum.VerticalAlignment.Top,
-                Padding = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(5)),
+                Padding = UDim.new(0.02, 0), -- Use percentage-based spacing instead of fixed pixels
             }),
             
             -- Pet model or currency icon
             reward.type == "pet" and React.createElement("ViewportFrame", {
                 Name = "PetModel",
-                Size = UDim2.new(0, ScreenUtils.getProportionalSize(80), 0, ScreenUtils.getProportionalSize(80)),
-                BackgroundTransparency = 1,
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(88), 0, ScreenUtils.getProportionalSize(88)), -- 10% bigger: 80 * 1.1 = 88
+                BackgroundTransparency = 1, -- Transparent
                 LayoutOrder = 1,
                 ZIndex = 1020,
                 [React.Event.AncestryChanged] = function(rbx)
@@ -489,8 +496,8 @@ local function RewardCard(props)
                 end,
             }) or React.createElement("ImageLabel", {
                 Name = "CurrencyIcon",
-                Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60)),
-                BackgroundTransparency = 1,
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)), -- 10% bigger: 60 * 1.1 = 66
+                BackgroundTransparency = 1, -- Transparent
                 Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468",
                 ImageColor3 = Color3.fromRGB(255, 255, 255),
                 LayoutOrder = 1,
@@ -499,11 +506,11 @@ local function RewardCard(props)
             
             -- Reward text - formatted on two lines with larger text
             RewardText = React.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(40)), -- Taller for two lines
-                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(44)), -- 10% bigger: 40 * 1.1 = 44
+                BackgroundTransparency = 1, -- Transparent
                 -- Special text for ultra-rare chest, regular formatting for others
-                Text = reward.special == "black_market_rainbow_text" and reward.name or
-                       (reward.type == "pet" and (NumberFormatter.format(reward.boost) .. "x\nBoost!") or 
+                Text = reward.special == "black_market_rainbow_text" and (NumberFormatter.format(math.floor(reward.boost * rewardMultiplier)) .. "\nBoost!") or
+                       (reward.type == "pet" and (NumberFormatter.format(math.floor(reward.boost * rewardMultiplier)) .. "\nBoost!") or 
                        (reward.type == "money" and (NumberFormatter.format(math.floor(reward.money * rewardMultiplier)) .. "\nMoney!") or 
                        (NumberFormatter.format(math.floor(reward.diamonds * rewardMultiplier)) .. "\nDiamonds!"))),
                 TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -511,7 +518,7 @@ local function RewardCard(props)
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center, -- Center vertically for two lines
-                TextScaled = false, -- Turn off scaling for consistent size
+                TextScaled = true, -- Enable text scaling to fit smaller cards
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 LayoutOrder = 2,
@@ -536,17 +543,18 @@ local function RewardCard(props)
         
         -- CONSISTENT PERCENTAGE TEXT FOR ALL CARDS - THIS IS THE KEY FIX
         ChanceLabel = React.createElement("TextLabel", {
-            Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(55)),
-            Position = ScreenUtils.udim2(0, 0, 1, -ScreenUtils.getProportionalSize(55)),
+            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(39)), -- 10% bigger: 35 * 1.1 = 39 (rounded)
+            Position = UDim2.new(0, 0, 1, -ScreenUtils.getProportionalSize(39)), -- Anchored to bottom of card
             -- Use transparency to inherit main card background or solid color
             BackgroundColor3 = reward.color or Color3.fromRGB(200, 200, 200),
             BackgroundTransparency = isChanceBackgroundTransparent and 1 or 0, -- Transparent inherits main background
             Text = reward.special == "black_market_rainbow_text" and string.format("%.3f%%", reward.chance) or string.format("%.2f%%", reward.chance),
             -- WHITE TEXT except for special black market with rainbow text
             TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = ScreenUtils.TEXT_SIZES.HEADER(),
+            TextSize = ScreenUtils.getProportionalSize(39), -- Text size matches container height exactly (10% bigger)
             Font = Enum.Font.FredokaOne,
             TextXAlignment = Enum.TextXAlignment.Center,
+            TextScaled = true, -- Enable text scaling to fit smaller cards
             -- ALWAYS BLACK STROKE - no exceptions, no conditions, no inheritance
             TextStrokeTransparency = 0,
             TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -570,7 +578,7 @@ local function AnimationCard(props)
     local rewardMultiplier = props.rewardMultiplier or 1
     
     -- Create reward text for animation cards - same two-line format as RewardCard with chest level multiplier
-    local rewardText = reward.type == "pet" and (reward.boost .. "x\nBoost!") or 
+    local rewardText = reward.type == "pet" and (NumberFormatter.format(math.floor(reward.boost * rewardMultiplier)) .. "\nBoost!") or 
                       (reward.type == "money" and (NumberFormatter.format(math.floor(reward.money * rewardMultiplier)) .. "\nMoney!") or 
                       (NumberFormatter.format(math.floor(reward.diamonds * rewardMultiplier)) .. "\nDiamonds!"))
     
@@ -634,8 +642,8 @@ local function AnimationCard(props)
         -- Pet model or currency icon
         reward.type == "pet" and React.createElement("ViewportFrame", {
             Name = "PetModel",
-            Size = UDim2.new(0, ScreenUtils.getProportionalSize(70), 0, ScreenUtils.getProportionalSize(70)),
-            Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(35), 0, ScreenUtils.getProportionalSize(15)),
+            Size = ScreenUtils.udim2(0.6, 0, 0.6, 0), -- 60% of card size
+            Position = ScreenUtils.udim2(0.2, 0, 0.1, 0), -- Centered with 20% margin
             BackgroundTransparency = 1,
             ZIndex = 1025,
             [React.Event.AncestryChanged] = function(rbx)
@@ -717,26 +725,27 @@ local function AnimationCard(props)
             end,
         }) or React.createElement("ImageLabel", {
             Name = "CurrencyIcon",
-            Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60)),
-            Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(20)),
+            Size = ScreenUtils.udim2(0.5, 0, 0.5, 0), -- 50% of card size
+            Position = ScreenUtils.udim2(0.25, 0, 0.15, 0), -- Centered with 25% margin
             BackgroundTransparency = 1,
             Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468",
             ImageColor3 = Color3.fromRGB(255, 255, 255),
+            ScaleType = Enum.ScaleType.Fit, -- Maintain aspect ratio
             ZIndex = 1012,
         }),
         
         -- Reward text - same formatting as RewardCard (two lines, large text)
         RewardText = React.createElement("TextLabel", {
-            Size = UDim2.new(1, -10, 0, ScreenUtils.getProportionalSize(40)),
-            Position = UDim2.new(0, 5, 1, -ScreenUtils.getProportionalSize(50)),
+            Size = ScreenUtils.udim2(1, -10, 0.35, 0), -- 35% of card height
+            Position = ScreenUtils.udim2(0, 5, 0.6, 0), -- Position at 60% down the card
             BackgroundTransparency = 1,
             Text = rewardText,
             TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Same large size as RewardCard
+            TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Keep base size but allow scaling
             Font = Enum.Font.FredokaOne,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center, -- Center vertically for two lines
-            TextScaled = false, -- No scaling for consistent size
+            TextScaled = true, -- Enable scaling to fit container
             TextStrokeTransparency = 0,
             TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
             ZIndex = 1012,
@@ -815,8 +824,8 @@ function CrazyChestUI.createStaticRewardStrip(rewards, rewardMultiplier, chestLu
         -- Scrolling container for rewards (static initially) with proper padding
         RewardStrip = React.createElement("ScrollingFrame", {
             Name = "RewardStrip", 
-            Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(60), 1, -ScreenUtils.getProportionalSize(140)), -- More padding
-            Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(90)), -- More padding
+            Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 1, -ScreenUtils.getProportionalSize(60)), -- Reduced padding: 40px horizontal, 60px vertical
+            Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0, ScreenUtils.getProportionalSize(30)), -- Reduced padding
             BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background to match main UI
             BackgroundTransparency = 0,
             ScrollBarThickness = 0,
@@ -993,7 +1002,7 @@ function CrazyChestUI.new(props)
         local rewardsFrame = chestModal:FindFirstChild("RewardsFrame")
         if not rewardsFrame then return end
         
-        local scrollFrame = rewardsFrame:FindFirstChild("RewardsScrollFrame")
+        local scrollFrame = rewardsFrame:FindFirstChild("RewardsContainer")
         if not scrollFrame then return end
         
         -- Remove ALL preview cards (both level and luck)
@@ -1184,14 +1193,7 @@ function CrazyChestUI.new(props)
     
     -- Calculate dynamic button widths for Open Chest buttons (same logic as upgrade buttons)
     local robuxOpenText = openChestRobuxPrice
-    local diamondOpenText
-    if isAnimating or isRewarding then
-        diamondOpenText = "Opening..."
-    elseif canAfford then
-        diamondOpenText = NumberFormatter.format(cost)
-    else
-        diamondOpenText = "Not Enough"
-    end
+    local diamondOpenText = NumberFormatter.format(cost) -- Always show the cost
     
     -- Calculate button widths based on text + padding
     local baseRobuxOpenWidth = #robuxOpenText * 0.035
@@ -1238,12 +1240,6 @@ function CrazyChestUI.new(props)
             BorderSizePixel = 0,
             ZIndex = 1000,
         }, {
-            -- Main UI black outline
-            MainUIStroke = React.createElement("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = ScreenUtils.getProportionalSize(3),
-                Transparency = 0,
-            }),
             -- Prevent click bubbling
             ClickBlocker = React.createElement("TextButton", {
                 Size = UDim2.new(1, 0, 1, 0),
@@ -1297,8 +1293,8 @@ function CrazyChestUI.new(props)
                 
                 -- Close button
                 CloseButton = React.createElement("ImageButton", {
-                    Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(40), 0, ScreenUtils.getProportionalSize(40)),
-                    Position = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(50), 0.5, -ScreenUtils.getProportionalSize(20)),
+                    Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(50), 0, ScreenUtils.getProportionalSize(50)), -- Bigger (was 40x40)
+                    Position = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(25), 0, -ScreenUtils.getProportionalSize(25)), -- Top-right corner, half outside
                     BackgroundColor3 = Color3.fromRGB(220, 53, 69), -- Red close button
                     Image = IconAssets.getIcon("UI", "X_BUTTON"), -- Correct X_BUTTON icon
                     ImageColor3 = Color3.fromRGB(255, 255, 255),
@@ -1345,12 +1341,12 @@ function CrazyChestUI.new(props)
                         -- Hide original cards and create green preview cards
                         local modal = rbx.Parent.Parent
                         local rewardsFrame = modal:FindFirstChild("RewardsFrame")
-                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsScrollFrame")
+                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsContainer")
                         
                         if scrollFrame then
-                            -- Calculate next level multiplier (25% increase per level)
+                            -- Calculate next level multiplier (60% increase per level)
                             local nextLevel = (props.chestLevel or 1) + 1
-                            local nextLevelMultiplier = 1 + (nextLevel - 1) * 0.25
+                            local nextLevelMultiplier = 1 + (nextLevel - 1) * 0.6
                             
                             -- Step 1: Clean up ALL existing preview cards and show original cards
                             cleanupAllPreviewCards(scrollFrame, "LEVEL_ENTER")
@@ -1364,10 +1360,14 @@ function CrazyChestUI.new(props)
                             
                             -- Step 3: Create green preview cards that take their place in the layout
                             for i, reward in ipairs(rewards) do
+                                -- Calculate dynamic width: same as RewardCard
+                                local totalCards = #rewards
+                                local cardWidthPercent = 0.8 / totalCards
+                                
                                 -- Create preview card
                                 local previewCard = Instance.new("Frame")
                                 previewCard.Name = "PreviewCard" .. i
-                                previewCard.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(130), 1, -ScreenUtils.getProportionalSize(10))
+                                previewCard.Size = UDim2.new(cardWidthPercent, 0, 0, ScreenUtils.getProportionalSize(176)) -- Match RewardCard dimensions
                                 previewCard.BackgroundColor3 = reward.color or Color3.fromRGB(255, 255, 255)
                                 previewCard.BackgroundTransparency = (reward.special == "rainbow" or reward.special == "black_market" or reward.special == "black_market_rainbow_text") and 0.3 or 0.7
                                 previewCard.BorderSizePixel = 0
@@ -1555,7 +1555,7 @@ function CrazyChestUI.new(props)
                                 else
                                     -- Add currency icon
                                     local icon = Instance.new("ImageLabel")
-                                    icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60))
+                                    icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)) -- Match RewardCard: 66px
                                     icon.BackgroundTransparency = 1
                                     icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468"
                                     icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -1565,7 +1565,7 @@ function CrazyChestUI.new(props)
                                 
                                 -- Add reward text with green color and next level multiplier
                                 local rewardText = Instance.new("TextLabel")
-                                rewardText.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(40))
+                                rewardText.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(44)) -- Match RewardCard: 44px
                                 rewardText.BackgroundTransparency = 1
                                 rewardText.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green text
                                 rewardText.TextSize = ScreenUtils.TEXT_SIZES.LARGE()
@@ -1578,12 +1578,9 @@ function CrazyChestUI.new(props)
                                 
                                 -- Calculate next level text
                                 if reward.type == "pet" then
-                                    -- Special text for ultra-rare chest, regular formatting for others
-                                    if reward.special == "black_market_rainbow_text" then
-                                        rewardText.Text = reward.name -- Use the custom name "1M\nBoost"
-                                    else
-                                        rewardText.Text = NumberFormatter.format(reward.boost) .. "x\nBoost!"
-                                    end
+                                    -- Calculate boost with multiplier (including ultra-rare chest)
+                                    local nextLevelBoost = math.floor(reward.boost * nextLevelMultiplier)
+                                    rewardText.Text = NumberFormatter.format(nextLevelBoost) .. "\nBoost!"
                                 elseif reward.type == "money" then
                                     local nextLevelAmount = math.floor(reward.money * nextLevelMultiplier)
                                     rewardText.Text = NumberFormatter.format(nextLevelAmount) .. "\nMoney!"
@@ -1611,15 +1608,16 @@ function CrazyChestUI.new(props)
                                 
                                 -- Add chance label with same styling as original (white text, not green)
                                 local chanceLabel = Instance.new("TextLabel")
-                                chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(55))
-                                chanceLabel.Position = ScreenUtils.udim2(0, 0, 1, -ScreenUtils.getProportionalSize(55))
+                                chanceLabel.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(39)) -- Match RewardCard: 39px
+                                chanceLabel.Position = UDim2.new(0, 0, 1, -ScreenUtils.getProportionalSize(39)) -- Position at bottom
                                 chanceLabel.BackgroundColor3 = reward.color or Color3.fromRGB(200, 200, 200)
                                 chanceLabel.BackgroundTransparency = (reward.special == "rainbow" or (reward.special == "black_market" or reward.special == "black_market_rainbow_text")) and 1 or 0
                                 chanceLabel.Text = reward.special == "black_market_rainbow_text" and string.format("%.3f%%", reward.chance) or string.format("%.2f%%", reward.chance)
                                 chanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text like original
-                                chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER()
+                                chanceLabel.TextSize = ScreenUtils.getProportionalSize(39) -- Match RewardCard: 39px text
                                 chanceLabel.Font = Enum.Font.FredokaOne
                                 chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+                                chanceLabel.TextScaled = true -- Match RewardCard text scaling
                                 chanceLabel.TextStrokeTransparency = 0
                                 chanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                                 chanceLabel.ZIndex = 1004
@@ -1642,7 +1640,7 @@ function CrazyChestUI.new(props)
                         -- Show original cards and remove preview cards
                         local modal = rbx.Parent.Parent
                         local rewardsFrame = modal:FindFirstChild("RewardsFrame")
-                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsScrollFrame")
+                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsContainer")
                         
                         if scrollFrame then
                             local removedLevel = 0
@@ -1754,7 +1752,7 @@ function CrazyChestUI.new(props)
                         
                         local modal = rbx.Parent.Parent
                         local rewardsFrame = modal:FindFirstChild("RewardsFrame")
-                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsScrollFrame")
+                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsContainer")
                         
                         if scrollFrame then
                             local currentLuck = props.chestLuck or 1
@@ -1778,9 +1776,13 @@ function CrazyChestUI.new(props)
                                 local nextChance = reward.chance
                                 local isIncrease = nextChance - currentChance > 0
                                 
+                                -- Calculate dynamic width: same as RewardCard
+                                local totalCards = #nextRewards
+                                local cardWidthPercent = 0.8 / totalCards
+                                
                                 local previewCard = Instance.new("Frame")
                                 previewCard.Name = "LuckPreviewCard" .. i
-                                previewCard.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(130), 1, -ScreenUtils.getProportionalSize(10))
+                                previewCard.Size = UDim2.new(cardWidthPercent, 0, 0, ScreenUtils.getProportionalSize(176)) -- Match RewardCard dimensions
                                 previewCard.BackgroundColor3 = reward.color or Color3.fromRGB(255, 255, 255)
                                 previewCard.BackgroundTransparency = (reward.special == "rainbow" or reward.special == "black_market" or reward.special == "black_market_rainbow_text") and 0.3 or 0.7
                                 previewCard.BorderSizePixel = 0
@@ -1848,15 +1850,15 @@ function CrazyChestUI.new(props)
                                 end
                                 
                                 local contentContainer = Instance.new("Frame")
-                                contentContainer.Size = UDim2.new(1, -ScreenUtils.getProportionalSize(20), 1, -ScreenUtils.getProportionalSize(55))
-                                contentContainer.Position = UDim2.new(0, ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(10))
+                                contentContainer.Size = UDim2.new(1, -ScreenUtils.getProportionalSize(22), 1, -ScreenUtils.getProportionalSize(39)) -- Leave space for 39px chance label
+                                contentContainer.Position = UDim2.new(0, ScreenUtils.getProportionalSize(11), 0, ScreenUtils.getProportionalSize(11)) -- Match RewardCard padding: 11px
                                 contentContainer.BackgroundTransparency = 1
                                 contentContainer.ZIndex = 1004
                                 contentContainer.Parent = previewCard
                                 if reward.type == "pet" then
                                     local viewport = Instance.new("ViewportFrame")
-                                    viewport.Size = UDim2.new(0, ScreenUtils.getProportionalSize(70), 0, ScreenUtils.getProportionalSize(70))
-                                    viewport.Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(35), 0, ScreenUtils.getProportionalSize(15))
+                                    viewport.Size = UDim2.new(0, ScreenUtils.getProportionalSize(88), 0, ScreenUtils.getProportionalSize(88)) -- Match RewardCard: 88px
+                                    viewport.Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(44), 0, ScreenUtils.getProportionalSize(11)) -- Match RewardCard positioning
                                     viewport.BackgroundTransparency = 1
                                     viewport.ZIndex = 1025
                                     viewport.Parent = previewCard
@@ -1931,7 +1933,7 @@ function CrazyChestUI.new(props)
                                     end)
                                 else
                                     local icon = Instance.new("ImageLabel")
-                                    icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60))
+                                    icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)) -- Match RewardCard: 66px
                                     icon.BackgroundTransparency = 1
                                     icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468"
                                     icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -1940,7 +1942,7 @@ function CrazyChestUI.new(props)
                                 end
                                 
                                 local rewardText = Instance.new("TextLabel")
-                                rewardText.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(40))
+                                rewardText.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(44)) -- Match RewardCard: 44px
                                 rewardText.Position = UDim2.new(0, 0, 0, ScreenUtils.getProportionalSize(85))
                                 rewardText.BackgroundTransparency = 1
                                 rewardText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1952,12 +1954,9 @@ function CrazyChestUI.new(props)
                                 rewardText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                                 rewardText.ZIndex = 1005
                                 if reward.type == "pet" then
-                                    -- Special text for ultra-rare chest, regular formatting for others
-                                    if reward.special == "black_market_rainbow_text" then
-                                        rewardText.Text = reward.name -- Use the custom name "1M\nBoost"
-                                    else
-                                        rewardText.Text = NumberFormatter.format(reward.boost) .. "x\nBoost!"
-                                    end
+                                    -- Calculate boost with multiplier (including ultra-rare chest)
+                                    local boostAmount = math.floor(reward.boost * (props.rewardMultiplier or 1))
+                                    rewardText.Text = NumberFormatter.format(boostAmount) .. "\nBoost!"
                                 elseif reward.type == "money" then
                                     local amount = math.floor(reward.money * (props.rewardMultiplier or 1))
                                     rewardText.Text = NumberFormatter.format(amount) .. "\nMoney!"
@@ -1984,15 +1983,16 @@ function CrazyChestUI.new(props)
                                 end
                                 
                                 local chanceLabel = Instance.new("TextLabel")
-                                chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(55))
-                                chanceLabel.Position = ScreenUtils.udim2(0, 0, 1, -ScreenUtils.getProportionalSize(55))
+                                chanceLabel.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(39)) -- Match RewardCard: 39px
+                                chanceLabel.Position = UDim2.new(0, 0, 1, -ScreenUtils.getProportionalSize(39)) -- Position at bottom
                                 chanceLabel.BackgroundColor3 = reward.color or Color3.fromRGB(200, 200, 200)
                                 chanceLabel.BackgroundTransparency = (reward.special == "rainbow" or (reward.special == "black_market" or reward.special == "black_market_rainbow_text")) and 1 or 0
                                 chanceLabel.Text = reward.special == "black_market_rainbow_text" and string.format("%.3f%%", nextChance) or string.format("%.2f%%", nextChance)
                                 chanceLabel.TextColor3 = isIncrease and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-                                chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER()
+                                chanceLabel.TextSize = ScreenUtils.getProportionalSize(39) -- Match RewardCard: 39px text
                                 chanceLabel.Font = Enum.Font.FredokaOne
                                 chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+                                chanceLabel.TextScaled = true -- Match RewardCard text scaling
                                 chanceLabel.TextStrokeTransparency = 0
                                 chanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                                 chanceLabel.ZIndex = 1004
@@ -2013,7 +2013,7 @@ function CrazyChestUI.new(props)
                         
                         local modal = rbx.Parent.Parent
                         local rewardsFrame = modal:FindFirstChild("RewardsFrame")
-                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsScrollFrame")
+                        local scrollFrame = rewardsFrame and rewardsFrame:FindFirstChild("RewardsContainer")
                         
                         if scrollFrame then
                             local removedLuck = 0
@@ -2133,23 +2133,19 @@ function CrazyChestUI.new(props)
                     ZIndex = 1002,
                 }),
                 
-                -- Horizontal scrolling frame for reward cards
-                RewardsScrollFrame = React.createElement("ScrollingFrame", {
-                    Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(20), 1, -ScreenUtils.getProportionalSize(40)),
-                    Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(35)),
-                    BackgroundTransparency = 1,
-                    ScrollBarThickness = ScreenUtils.getProportionalSize(4),
-                    ScrollBarImageColor3 = Color3.fromRGB(200, 200, 200),
-                    ScrollingDirection = Enum.ScrollingDirection.X,
-                    CanvasSize = UDim2.new(0, math.max(#rewards, 1) * ScreenUtils.getProportionalSize(150), 0, 0), -- Horizontal canvas (increased for padding)
+                -- Simple container frame for dynamic number of cards
+                RewardsContainer = React.createElement("Frame", {
+                    Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(20), 1, -ScreenUtils.getProportionalSize(40)), -- Leave some padding
+                    Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(35)), -- Centered
+                    BackgroundTransparency = 1, -- Transparent container
                     ZIndex = 1002,
                 }, {
-                    -- Horizontal layout for cards
+                    -- Horizontal layout for cards - ALWAYS CENTER ALIGNMENT
                     Layout = React.createElement("UIListLayout", {
                         FillDirection = Enum.FillDirection.Horizontal,
-                        HorizontalAlignment = Enum.HorizontalAlignment.Center, -- Center the cards
-                        VerticalAlignment = Enum.VerticalAlignment.Center, -- Center vertically too
-                        Padding = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(20)), -- Increased padding
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center, -- ALWAYS CENTER - this is required
+                        VerticalAlignment = Enum.VerticalAlignment.Center, -- Center vertically
+                        Padding = UDim.new(math.max(0.01, 0.03 / (rewards and #rewards or 8)), 0), -- Slightly more padding between cards
                     }),
                 
                 -- Create reward cards like PlaytimeRewards
@@ -2176,6 +2172,7 @@ function CrazyChestUI.new(props)
                         cards[i] = RewardCard({
                             reward = reward,
                             layoutOrder = i,
+                            totalCards = #rewards, -- Pass total number of cards for dynamic sizing
                             rewardMultiplier = props.rewardMultiplier or 1, -- Pass the chest level multiplier
                             -- Rainbow cards use transparent background to show main card rainbow, others use solid
                             isChanceBackgroundTransparent = (reward.special == "rainbow" or (reward.special == "black_market" or reward.special == "black_market_rainbow_text")),
@@ -2190,8 +2187,8 @@ function CrazyChestUI.new(props)
             -- Case Opening Animation Section (bottom half) - with pre-populated cards
             CaseOpeningSection = React.createElement("Frame", {
                 Name = "CaseOpeningSection",
-                Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 0.32, 0), -- 32% of modal height (reduced to give button more space)
-                Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0.45, 0), -- 45% from top (closer to rewards section)
+                Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(40), 0.25, 0), -- Reduced to 25% of modal height
+                Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(20), 0.48, 0), -- Adjusted position
                 BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background to match main UI
                 BorderSizePixel = 0,
                 ZIndex = 1001,

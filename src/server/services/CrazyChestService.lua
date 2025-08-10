@@ -64,7 +64,7 @@ function CrazyChestService:Initialize()
     
     -- Handle chest opening requests
     openChestRemote.OnServerEvent:Connect(function(player)
-        self:HandleChestOpen(player)
+        self:HandleChestOpen(player, false) -- false = diamond purchase
     end)
     
     -- Handle reward claiming after animation
@@ -83,7 +83,7 @@ function CrazyChestService:Initialize()
     end)
 end
 
-function CrazyChestService:HandleChestOpen(player)
+function CrazyChestService:HandleChestOpen(player, isRobuxPurchase)
     -- Validate player
     if not player or not player.Parent then
         return
@@ -100,22 +100,25 @@ function CrazyChestService:HandleChestOpen(player)
     local rebirthCount = playerData.Resources.Rebirths or 0
     local cost = CrazyChestConfig.getCost(rebirthCount)
     
-    -- Check if player can afford it
-    local currentDiamonds = playerData.Resources.Diamonds or 0
-    if currentDiamonds < cost then
-        warn("CrazyChestService: Player", player.Name, "cannot afford chest (has", currentDiamonds, "needs", cost, ")")
-        -- Sync to revert any optimistic client updates
-        DataService:SyncPlayerDataToClient(player)
-        return
-    end
-    
-    -- Deduct cost
-    local success = DataService:UpdatePlayerResources(player, "Diamonds", -cost)
-    if not success then
-        warn("CrazyChestService: Failed to deduct diamonds from", player.Name)
-        -- Important: If we can't deduct, we need to sync to revert any optimistic client updates
-        DataService:SyncPlayerDataToClient(player)
-        return
+    -- Skip affordability check and deduction for Robux purchases
+    if not isRobuxPurchase then
+        -- Check if player can afford it (diamonds only)
+        local currentDiamonds = playerData.Resources.Diamonds or 0
+        if currentDiamonds < cost then
+            warn("CrazyChestService: Player", player.Name, "cannot afford chest (has", currentDiamonds, "needs", cost, ")")
+            -- Sync to revert any optimistic client updates
+            DataService:SyncPlayerDataToClient(player)
+            return
+        end
+        
+        -- Deduct cost (diamonds only)
+        local success = DataService:UpdatePlayerResources(player, "Diamonds", -cost)
+        if not success then
+            warn("CrazyChestService: Failed to deduct diamonds from", player.Name)
+            -- Important: If we can't deduct, we need to sync to revert any optimistic client updates
+            DataService:SyncPlayerDataToClient(player)
+            return
+        end
     end
     
     -- Generate random roll (1-100)
@@ -136,13 +139,14 @@ function CrazyChestService:HandleChestOpen(player)
         reward[key] = value
     end
     
-    -- Apply multiplier to reward amounts (but not pet rewards)
+    -- Apply multiplier to all reward amounts including pet boosts
     if reward.type == "money" then
         reward.money = math.floor(reward.money * rewardMultiplier)
     elseif reward.type == "diamonds" then
         reward.diamonds = math.floor(reward.diamonds * rewardMultiplier)
+    elseif reward.type == "pet" then
+        reward.boost = math.floor(reward.boost * rewardMultiplier)
     end
-    -- Pet rewards don't get multiplied, just their boost values stay the same
     
     -- Store the reward to be claimed after animation
     -- Use a unique key combining player ID and timestamp to handle multiple chests

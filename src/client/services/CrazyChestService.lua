@@ -83,7 +83,10 @@ function CrazyChestService:FindChestInPlayerArea()
 end
 
 function CrazyChestService:CreateProximityPrompt()
-    if not chestPart then return end
+    if not chestPart then 
+        warn("CrazyChestService: Cannot create proximity prompt - chestPart is nil")
+        return 
+    end
     
     -- Find a suitable part to attach the prompt to
     local attachPart
@@ -105,6 +108,7 @@ function CrazyChestService:CreateProximityPrompt()
     proximityPrompt.HoldDuration = 0
     proximityPrompt.MaxActivationDistance = 8
     proximityPrompt.RequiresLineOfSight = false
+    
     proximityPrompt.Parent = attachPart
     
     -- Connect to the Triggered event
@@ -256,6 +260,16 @@ function CrazyChestService:OpenChestUI()
     -- Disable the proximity prompt while UI is open
     if proximityPrompt then
         proximityPrompt.Enabled = false
+    end
+    
+    -- Complete tutorial step if active
+    local TutorialService = require(script.Parent.TutorialService)
+    if TutorialService:IsActive() then
+        local currentStep = TutorialService:GetCurrentStep()
+        if currentStep and currentStep.id == "open_crazy_chest" then
+            print("CrazyChestService: Completing tutorial step - open_crazy_chest")
+            TutorialService:CompleteStep("open_crazy_chest")
+        end
     end
 end
 

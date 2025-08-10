@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local DataSyncService = require(script.Parent.DataSyncService)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local PetBoostDisplayService = {}
 PetBoostDisplayService.__index = PetBoostDisplayService
@@ -160,7 +161,7 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
     
     -- Update title with total boost (show as multiplier)
     if totalMultiplier > 1 then
-        titleLabel.Text = string.format("💪 Total Boost: %.2fx", totalMultiplier)
+        titleLabel.Text = string.format("💪 Total Boost: %sx", NumberFormatter.formatBoost(totalMultiplier))
         titleLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow for total
     else
         titleLabel.Text = "💪 Total Boost: 1x"
@@ -169,7 +170,7 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
     
     -- Update pet boost label (show as multiplier)
     if petBoostMultiplier > 1 then
-        petBoostLabel.Text = string.format("Pets: %.2fx", petBoostMultiplier)
+        petBoostLabel.Text = string.format("Pets: %sx", NumberFormatter.formatBoost(petBoostMultiplier))
         petBoostLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for positive boost
     else
         petBoostLabel.Text = "Pets: 1x"
@@ -189,7 +190,7 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
             table.insert(gamepassNames, "VIP")
         end
         
-        gamepassText = gamepassText .. string.format("%.1fx (%s)", gamepassMultiplier, table.concat(gamepassNames, " + "))
+        gamepassText = gamepassText .. string.format("%sx (%s)", NumberFormatter.formatBoost(gamepassMultiplier), table.concat(gamepassNames, " + "))
         gamepassBoostLabel.Text = gamepassText
         gamepassBoostLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold for gamepass boost
     else

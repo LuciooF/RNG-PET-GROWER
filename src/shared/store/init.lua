@@ -19,18 +19,12 @@ local store = Rodux.Store.new(rootReducer, {}, {
 -- Handle server data sync directly in store (client-side only)
 if RunService:IsClient() then
     task.spawn(function()
-        print("Rodux Store: Setting up server data sync...")
-        
         -- Wait for server remote event
         local updateDataRemote = ReplicatedStorage:WaitForChild("UpdatePlayerData", 10)
         if updateDataRemote then
-            -- Connected to server data updates
-            
             -- Listen for server updates and dispatch directly to store
             updateDataRemote.OnClientEvent:Connect(function(playerData)
-                -- Received server data update
                 store:dispatch(Actions.setPlayerData(playerData))
-                -- Store state updated
             end)
         else
             warn("Rodux Store: Failed to connect to server updates!")

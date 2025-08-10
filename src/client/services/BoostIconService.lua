@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 local DataSyncService = require(script.Parent.DataSyncService)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local BoostIconService = {}
 BoostIconService.__index = BoostIconService
@@ -238,7 +239,7 @@ function BoostIconService:UpdateBoostDisplay()
     local totalMultiplier = petBoostMultiplier + gamepassMultiplier - 1 -- Subtract 1 to avoid double-counting base
     
     -- Update display
-    self.boostLabel.Text = string.format("%.2fx", totalMultiplier)
+    self.boostLabel.Text = string.format("%sx", NumberFormatter.formatBoost(totalMultiplier))
 end
 
 -- Set callback for when boost icon is clicked

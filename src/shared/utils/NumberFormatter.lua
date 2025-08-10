@@ -10,34 +10,17 @@ function NumberFormatter.format(num)
     num = math.floor(num) -- Ensure integer
     
     if num >= 1000000000000 then
-        return string.format("%.1fT", num / 1000000000000)
+        local formatted = num / 1000000000000
+        return formatted == math.floor(formatted) and string.format("%.0fT", formatted) or string.format("%.1fT", formatted)
     elseif num >= 1000000000 then
-        return string.format("%.1fB", num / 1000000000)
+        local formatted = num / 1000000000
+        return formatted == math.floor(formatted) and string.format("%.0fB", formatted) or string.format("%.1fB", formatted)
     elseif num >= 1000000 then
-        return string.format("%.1fM", num / 1000000)
+        local formatted = num / 1000000
+        return formatted == math.floor(formatted) and string.format("%.0fM", formatted) or string.format("%.1fM", formatted)
     elseif num >= 1000 then
-        return string.format("%.1fK", num / 1000)
-    else
-        return tostring(num)
-    end
-end
-
--- Compact format for smaller displays (shorter strings)
-function NumberFormatter.formatCompact(num)
-    if not num or num ~= num then -- Check for nil or NaN
-        return "0"
-    end
-    
-    num = math.floor(num) -- Ensure integer
-    
-    if num >= 1000000000000 then
-        return string.format("%.0fT", num / 1000000000000)
-    elseif num >= 1000000000 then
-        return string.format("%.0fB", num / 1000000000)
-    elseif num >= 1000000 then
-        return string.format("%.0fM", num / 1000000)
-    elseif num >= 1000 then
-        return string.format("%.0fK", num / 1000)
+        local formatted = num / 1000
+        return formatted == math.floor(formatted) and string.format("%.0fK", formatted) or string.format("%.1fK", formatted)
     else
         return tostring(num)
     end

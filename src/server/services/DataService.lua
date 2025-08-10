@@ -411,6 +411,11 @@ function DataService:ResetPlayerData(player)
             completedSteps = {},
             active = false
         }
+        profile.Data.CrazyChest = { -- Reset crazy chest data
+            Level = 1,
+            Luck = 1,
+            PendingReward = nil
+        }
         
         -- Player data reset successfully
         
@@ -697,18 +702,19 @@ function DataService:GetChestRewardMultiplier(player)
     end
     
     local chestLevel = profile.Data.CrazyChest.Level or 1
-    return 1 + (chestLevel - 1) * 0.25 -- 25% increase per level (1x, 1.25x, 1.5x, 1.75x, etc.)
+    return 1 + (chestLevel - 1) * 0.6 -- 60% increase per level (1x, 1.6x, 2.2x, 2.8x, etc.)
 end
 
 -- Get crazy chest upgrade cost
 function DataService:GetChestUpgradeCost(player)
     local profile = Profiles[player]
     if not profile then
-        return 100 -- Default cost for level 1
+        return 250 -- Default cost for level 1
     end
     
     local currentLevel = profile.Data.CrazyChest.Level or 1
-    return currentLevel * 100 -- Cost increases by 100 diamonds per level
+    local baseCost = 250 -- Starting cost in diamonds
+    return math.floor(baseCost * (1.5 ^ (currentLevel - 1))) -- 50% increase per level
 end
 
 -- Upgrade crazy chest luck with diamond cost

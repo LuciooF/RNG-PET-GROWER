@@ -57,14 +57,7 @@ local function SideBar(props)
     
     -- Calculate pet count and format it
     local petCount = #(playerData.Pets or {})
-    local petCountText = ""
-    if petCount >= 1000000 then
-        petCountText = string.format("%.1fM", petCount / 1000000)
-    elseif petCount >= 1000 then
-        petCountText = string.format("%.1fK", petCount / 1000)
-    else
-        petCountText = tostring(petCount)
-    end
+    local petCountText = NumberFormatter.format(petCount)
     
     -- Calculate total boost for boost button (matches BoostPanel calculation)
     -- Pet boost calculation

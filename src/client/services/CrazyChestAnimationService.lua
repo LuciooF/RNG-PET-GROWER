@@ -35,9 +35,9 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
     
     -- Print reward info
     if reward.type == "money" then
-        print("CrazyChestAnimationService: Starting animation - Roll:", roll, "Reward:", reward.money, "money")
+        -- Starting money reward animation
     else
-        print("CrazyChestAnimationService: Starting animation - Roll:", roll, "Reward:", reward.diamonds, "diamonds")
+        -- Starting diamonds reward animation
     end
     
     -- Find the existing reward strip in the UI
@@ -60,7 +60,7 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
             
             rewardStrip = findRewardStrip(gui)
             if rewardStrip then
-                print("CrazyChestAnimationService: Found RewardStrip!")
+                -- Found reward strip for animation
                 break
             end
         end
@@ -80,7 +80,7 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
         
         -- Update the background color and transparency to match the actual reward
         winningCard.BackgroundColor3 = reward.color or Color3.fromRGB(255, 255, 255)
-        winningCard.BackgroundTransparency = reward.special == "rainbow" and 0.3 or 0.7 -- Less transparency for rainbow
+        winningCard.BackgroundTransparency = (reward.special == "rainbow" or reward.special == "black_market" or reward.special == "black_market_rainbow_text") and 0.3 or 0.7
         
         -- Add rainbow gradient to background for rainbow rewards
         if reward.special == "rainbow" then
@@ -103,10 +103,66 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
             rainbowGradient.Parent = winningCard
         end
         
-        -- Update the border color to match the reward rarity
+        -- Add black market gradient to background for black market rewards
+        if reward.special == "black_market" or reward.special == "black_market_rainbow_text" then
+            local existingGradient = winningCard:FindFirstChild("UIGradient")
+            if existingGradient then
+                existingGradient:Destroy()
+            end
+            
+            local blackMarketGradient = Instance.new("UIGradient")
+            blackMarketGradient.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
+                ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
+                ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+            })
+            blackMarketGradient.Rotation = 135
+            blackMarketGradient.Parent = winningCard
+        end
+        
+        -- Update the border color and gradients to match the reward rarity
         local stroke = winningCard:FindFirstChild("Stroke")
         if stroke then
             stroke.Color = reward.color or Color3.fromRGB(200, 200, 200)
+            
+            -- Add gradient to stroke for special effects
+            if reward.special == "rainbow" then
+                local existingStrokeGradient = stroke:FindFirstChild("UIGradient")
+                if existingStrokeGradient then
+                    existingStrokeGradient:Destroy()
+                end
+                
+                local strokeRainbowGradient = Instance.new("UIGradient")
+                strokeRainbowGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
+                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+                    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
+                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
+                })
+                strokeRainbowGradient.Rotation = 45
+                strokeRainbowGradient.Parent = stroke
+            elseif reward.special == "black_market" or reward.special == "black_market_rainbow_text" then
+                local existingStrokeGradient = stroke:FindFirstChild("UIGradient")
+                if existingStrokeGradient then
+                    existingStrokeGradient:Destroy()
+                end
+                
+                local strokeBlackMarketGradient = Instance.new("UIGradient")
+                strokeBlackMarketGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
+                    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
+                    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+                })
+                strokeBlackMarketGradient.Rotation = 135
+                strokeBlackMarketGradient.Parent = stroke
+            end
         end
         
         -- Update the icon - handle pets vs currency properly
@@ -124,10 +180,11 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
             end
             
             -- Create new ViewportFrame for pet (same as in UI creation)
+            local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
             local petViewport = Instance.new("ViewportFrame")
             petViewport.Name = "PetModel"
-            petViewport.Size = UDim2.new(0, 70, 0, 70) -- Same size as animation cards
-            petViewport.Position = UDim2.new(0.5, -35, 0, 15) -- Same position as animation cards
+            petViewport.Size = UDim2.new(0, ScreenUtils.getProportionalSize(70), 0, ScreenUtils.getProportionalSize(70))
+            petViewport.Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(35), 0, ScreenUtils.getProportionalSize(15))
             petViewport.BackgroundTransparency = 1
             petViewport.ZIndex = 1025
             petViewport.Parent = winningCard
@@ -222,15 +279,50 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
             end
         end
         
-        -- Update the text with proper formatting to match other cards
+        -- Update the text with proper formatting to match other cards (two-line format with \n)
         local text = winningCard:FindFirstChild("RewardText")
         if text and text:IsA("TextLabel") then
-            text.Text = reward.type == "pet" and (reward.boost .. "x Boost!") or 
-                       (reward.type == "money" and (NumberFormatter.format(reward.money) .. " Money!") or 
-                       (NumberFormatter.format(reward.diamonds) .. " Diamonds!"))
+            -- Format text with proper multipliers for all rewards including ultra-rare chest
+            if reward.special == "black_market_rainbow_text" then
+                text.Text = NumberFormatter.format(reward.boost) .. "\nBoost!"
+                
+                -- Add rainbow gradient to text for ultra-rare chest
+                local existingTextGradient = text:FindFirstChild("UIGradient")
+                if existingTextGradient then
+                    existingTextGradient:Destroy()
+                end
+                
+                local textRainbowGradient = Instance.new("UIGradient")
+                textRainbowGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
+                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+                    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
+                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
+                })
+                textRainbowGradient.Parent = text
+            else
+                text.Text = reward.type == "pet" and (NumberFormatter.format(reward.boost) .. "\nBoost!") or 
+                           (reward.type == "money" and (NumberFormatter.format(reward.money) .. "\nMoney!") or 
+                           (NumberFormatter.format(reward.diamonds) .. "\nDiamonds!"))
+            end
         end
         
-        print("CrazyChestAnimationService: Updated winning card at position", WINNING_POSITION, "with proper formatting")
+        -- Update chance label formatting if it exists
+        local chanceLabel = winningCard:FindFirstChild("ChanceLabel")
+        if chanceLabel and chanceLabel:IsA("TextLabel") then
+            if reward.special == "black_market_rainbow_text" then
+                -- Use special formatting for ultra-rare chest (but no rainbow gradient on chance text)
+                chanceLabel.Text = string.format("%.3f%%", reward.chance)
+            else
+                -- Regular formatting for other cards with proper decimal formatting
+                chanceLabel.Text = string.format("%.2f%%", reward.chance)
+            end
+        end
+        
+        -- Updated winning card with reward formatting
     end
     
     -- Calculate where to scroll to (center the winning card with random offset)
