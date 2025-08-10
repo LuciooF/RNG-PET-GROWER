@@ -1,166 +1,161 @@
--- LeaderboardService - Manages Roblox integrated leaderstats
+-- LeaderboardService - Manages Roblox integrated leaderstats (online players).
+-- Note: leaderstats only exist for players in the current server. For offline/global
+-- leaderboards, use an OrderedDataStore and a custom UI.
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 local LeaderboardService = {}
 
+-- Idempotent: create the folder/values if they don't exist yet.
+function LeaderboardService:CreateLeaderstats(player: Player)
+	if not player or not player.Parent then return end
 
--- Create leaderstats for a player
-function LeaderboardService:CreateLeaderstats(player)
-    -- Creating leaderstats
-    
-    -- Create leaderstats folder
-    local leaderstats = Instance.new("Folder")
-    leaderstats.Name = "leaderstats"
-    leaderstats.Parent = player
-    
-    -- Create Rebirths stat (primary sort)
-    local rebirths = Instance.new("IntValue")
-    rebirths.Name = "Rebirths"
-    rebirths.Value = 0
-    rebirths.Parent = leaderstats
-    
-    -- Create Diamonds stat (secondary sort)
-    local diamonds = Instance.new("StringValue")
-    diamonds.Name = "Diamonds"
-    diamonds.Value = "0"
-    diamonds.Parent = leaderstats
-    
-    -- Create Money stat (display only, formatted)
-    local money = Instance.new("StringValue")
-    money.Name = "Money"
-    money.Value = "0"
-    money.Parent = leaderstats
-    
-    -- Leaderstats created
-    return leaderstats, rebirths, diamonds, money
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
+		leaderstats = Instance.new("Folder")
+		leaderstats.Name = "leaderstats"
+		leaderstats.Parent = player
+	end
+
+	local rebirths = leaderstats:FindFirstChild("Rebirths")
+	if not rebirths then
+		rebirths = Instance.new("IntValue")
+		rebirths.Name = "Rebirths" -- primary sort in player list
+		rebirths.Value = 0
+		rebirths.Parent = leaderstats
+	end
+
+	local diamonds = leaderstats:FindFirstChild("Diamonds")
+	if not diamonds then
+		diamonds = Instance.new("StringValue") -- string so we can format (e.g., 1.2K)
+		diamonds.Name = "Diamonds"
+		diamonds.Value = "0"
+		diamonds.Parent = leaderstats
+	end
+
+	local money = leaderstats:FindFirstChild("Money")
+	if not money then
+		money = Instance.new("StringValue") -- display only
+		money.Name = "Money"
+		money.Value = "0"
+		money.Parent = leaderstats
+	end
+
+	return leaderstats, rebirths, diamonds, money
 end
 
--- Update leaderstats with current player data
-function LeaderboardService:UpdateLeaderstats(player, playerData)
-    if not player or not player.Parent then
-        return -- Player left
-    end
-    
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if not leaderstats then
-        print("LeaderboardService: No leaderstats found for", player.Name)
-        return
-    end
-    
-    local rebirthsStat = leaderstats:FindFirstChild("Rebirths")
-    local diamondsStat = leaderstats:FindFirstChild("Diamonds")
-    local moneyStat = leaderstats:FindFirstChild("Money")
-    
-    if rebirthsStat and playerData.Resources and playerData.Resources.Rebirths then
-        rebirthsStat.Value = playerData.Resources.Rebirths
-    end
-    
-    if diamondsStat and playerData.Resources and playerData.Resources.Diamonds then
-        local formattedDiamonds = NumberFormatter.format(playerData.Resources.Diamonds)
-        diamondsStat.Value = formattedDiamonds
-    end
-    
-    if moneyStat and playerData.Resources and playerData.Resources.Money then
-        local formattedMoney = NumberFormatter.format(playerData.Resources.Money)
-        moneyStat.Value = formattedMoney
-    end
+-- Safe formatter (prevents errors if formatter expects a number)
+local function safeFormat(n)
+	if typeof(n) == "number" then
+		local ok, formatted = pcall(NumberFormatter.format, n)
+		return ok and formatted or tostring(n)
+	end
+	return tostring(n or 0)
 end
 
--- Initialize leaderstats when player joins
-function LeaderboardService:OnPlayerAdded(player)
-    -- Player joined
-    
-    -- Create leaderstats immediately
-    local leaderstats, rebirthsStat, diamondsStat, moneyStat = self:CreateLeaderstats(player)
-    
-    -- Store references for easy access
-    player:SetAttribute("LeaderboardInitialized", true)
-    
-    return leaderstats
+function LeaderboardService:UpdateLeaderstats(player: Player, playerData)
+	if not player or not player.Parent or not playerData then return end
+
+	-- Ensure leaderstats exist (handles odd timing/reloads)
+	local leaderstats, rebirthsStat, diamondsStat, moneyStat = self:CreateLeaderstats(player)
+	if not leaderstats then return end
+
+	-- Rebirths (numeric for sorting)
+	if rebirthsStat and playerData.Resources and typeof(playerData.Resources.Rebirths) == "number" then
+		rebirthsStat.Value = playerData.Resources.Rebirths
+	end
+
+	-- Diamonds & Money are strings for display (formatted)
+	if diamondsStat and playerData.Resources and playerData.Resources.Diamonds ~= nil then
+		diamondsStat.Value = safeFormat(playerData.Resources.Diamonds)
+	end
+	if moneyStat and playerData.Resources and playerData.Resources.Money ~= nil then
+		moneyStat.Value = safeFormat(playerData.Resources.Money)
+	end
 end
 
--- Cleanup when player leaves
-function LeaderboardService:OnPlayerRemoving(player)
-    -- Player leaving
-    -- Leaderstats are automatically cleaned up by Roblox
+function LeaderboardService:OnPlayerAdded(player: Player)
+	-- Create immediately; values will get populated when your data arrives
+	self:CreateLeaderstats(player)
 end
 
--- Initialize the service
+function LeaderboardService:OnPlayerRemoving(_player: Player)
+	-- Nothing required; Roblox cleans up leaderstats automatically with the Player instance
+end
+
 function LeaderboardService:Initialize()
-    -- Connect to player events
-    Players.PlayerAdded:Connect(function(player)
-        self:OnPlayerAdded(player)
-    end)
-    
-    Players.PlayerRemoving:Connect(function(player)
-        self:OnPlayerRemoving(player)
-    end)
-    
-    -- Handle players already in game
-    for _, player in pairs(Players:GetPlayers()) do
-        if not player:GetAttribute("LeaderboardInitialized") then
-            self:OnPlayerAdded(player)
-        end
-    end
+	Players.PlayerAdded:Connect(function(p) self:OnPlayerAdded(p) end)
+	Players.PlayerRemoving:Connect(function(p) self:OnPlayerRemoving(p) end)
+
+	-- Handle players already present (e.g., script re-run)
+	for _, p in ipairs(Players:GetPlayers()) do
+		self:CreateLeaderstats(p)
+	end
 end
 
--- Update leaderstats for all players with their current data
-function LeaderboardService:UpdateAllLeaderstats(playerDataMap)
-    for player, playerData in pairs(playerDataMap) do
-        if player and player.Parent then
-            self:UpdateLeaderstats(player, playerData)
-        end
-    end
+-- Accepts either:
+--   1) map<Player, playerData>
+--   2) map<userId (number), playerData>
+function LeaderboardService:UpdateAllLeaderstats(playerDataMap: table)
+	for key, playerData in pairs(playerDataMap) do
+		local player: Player? = nil
+
+		if typeof(key) == "Instance" and key:IsA("Player") then
+			player = key
+		elseif typeof(key) == "number" then
+			player = Players:GetPlayerByUserId(key)
+		end
+
+		if player and player.Parent then
+			self:UpdateLeaderstats(player, playerData)
+		end
+	end
 end
 
--- Get leaderboard data for debugging
+-- Debug helper: builds a snapshot of online players’ leaderstats
 function LeaderboardService:GetLeaderboardData()
-    local leaderboardData = {}
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        local leaderstats = player:FindFirstChild("leaderstats")
-        if leaderstats then
-            local rebirths = leaderstats:FindFirstChild("Rebirths")
-            local money = leaderstats:FindFirstChild("Money")
-            
-            table.insert(leaderboardData, {
-                playerName = player.Name,
-                rebirths = rebirths and rebirths.Value or 0,
-                money = money and money.Value or "0"
-            })
-        end
-    end
-    
-    -- Sort by rebirths (descending)
-    table.sort(leaderboardData, function(a, b)
-        return a.rebirths > b.rebirths
-    end)
-    
-    return leaderboardData
+	local snapshot = {}
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		local leaderstats = player:FindFirstChild("leaderstats")
+		if leaderstats then
+			local rebirths = leaderstats:FindFirstChild("Rebirths")
+			local money = leaderstats:FindFirstChild("Money")
+			table.insert(snapshot, {
+				playerName = player.Name,
+				rebirths = (rebirths and rebirths.Value) or 0,
+				money = (money and money.Value) or "0",
+			})
+		end
+	end
+
+	table.sort(snapshot, function(a, b)
+		return a.rebirths > b.rebirths
+	end)
+
+	return snapshot
 end
 
--- Manual refresh for testing
+-- Manual refresh: pull current data and push to leaderstats (online players)
 function LeaderboardService:RefreshLeaderboard()
-    print("LeaderboardService: Manual refresh requested")
-    
-    -- Update all players' leaderstats with their current data
-    for _, player in pairs(Players:GetPlayers()) do
-        task.spawn(function()
-            local DataService = require(script.Parent.DataService)
-            local playerData = DataService:GetPlayerData(player)
-            if playerData then
-                self:UpdateLeaderstats(player, playerData)
-            end
-        end)
-    end
+	print("LeaderboardService: Manual refresh requested")
+	-- Require once (require caches anyway)
+	local DataService = require(script.Parent.DataService)
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		task.spawn(function()
+			local ok, playerData = pcall(DataService.GetPlayerData, DataService, player)
+			if ok and playerData then
+				self:UpdateLeaderstats(player, playerData)
+			end
+		end)
+	end
 end
 
--- Get formatted money for testing
 function LeaderboardService:FormatMoney(amount)
-    return NumberFormatter.format(amount)
+	return safeFormat(amount)
 end
 
 return LeaderboardService

@@ -17,14 +17,14 @@ end
 CrazyChestConfig.REWARDS = {
     {
         money = 5000,
-        chance = 40, -- 40% chance - COMMON
+        chance = 0.1, -- 40% chance - COMMON
         color = PetConstants.RarityColors[PetConstants.Rarity.COMMON], -- Gray
         rarity = "COMMON",
         name = "Small Money",
         type = "money"
     },
     {
-        diamonds = 2500,
+        diamonds = 250,
         chance = 25, -- 25% chance - UNCOMMON  
         color = PetConstants.RarityColors[PetConstants.Rarity.UNCOMMON], -- Green
         rarity = "UNCOMMON",
@@ -40,7 +40,7 @@ CrazyChestConfig.REWARDS = {
         type = "money"
     },
     {
-        diamonds = 15000,
+        diamonds = 1500,
         chance = 10, -- 10% chance - EPIC
         color = PetConstants.RarityColors[PetConstants.Rarity.EPIC], -- Purple
         rarity = "EPIC", 
@@ -72,7 +72,7 @@ CrazyChestConfig.REWARDS = {
         boost = 40,
         value = 10000,
         amount = 1,
-        chance = 0.1, -- 0.1% chance - OMNISCIENT (Insanely Rare!)
+        chance = 40, -- 0.1% chance - OMNISCIENT (Insanely Rare!)
         color = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient background
         rarity = "OMNISCIENT",
         name = "40X Sombrero Chihuahua",

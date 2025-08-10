@@ -215,6 +215,7 @@ function CrazyChestService:ClaimReward(player, rewardKey)
         end
     elseif reward.type == "pet" then
         -- Give pet reward using proper petData structure
+        local boostValue = reward.boost or 5
         local petData = {
             Name = reward.petName,
             Rarity = {
@@ -223,19 +224,28 @@ function CrazyChestService:ClaimReward(player, rewardKey)
                 RarityColor = reward.color or Color3.fromRGB(255, 100, 50) -- Use reward color
             },
             Variation = {
-                VariationName = reward.boost .. "x Boost",
+                VariationName = boostValue .. "x Boost",
                 VariationChance = 100,
-                VariationMultiplier = reward.boost,
+                VariationMultiplier = boostValue,
                 VariationColor = reward.color or Color3.fromRGB(255, 100, 50)
             },
             BaseValue = reward.value or 1000,
-            BaseBoost = reward.boost or 5,
+            BaseBoost = boostValue,
+            -- IMPORTANT: Add FinalBoost and FinalValue for proper sorting in auto-equip
+            FinalBoost = boostValue, -- Since variation multiplier is the same as boost for chest pets
+            FinalValue = (reward.value or 1000) * boostValue,
             ID = game:GetService("HttpService"):GenerateGUID()
         }
+        
+        print("CrazyChestService: Adding chest pet with FinalBoost:", petData.FinalBoost, "BaseBoost:", petData.BaseBoost)
         
         local success = DataService:AddPetToPlayer(player, petData)
         if success then
             print("CrazyChestService:", player.Name, "claimed", reward.boost .. "x", reward.petName, "from chest")
+            -- DataService:AddPetToPlayer already handles auto-equip via ScheduleDebouncedAutoEquip
+            -- which will only equip if the pet is better than current equipped pets
+        else
+            warn("CrazyChestService: Failed to add pet to player", player.Name)
         end
     end
     
