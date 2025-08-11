@@ -167,6 +167,10 @@ function CrazyChestService:SetupRemoteEvents()
             elseif reward.type == "diamonds" then
                 rewardData.type = "Diamonds"
                 rewardData.amount = reward.diamonds
+            elseif reward.type == "potion" then
+                rewardData.type = "Potion"
+                rewardData.potionId = reward.potionId
+                rewardData.amount = reward.quantity
             elseif reward.type == "pet" then
                 rewardData.type = "Pet"
                 rewardData.petName = reward.petName

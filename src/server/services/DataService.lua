@@ -47,7 +47,9 @@ local PROFILE_TEMPLATE = {
         Level = 1, -- Chest level (starts at 1)
         Luck = 1, -- Luck multiplier (starts at 1)
         PendingReward = nil -- Stored pending reward from chest opening
-    }
+    },
+    Potions = {}, -- Dictionary of owned potions: {["diamond_2x_10m"] = 3, ["money_2x_10m"] = 1}
+    ActivePotions = {} -- Array of currently active potions with timestamps
 }
 
 local DATASTORE_NAME = "PlayerData"
@@ -128,7 +130,32 @@ function DataService:UnloadPlayerProfile(player)
 end
 
 function DataService:InitializePlayerData(player, data)
-    -- Player data initialized successfully
+    -- Check if this is a new player (no money, no pets, no rebirths)
+    local isNewPlayer = (data.Resources.Money == 0 and 
+                        data.Resources.Rebirths == 0 and 
+                        #(data.Pets or {}) == 0 and
+                        not data.Potions or 
+                        next(data.Potions or {}) == nil)
+    
+    if isNewPlayer then
+        -- Give starter potions to new players
+        local PotionService = require(script.Parent.PotionService)
+        task.spawn(function()
+            -- Wait a moment for player to be fully loaded
+            task.wait(2)
+            
+            -- Give 2x Diamond potion
+            PotionService:GivePotion(player, "diamond_2x_10m", 2)
+            
+            -- Give 2x Money potion
+            PotionService:GivePotion(player, "money_2x_10m", 2)
+            
+            -- Give 1x Pet Magnet potion
+            PotionService:GivePotion(player, "pet_magnet_10m", 1)
+            
+            print("DataService: Gave starter potions to new player", player.Name)
+        end)
+    end
 end
 
 function DataService:GetPlayerProfile(player)
@@ -418,6 +445,14 @@ function DataService:ResetPlayerData(player)
             Luck = 1,
             PendingReward = nil
         }
+        profile.Data.Potions = {} -- Reset potion inventory
+        profile.Data.ActivePotions = {} -- Reset active potions
+        
+        -- Clean up any active potion timers via PotionService
+        local PotionService = require(script.Parent.PotionService)
+        if PotionService then
+            PotionService:CleanupPlayer(player)
+        end
         
         -- Player data reset successfully
         

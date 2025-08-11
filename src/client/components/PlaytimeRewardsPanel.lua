@@ -331,12 +331,17 @@ local function PlaytimeRewardsPanel(props)
                         end
                     end
                 }) or React.createElement("ImageLabel", {
-                    Name = reward.type == "Rebirth" and "RebirthIcon" or "CurrencyIcon",
+                    Name = reward.type == "Rebirth" and "RebirthIcon" or reward.type == "Potion" and "PotionIcon" or "CurrencyIcon",
                     Size = UDim2.new(0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1), 0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1)), -- React state animation
                     Position = UDim2.new(0.5, 0, 0, 0), -- Base position
                     AnchorPoint = Vector2.new(0.5, 0), -- Center anchor
                     BackgroundTransparency = 1,
                     Image = reward.type == "Rebirth" and IconAssets.getIcon("UI", "REBIRTH") -- Proper rebirth icon
+                        or reward.type == "Potion" and (function()
+                            local PotionConfig = require(game.ReplicatedStorage.config.PotionConfig)
+                            local potionData = PotionConfig.GetPotion(reward.potionId)
+                            return potionData and potionData.Icon or "rbxassetid://104089702525726" -- Fallback to diamond potion icon
+                        end)()
                         or (reward.type == "Diamonds" and IconAssets.getIcon("CURRENCY", "DIAMONDS") or IconAssets.getIcon("CURRENCY", "MONEY")),
                     ScaleType = Enum.ScaleType.Fit,
                     ImageColor3 = Color3.fromRGB(255, 255, 255), -- No tinting - natural icon colors for all types
@@ -352,6 +357,19 @@ local function PlaytimeRewardsPanel(props)
                     BackgroundTransparency = 1, -- Transparent background
                     Text = reward.type == "Pet" and (reward.boost .. "x Boost\n" .. reward.petName) 
                         or reward.type == "Rebirth" and (NumberFormatter.format(reward.amount) .. "\n" .. "Rebirth" .. (reward.amount > 1 and "s" or ""))
+                        or reward.type == "Potion" and (function()
+                            local PotionConfig = require(game.ReplicatedStorage.config.PotionConfig)
+                            local potionData = PotionConfig.GetPotion(reward.potionId)
+                            if potionData then
+                                local boost = PotionConfig.FormatBoostAmount(potionData.BoostAmount, potionData.BoostType)
+                                if potionData.BoostType == "PetMagnet" then
+                                    return "Pet Magnet\nPotion"
+                                else
+                                    return boost .. " " .. potionData.BoostType .. "\nPotion"
+                                end
+                            end
+                            return "Potion"
+                        end)()
                         or (NumberFormatter.format(reward.amount) .. "\n" .. reward.type), -- Pet boost, rebirth, or currency type
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White text as requested
                     TextSize = ScreenUtils.getTextSize(32), -- Keep big text size
@@ -416,8 +434,9 @@ local function PlaytimeRewardsPanel(props)
                             -- Show reward popup before claiming
                             RewardsService:ShowReward({
                                 type = reward.type,
-                                amount = reward.amount,
+                                amount = reward.amount or reward.quantity, -- Handle both amount and quantity
                                 petName = reward.petName, -- For pet rewards
+                                potionId = reward.potionId, -- For potion rewards
                                 source = "Playtime Rewards"
                             })
                             

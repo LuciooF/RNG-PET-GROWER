@@ -104,12 +104,18 @@ function PlaytimeRewardsService:ClaimReward(player, timeMinutes, sessionTime)
     -- Client handles session-based claiming validation
     -- Server only validates playtime and grants rewards
     
-    -- Grant the reward
+    -- Grant the reward (with potion multipliers)
     local success = false
     if reward.type == "Diamonds" then
-        success = DataService:UpdatePlayerResources(player, "Diamonds", reward.amount)
+        local PotionService = require(script.Parent.PotionService)
+        local potionMultiplier = PotionService:GetBoostMultiplier(player, "Diamonds")
+        local finalAmount = math.floor(reward.amount * potionMultiplier)
+        success = DataService:UpdatePlayerResources(player, "Diamonds", finalAmount)
     elseif reward.type == "Money" then
-        success = DataService:UpdatePlayerResources(player, "Money", reward.amount)
+        local PotionService = require(script.Parent.PotionService)
+        local potionMultiplier = PotionService:GetBoostMultiplier(player, "Money")
+        local finalAmount = math.floor(reward.amount * potionMultiplier)
+        success = DataService:UpdatePlayerResources(player, "Money", finalAmount)
     elseif reward.type == "Pet" then
         -- Create pet reward with "Reward" rarity and variation
         success = true -- Assume success unless pet creation fails
@@ -153,6 +159,10 @@ function PlaytimeRewardsService:ClaimReward(player, timeMinutes, sessionTime)
                 break
             end
         end
+    elseif reward.type == "Potion" then
+        -- Give potion with reward popup
+        local PotionService = require(script.Parent.PotionService)
+        success = PotionService:GivePotionWithReward(player, reward.potionId, reward.quantity, "Playtime Rewards")
     end
     
     if not success then

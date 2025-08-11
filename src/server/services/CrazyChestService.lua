@@ -144,6 +144,9 @@ function CrazyChestService:HandleChestOpen(player, isRobuxPurchase)
         reward.money = math.floor(reward.money * rewardMultiplier)
     elseif reward.type == "diamonds" then
         reward.diamonds = math.floor(reward.diamonds * rewardMultiplier)
+    elseif reward.type == "potion" then
+        -- Potions are discrete items, apply multiplier to quantity
+        reward.quantity = math.floor(reward.quantity * rewardMultiplier)
     elseif reward.type == "pet" then
         reward.boost = math.floor(reward.boost * rewardMultiplier)
     end
@@ -202,16 +205,30 @@ function CrazyChestService:ClaimReward(player, rewardKey)
     
     local reward = pendingReward.reward
     
-    -- Now actually give the reward
+    -- Now actually give the reward (with potion multipliers)
     if reward.type == "money" then
-        local success = DataService:UpdatePlayerResources(player, "Money", reward.money)
+        local PotionService = require(script.Parent.PotionService)
+        local potionMultiplier = PotionService:GetBoostMultiplier(player, "Money")
+        local finalAmount = math.floor(reward.money * potionMultiplier)
+        local success = DataService:UpdatePlayerResources(player, "Money", finalAmount)
         if success then
-            print("CrazyChestService:", player.Name, "claimed", reward.money, "money from chest")
+            print("CrazyChestService:", player.Name, "claimed", finalAmount, "money from chest (with potion multiplier:", potionMultiplier .. "x)")
         end
     elseif reward.type == "diamonds" then
-        local success = DataService:UpdatePlayerResources(player, "Diamonds", reward.diamonds)
+        local PotionService = require(script.Parent.PotionService)
+        local potionMultiplier = PotionService:GetBoostMultiplier(player, "Diamonds")
+        local finalAmount = math.floor(reward.diamonds * potionMultiplier)
+        local success = DataService:UpdatePlayerResources(player, "Diamonds", finalAmount)
         if success then
-            print("CrazyChestService:", player.Name, "claimed", reward.diamonds, "diamonds from chest")
+            print("CrazyChestService:", player.Name, "claimed", finalAmount, "diamonds from chest (with potion multiplier:", potionMultiplier .. "x)")
+        end
+    elseif reward.type == "potion" then
+        local PotionService = require(script.Parent.PotionService)
+        local success = PotionService:GivePotionWithReward(player, reward.potionId, reward.quantity, "Crazy Chest")
+        if success then
+            print("CrazyChestService:", player.Name, "claimed", reward.quantity .. "x", reward.potionId, "from chest")
+        else
+            warn("CrazyChestService: Failed to give potion to player", player.Name)
         end
     elseif reward.type == "pet" then
         -- Give pet reward using proper petData structure

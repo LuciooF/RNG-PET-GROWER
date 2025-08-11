@@ -40,12 +40,13 @@ CrazyChestConfig.REWARDS = {
         type = "money"
     },
     {
-        diamonds = 1500,
+        potionId = "pet_magnet_10m",
+        quantity = 1,
         chance = 10, -- 10% chance - EPIC
         color = PetConstants.RarityColors[PetConstants.Rarity.EPIC], -- Purple
         rarity = "EPIC", 
-        name = "Large Diamonds",
-        type = "diamonds"
+        name = "Pet Magnet Potion",
+        type = "potion"
     },
     {
         petName = "Easter TV",

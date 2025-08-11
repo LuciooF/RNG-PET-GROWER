@@ -1,9 +1,13 @@
--- RightSideBar - Responsive right side button for playtime rewards
+-- RightSideBar - Unified right navigation with all buttons in proper order
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local React = require(ReplicatedStorage.Packages.react)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local PlaytimeRewardsConfig = require(ReplicatedStorage.config.PlaytimeRewardsConfig)
 
 -- Sound configuration
@@ -15,29 +19,105 @@ hoverSound.SoundId = HOVER_SOUND_ID
 hoverSound.Volume = 0.5
 hoverSound.Parent = SoundService
 
--- Play hover sound instantly
+-- Play hover sound instantly (no creation overhead)
 local function playHoverSound()
     hoverSound:Play()
 end
 
+-- Store active spin tweens to prevent overlapping animations
+local activeSpinTweens = {}
+
+-- Create a 360-degree spin animation for buttons
+local function spinButton(button)
+    if not button then return end
+    
+    -- Cancel any existing spin animation for this button
+    if activeSpinTweens[button] then
+        activeSpinTweens[button]:Cancel()
+        activeSpinTweens[button] = nil
+    end
+    
+    -- Reset rotation to 0 to prevent accumulation
+    button.Rotation = 0
+    
+    -- Create tween info for a quick 360-degree spin
+    local tweenInfo = TweenInfo.new(
+        0.5, -- Duration: 0.5 seconds
+        Enum.EasingStyle.Back,
+        Enum.EasingDirection.Out,
+        0, -- Repeat count
+        false, -- Reverse
+        0 -- Delay
+    )
+    
+    -- Create the rotation tween (360 degrees = full rotation)
+    local spinTween = TweenService:Create(button, tweenInfo, {
+        Rotation = 360 -- Always go to exactly 360 degrees
+    })
+    
+    -- Store the tween reference
+    activeSpinTweens[button] = spinTween
+    
+    -- Clean up reference when animation completes
+    spinTween.Completed:Connect(function()
+        -- Reset to 0 degrees after completing 360
+        button.Rotation = 0
+        activeSpinTweens[button] = nil
+    end)
+    
+    -- Play the animation
+    spinTween:Play()
+end
+
 local function RightSideBar(props)
+    -- Subscribe to player data for potion count
+    local playerData, setPlayerData = React.useState({
+        Potions = {}
+    })
+    
     -- Session-based playtime timer using shared start time
     local sessionStartTime = props.sharedSessionStartTime or tick()
     local currentSessionTime, setCurrentSessionTime = React.useState(0)
     
-    -- Animation state for icon shake and size
-    local iconRotation, setIconRotation = React.useState(-15) -- Base rotation
-    local iconScale, setIconScale = React.useState(1) -- Base scale
+    -- Animation state for playtime rewards icon shake
+    local playtimeIconRotation, setPlaytimeIconRotation = React.useState(-15) -- Base rotation
+    local playtimeIconScale, setPlaytimeIconScale = React.useState(1)
     local lastShakeTime = React.useRef(0)
+    
+    React.useEffect(function()
+        -- Get initial data
+        local initialData = DataSyncService:GetPlayerData()
+        if initialData then
+            setPlayerData(initialData)
+        end
+        
+        local unsubscribe = DataSyncService:Subscribe(function(newState)
+            if newState and newState.player then
+                setPlayerData(newState.player)
+            end
+        end)
+        
+        return function()
+            if unsubscribe and type(unsubscribe) == "function" then
+                unsubscribe()
+            end
+        end
+    end, {})
     
     -- Update session timer every second and handle icon shake animation
     React.useEffect(function()
+        local lastUpdateTime = 0
         local updateTimer = function()
             local currentTime = tick()
             local sessionMinutes = (currentTime - sessionStartTime) / 60
-            setCurrentSessionTime(sessionMinutes)
             
-            -- Shake animation every 5 seconds
+            -- Only update state once per second to avoid infinite React loops
+            if currentTime - lastUpdateTime >= 1 then
+                lastUpdateTime = currentTime
+                setCurrentSessionTime(sessionMinutes)
+            end
+            
+            -- Shake animation every 5 seconds for playtime rewards
             if currentTime - lastShakeTime.current >= 5 then
                 lastShakeTime.current = currentTime
                 
@@ -51,24 +131,24 @@ local function RightSideBar(props)
                         -- Phase 1: Size increase (100ms)
                         local sizeProgress = elapsed / 0.1
                         local currentScale = 1 + (0.2 * sizeProgress) -- Grow to 1.2x size
-                        setIconScale(currentScale)
-                        setIconRotation(-15) -- Keep base rotation during size change
+                        setPlaytimeIconScale(currentScale)
+                        setPlaytimeIconRotation(-15) -- Keep base rotation during size change
                     elseif elapsed < 0.4 then 
                         -- Phase 2: Shake while returning to normal size (300ms)
                         local shakeElapsed = elapsed - 0.1
-                        local sizeProgress = 1 - (shakeElapsed / 0.3) -- Return to normal size
+                        local sizeProgress = 1 - (shakeElapsed / 0.3)
                         local currentScale = 1 + (0.2 * sizeProgress)
-                        setIconScale(currentScale)
+                        setPlaytimeIconScale(currentScale)
                         
                         -- Shake animation
                         local shakeIntensity = 15 -- degrees of shake
                         local frequency = 20 -- shake speed
                         local shake = math.sin(shakeElapsed * frequency) * shakeIntensity * (1 - shakeElapsed/0.3)
-                        setIconRotation(-15 + shake) -- Base -15° + shake offset
+                        setPlaytimeIconRotation(-15 + shake) -- Base -15° + shake offset
                     else
                         -- Phase 3: Return to base state
-                        setIconScale(1) -- Normal size
-                        setIconRotation(-15) -- Base rotation
+                        setPlaytimeIconScale(1) -- Normal size
+                        setPlaytimeIconRotation(-15) -- Base rotation
                         animationConnection:Disconnect()
                     end
                 end)
@@ -85,7 +165,14 @@ local function RightSideBar(props)
         end
     end, {})
     
-    -- Calculate next claimable reward using shared claimed state
+    -- Calculate potion count
+    local potionCount = 0
+    for _, quantity in pairs(playerData.Potions or {}) do
+        potionCount = potionCount + quantity
+    end
+    local potionCountText = NumberFormatter.format(potionCount)
+    
+    -- Calculate next claimable reward using the original logic from the working version
     local allRewards = PlaytimeRewardsConfig.getAllRewards()
     local nextReward = nil
     local canClaim = false
@@ -113,14 +200,12 @@ local function RightSideBar(props)
         end
     end
     
-    -- Calculate status text
+    -- Calculate status text using original logic
     local statusText = "Claim Gift!"
-    local statusColor = Color3.fromRGB(85, 200, 85) -- Green
     
     if not canClaim and nextReward then
         local timeUntil = nextReward.timeMinutes - currentSessionTime
         statusText = "In " .. PlaytimeRewardsConfig.formatTime(timeUntil)
-        statusColor = Color3.fromRGB(200, 120, 120) -- Red
     end
     
     -- Calculate text width for dynamic button sizing with bucketing to prevent flickering
@@ -142,19 +227,89 @@ local function RightSideBar(props)
     local textPadding = ScreenUtils.getProportionalSize(25) -- Balanced padding on each side
     local leftPadding = ScreenUtils.getProportionalSize(20) -- Slightly more left padding
     local rawButtonWidth = textBounds.X + textPadding * 2 + leftPadding
-    local buttonWidth = getBucketedWidth(rawButtonWidth) -- Bucketed width to prevent flickering
-    local buttonHeight = ScreenUtils.getProportionalSize(90)
+    local playtimeButtonWidth = getBucketedWidth(rawButtonWidth) -- Bucketed width to prevent flickering
+    local playtimeButtonHeight = ScreenUtils.getProportionalSize(90)
     local iconSize = ScreenUtils.getProportionalSize(103) -- 25% bigger (82.5 * 1.25)
     local iconOffset = iconSize / 2 -- Half the icon width for half-in/half-out effect
-    local screenPadding = ScreenUtils.getProportionalSize(10)
     local borderThickness = ScreenUtils.getProportionalSize(4)
     local cornerRadius = ScreenUtils.getProportionalSize(28)
     local innerCornerRadius = ScreenUtils.getProportionalSize(24)
     
-    return React.createElement("Frame", {
-        Name = "RightSideBar",
-        Size = UDim2.new(0, buttonWidth, 0, buttonHeight),
-        Position = UDim2.new(1, -buttonWidth - screenPadding, 0.5, -buttonHeight/2),
+    -- Standard button setup for other buttons (same as left sidebar)
+    local screenSize = ScreenUtils.getScreenSize()
+    local screenHeight = screenSize.Y
+    local buttonPixelSize = screenHeight * 0.07 -- 7% of screen height for buttons
+    local spacingPixelSize = screenHeight * 0.04 -- 4% of screen height for spacing
+    local buttonSize = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize)
+    
+    -- Create buttons array in the order we want them to appear
+    local buttons = {}
+    
+    -- 1. Potion Button
+    buttons[1] = React.createElement("Frame", {
+        Name = "A_PotionButtonContainer",
+        Size = buttonSize,
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        PotionButton = React.createElement("ImageButton", {
+            Name = "PotionButton",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Image = "rbxassetid://104089702525726", -- Diamond potion icon
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 50,
+            [React.Event.Activated] = function()
+                if props.onPotionClick then
+                    props.onPotionClick()
+                end
+            end,
+            [React.Event.MouseEnter] = function(rbx)
+                playHoverSound()
+                spinButton(rbx)
+            end
+        }),
+        
+        -- Potion count badge
+        PotionCountBadge = potionCount > 0 and React.createElement("Frame", {
+            Name = "PotionCountBadge",
+            Size = ScreenUtils.udim2(0, 36, 0, 24),
+            Position = ScreenUtils.udim2(1, -18, 0, -4),
+            AnchorPoint = Vector2.new(0.5, 0),
+            BackgroundColor3 = Color3.fromRGB(138, 43, 226), -- Purple for potions
+            BorderSizePixel = 0,
+            ZIndex = 52
+        }, {
+            UICorner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 12)
+            }),
+            UIStroke = React.createElement("UIStroke", {
+                Color = Color3.fromRGB(0, 0, 0),
+                Thickness = 2,
+                Transparency = 0
+            }),
+            CountText = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = potionCountText,
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                TextSize = 16,
+                Font = Enum.Font.FredokaOne,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 53
+            })
+        }) or nil
+    })
+    
+    -- 2. Playtime Rewards Button (original styled design)
+    buttons[2] = React.createElement("Frame", {
+        Name = "B_PlaytimeRewardsButton",
+        Size = UDim2.new(0, playtimeButtonWidth, 0, playtimeButtonHeight),
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
@@ -208,13 +363,13 @@ local function RightSideBar(props)
                 -- Gift icon with bottom aligned to button bottom and tilted left (animated)
                 GiftIcon = React.createElement("ImageLabel", {
                     Name = "GiftIcon",
-                    Size = UDim2.new(0, iconSize * iconScale, 0, iconSize * iconScale), -- Animated size
+                    Size = UDim2.new(0, iconSize * playtimeIconScale, 0, iconSize * playtimeIconScale), -- Animated size
                     Position = UDim2.new(0, -iconOffset, 1, -iconSize), -- Bottom aligned
                     BackgroundTransparency = 1,
                     Image = "rbxassetid://129282541147867",
                     ImageColor3 = Color3.fromRGB(255, 165, 0), -- Keep orange color always (neutral)
                     ScaleType = Enum.ScaleType.Fit,
-                    Rotation = iconRotation, -- Animated rotation with shake
+                    Rotation = playtimeIconRotation, -- Animated rotation with shake
                     ZIndex = 52
                 }),
             
@@ -265,6 +420,69 @@ local function RightSideBar(props)
                 })
             }) or nil
         })
+    })
+    
+    -- 3. Leaderboard Button
+    buttons[3] = React.createElement("Frame", {
+        Name = "C_LeaderboardButtonContainer",
+        Size = buttonSize,
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        LeaderboardButton = React.createElement("ImageButton", {
+            Name = "LeaderboardButton",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            Image = IconAssets.getIcon("UI", "TROPHY"),
+            ImageColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
+            ScaleType = Enum.ScaleType.Fit,
+            SizeConstraint = Enum.SizeConstraint.RelativeYY,
+            ZIndex = 50,
+            [React.Event.Activated] = function()
+                if props.onLeaderboardClick then
+                    props.onLeaderboardClick()
+                end
+            end,
+            [React.Event.MouseEnter] = function(rbx)
+                playHoverSound()
+                spinButton(rbx)
+            end
+        })
+    })
+    
+    -- Convert array to React children object
+    local children = {
+        UIListLayout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Vertical,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, spacingPixelSize),
+            SortOrder = Enum.SortOrder.Name
+        })
+    }
+    
+    -- Add buttons to children in alphabetical order for Name sorting
+    children["A_Potion"] = buttons[1]  -- Potion
+    children["B_PlaytimeRewards"] = buttons[2]  -- Playtime Rewards
+    children["C_Leaderboard"] = buttons[3]  -- Leaderboard
+    
+    return React.createElement("Frame", {
+        Name = "RightSideBar",
+        Size = ScreenUtils.udim2(0, math.max(buttonPixelSize, playtimeButtonWidth) + 20, 1, 0),
+        Position = ScreenUtils.udim2(1, -math.max(buttonPixelSize, playtimeButtonWidth) - 30, 0, 0), -- Right side with padding
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        ButtonContainer = React.createElement("Frame", {
+            Name = "ButtonContainer",
+            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Position = UDim2.new(0, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(0, 0.5),
+            BackgroundTransparency = 1,
+            ZIndex = 50
+        }, children)
     })
 end
 

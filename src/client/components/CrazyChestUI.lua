@@ -11,12 +11,31 @@ local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 -- Wait for config to be available
 local configFolder = ReplicatedStorage:WaitForChild("config", 10)
 local CrazyChestConfig = configFolder and require(configFolder.CrazyChestConfig) or nil
+local PotionConfig = configFolder and require(configFolder.PotionConfig) or nil
 
 local CrazyChestUI = {}
 
 -- Cache for created cards to prevent recreation during animation
 local cardCache = nil
 local lastRewardsKey = nil
+
+-- Helper function to format potion reward text
+local function formatPotionRewardText(reward, multiplier)
+    if not reward or reward.type ~= "potion" then
+        return "Potion!"
+    end
+    
+    local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+    if not potionConfig then
+        return NumberFormatter.format(math.floor(reward.quantity * multiplier)) .. "\nPotion!"
+    end
+    
+    local duration = PotionConfig.FormatDuration and PotionConfig.FormatDuration(potionConfig.Duration) or "10m"
+    local name = potionConfig.BoostType == "Pet Magnet" and "Pet Magnet" or potionConfig.BoostType
+    local quantity = NumberFormatter.format(math.floor(reward.quantity * multiplier))
+    
+    return quantity .. " - " .. duration .. "\n" .. name .. "!"
+end
 
 -- Create clean purchase modal component
 local function createCleanPurchaseModal(props)
@@ -459,7 +478,8 @@ local function RewardCard(props)
                 Name = "CurrencyIcon",
                 Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)), -- 10% bigger: 60 * 1.1 = 66
                 BackgroundTransparency = 1, -- Transparent
-                Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468",
+                Image = reward.type == "money" and "rbxassetid://80960000119108" or 
+                       (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468"),
                 ImageColor3 = Color3.fromRGB(255, 255, 255),
                 LayoutOrder = 1,
                 ZIndex = 1005,
@@ -472,8 +492,9 @@ local function RewardCard(props)
                 -- Special text for ultra-rare chest, regular formatting for others
                 Text = reward.special == "black_market_rainbow_text" and (NumberFormatter.format(math.floor(reward.boost * rewardMultiplier)) .. "\nBoost!") or
                        (reward.type == "pet" and (NumberFormatter.format(math.floor(reward.boost * rewardMultiplier)) .. "\nBoost!") or 
-                       (reward.type == "money" and (NumberFormatter.format(math.floor(reward.money * rewardMultiplier)) .. "\nMoney!") or 
-                       (NumberFormatter.format(math.floor(reward.diamonds * rewardMultiplier)) .. "\nDiamonds!"))),
+                       (reward.type == "money" and (NumberFormatter.format(math.floor(reward.money * rewardMultiplier)) .. "\nMoney!") or
+                       (reward.type == "potion" and formatPotionRewardText(reward, rewardMultiplier) or
+                       (NumberFormatter.format(math.floor(reward.diamonds * rewardMultiplier)) .. "\nDiamonds!")))),
                 TextColor3 = Color3.fromRGB(255, 255, 255),
                 TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- 50% bigger - upgraded from MEDIUM to LARGE
                 Font = Enum.Font.FredokaOne,
@@ -530,8 +551,9 @@ local function AnimationCard(props)
     
     -- Create reward text for animation cards - same two-line format as RewardCard with chest level multiplier
     local rewardText = reward.type == "pet" and (NumberFormatter.format(math.floor(reward.boost * rewardMultiplier)) .. "\nBoost!") or 
-                      (reward.type == "money" and (NumberFormatter.format(math.floor(reward.money * rewardMultiplier)) .. "\nMoney!") or 
-                      (NumberFormatter.format(math.floor(reward.diamonds * rewardMultiplier)) .. "\nDiamonds!"))
+                      (reward.type == "money" and (NumberFormatter.format(math.floor(reward.money * rewardMultiplier)) .. "\nMoney!") or
+                      (reward.type == "potion" and formatPotionRewardText(reward, rewardMultiplier) or
+                      (NumberFormatter.format(math.floor(reward.diamonds * rewardMultiplier)) .. "\nDiamonds!")))
     
     return React.createElement("Frame", {
         Name = "RewardItem" .. position,
@@ -648,7 +670,8 @@ local function AnimationCard(props)
             Size = ScreenUtils.udim2(0.5, 0, 0.5, 0), -- 50% of card size
             Position = ScreenUtils.udim2(0.25, 0, 0.15, 0), -- Centered with 25% margin
             BackgroundTransparency = 1,
-            Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468",
+            Image = reward.type == "money" and "rbxassetid://80960000119108" or 
+                   (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468"),
             ImageColor3 = Color3.fromRGB(255, 255, 255),
             ScaleType = Enum.ScaleType.Fit, -- Maintain aspect ratio
             ZIndex = 1012,
@@ -1445,7 +1468,8 @@ function CrazyChestUI.new(props)
                                     local icon = Instance.new("ImageLabel")
                                     icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)) -- Match RewardCard: 66px
                                     icon.BackgroundTransparency = 1
-                                    icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468"
+                                    icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or 
+                                                (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468")
                                     icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                                     icon.ZIndex = 1005
                                     icon.Parent = contentContainer
@@ -1472,6 +1496,8 @@ function CrazyChestUI.new(props)
                                 elseif reward.type == "money" then
                                     local nextLevelAmount = math.floor(reward.money * nextLevelMultiplier)
                                     rewardText.Text = NumberFormatter.format(nextLevelAmount) .. "\nMoney!"
+                                elseif reward.type == "potion" then
+                                    rewardText.Text = formatPotionRewardText(reward, nextLevelMultiplier)
                                 else -- diamonds
                                     local nextLevelAmount = math.floor(reward.diamonds * nextLevelMultiplier)
                                     rewardText.Text = NumberFormatter.format(nextLevelAmount) .. "\nDiamonds!"
@@ -1783,7 +1809,8 @@ function CrazyChestUI.new(props)
                                     local icon = Instance.new("ImageLabel")
                                     icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)) -- Match RewardCard: 66px
                                     icon.BackgroundTransparency = 1
-                                    icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468"
+                                    icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or 
+                                                (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468")
                                     icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                                     icon.ZIndex = 1005
                                     icon.Parent = contentContainer
@@ -1808,6 +1835,8 @@ function CrazyChestUI.new(props)
                                 elseif reward.type == "money" then
                                     local amount = math.floor(reward.money * (props.rewardMultiplier or 1))
                                     rewardText.Text = NumberFormatter.format(amount) .. "\nMoney!"
+                                elseif reward.type == "potion" then
+                                    rewardText.Text = formatPotionRewardText(reward, props.rewardMultiplier or 1)
                                 else -- diamonds
                                     local amount = math.floor(reward.diamonds * (props.rewardMultiplier or 1))
                                     rewardText.Text = NumberFormatter.format(amount) .. "\nDiamonds!"

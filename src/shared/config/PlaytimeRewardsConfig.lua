@@ -34,19 +34,21 @@ PlaytimeRewardsConfig.rewards = {
     },
     {
         timeMinutes = 5, -- 1 minute - CONFIGURABLE: Change to any time
-        type = "Money", -- Reward 4: Money (alternating pattern)
-        amount = 2000, -- CONFIGURABLE: Change amount as needed
-        title = "One Minute",
-        description = "Play for 1 minute",
-        icon = "💰"
+        type = "Potion", -- Reward 4: 2x Money Potion
+        potionId = "money_2x_10m", -- 2x Money potion for 10 minutes
+        quantity = 1, -- One potion
+        title = "Money Booster",
+        description = "2x Money for 10 minutes",
+        icon = "🧪"
     },
     {
         timeMinutes = 7.5, -- 1m 15s - CONFIGURABLE: Change to any time
-        type = "Diamonds", -- Reward 5: Diamonds (alternating pattern)
-        amount = 300, -- CONFIGURABLE: Change amount as needed
-        title = "Focused Player",
-        description = "Play for 1m 15s",
-        icon = "💎"
+        type = "Potion", -- Reward 5: 2x Diamond Potion
+        potionId = "diamond_2x_10m", -- 2x Diamond potion for 10 minutes
+        quantity = 1, -- One potion
+        title = "Diamond Booster",
+        description = "2x Diamonds for 10 minutes",
+        icon = "🧪"
     },
     {
         timeMinutes = 10, -- 1m 30s - CONFIGURABLE: Change to any time
@@ -68,12 +70,13 @@ PlaytimeRewardsConfig.rewards = {
         icon = "🔥"
     },
     {
-        timeMinutes = 20, -- Add rebirth reward before final reward
-        type = "Rebirth", -- NEW: Rebirth reward type
-        amount = 1, -- Number of rebirths to give
-        title = "Rebirth Reward",
-        description = "Instant rebirth boost!",
-        icon = "🔄"
+        timeMinutes = 20, -- Pet Magnet potion reward
+        type = "Potion", -- Pet Magnet Potion
+        potionId = "pet_magnet_10m", -- Pet Magnet potion for 10 minutes
+        quantity = 1, -- One potion
+        title = "Pet Magnet",
+        description = "Auto-collect for 10 minutes",
+        icon = "🧪"
     },
     {
         timeMinutes = 25, -- 5 minutes - CONFIGURABLE: Change to any time

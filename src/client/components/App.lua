@@ -23,7 +23,7 @@ local TutorialUI = require(script.Parent.TutorialUI)
 local OPPetButton = require(script.Parent.OPPetButton)
 local PlaytimeRewardsPanel = require(script.Parent.PlaytimeRewardsPanel)
 local LeaderboardPanel = require(script.Parent.LeaderboardPanel)
-local LeaderboardButton = require(script.Parent.LeaderboardButton)
+local PotionInventoryUI = require(script.Parent.PotionInventoryUI)
 local CrazyChestUI = require(script.Parent.CrazyChestUI)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
@@ -53,6 +53,7 @@ local function App()
     local tutorialVisible, setTutorialVisible = React.useState(false)
     local playtimeRewardsVisible, setPlaytimeRewardsVisible = React.useState(false)
     local leaderboardVisible, setLeaderboardVisible = React.useState(false)
+    local potionInventoryVisible, setPotionInventoryVisible = React.useState(false)
     local tutorialData, setTutorialData = React.useState({})
     local crazyChestProps, setCrazyChestProps = React.useState(CrazyChestService:GetUIProps())
     local playerData, setPlayerData = React.useState({
@@ -218,7 +219,7 @@ local function App()
     React.useEffect(function()
         local lastUpdate = 0
         local connection = game:GetService("RunService").Heartbeat:Connect(function()
-            if tick() - lastUpdate > 0.1 then -- Update every 100ms instead of every frame
+            if tick() - lastUpdate > 1 then -- Update every 1 second to avoid React infinite loops
                 lastUpdate = tick()
                 setCrazyChestProps(CrazyChestService:GetUIProps())
             end
@@ -297,10 +298,16 @@ local function App()
             end
         }),
         
-        -- Right side navigation
+        -- Right side navigation (now includes all right-side buttons)
         RightSideBar = React.createElement(RightSideBar, {
+            onPotionClick = function()
+                setPotionInventoryVisible(function(prev) return not prev end)
+            end,
             onPlaytimeRewardsClick = function()
                 setPlaytimeRewardsVisible(function(prev) return not prev end)
+            end,
+            onLeaderboardClick = function()
+                setLeaderboardVisible(function(prev) return not prev end)
             end,
             sharedSessionStartTime = sharedSessionStartTime.current,
             sharedSessionClaimedRewards = sharedSessionClaimedRewards,
@@ -394,15 +401,17 @@ local function App()
             end
         }) or nil,
         
+        -- Potion Inventory Panel
+        PotionInventoryUI = potionInventoryVisible and React.createElement(PotionInventoryUI, {
+            visible = potionInventoryVisible,
+            onClose = function()
+                setPotionInventoryVisible(false)
+            end
+        }) or nil,
+        
         -- OP Pet Purchase Button (always visible on top right)
         OPPetButton = React.createElement(OPPetButton),
         
-        -- Leaderboard Button (right side, below playtime rewards)
-        LeaderboardButton = React.createElement(LeaderboardButton, {
-            onLeaderboardClick = function()
-                setLeaderboardVisible(function(prev) return not prev end)
-            end
-        }),
         
         -- Crazy Chest UI (conditional rendering based on visibility)
         CrazyChestUI = React.createElement(CrazyChestUI.new, crazyChestProps)
