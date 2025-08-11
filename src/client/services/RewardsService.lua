@@ -8,6 +8,7 @@ local SoundService = game:GetService("SoundService")
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 local RewardsService = {}
 RewardsService.__index = RewardsService
@@ -257,16 +258,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     gradientBorder.Parent = popupFrame
     
     local rainbowGradient = Instance.new("UIGradient")
-    rainbowGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-    })
     rainbowGradient.Parent = gradientBorder
+    GradientUtils.ApplyGradient(GradientUtils.RAINBOW, rainbowGradient)
     
     -- Icon/Viewport (left side)
     local iconOrViewport

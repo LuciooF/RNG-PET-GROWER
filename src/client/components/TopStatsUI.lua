@@ -9,6 +9,7 @@ local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local SoundService = game:GetService("SoundService")
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -149,18 +150,7 @@ local function TopStatsUI()
                         Transparency = 0,
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
                     }),
-                    Rainbow = shouldBeRainbow("Diamonds") and React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-                        }),
-                        Rotation = 0
-                    }) or nil
+                    Rainbow = shouldBeRainbow("Diamonds") and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW) or nil
                 })
             }),
             
@@ -207,18 +197,7 @@ local function TopStatsUI()
                         Transparency = 0,
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
                     }),
-                    Rainbow = shouldBeRainbow("Money") and React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-                        }),
-                        Rotation = 0
-                    }) or nil
+                    Rainbow = shouldBeRainbow("Money") and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW) or nil
                 })
             }),
             
@@ -265,18 +244,7 @@ local function TopStatsUI()
                         Transparency = 0,
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
                     }),
-                    Rainbow = shouldBeRainbow("Rebirths") and React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-                        }),
-                        Rotation = 0
-                    }) or nil
+                    Rainbow = shouldBeRainbow("Rebirths") and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW) or nil
                 })
             })
         })

@@ -12,6 +12,7 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local PetConstants = require(ReplicatedStorage.constants.PetConstants)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 local player = Players.LocalPlayer
 
@@ -468,15 +469,7 @@ local function PetMixerUI()
                 ZIndex = 1002,
             }, {
                 -- Pink to blue gradient like Pet UI
-                ShinyGradient = React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
-                        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
-                        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
-                    }),
-                    Rotation = 0
-                })
+                ShinyGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
             }),
             
             -- Quantity owned
@@ -639,15 +632,7 @@ local function PetMixerUI()
                 ZIndex = 14,
             }, {
                 -- Shiny pink to blue gradient overlay like Pet UI
-                ShinyGradient = React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
-                        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
-                        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
-                    }),
-                    Rotation = 0 -- Horizontal gradient
-                })
+                ShinyGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
             }),
             
             -- Remove badges - we now use text overlay like Pet UI
@@ -1005,16 +990,11 @@ local function PetMixerUI()
                     Corner = React.createElement("UICorner", {
                         CornerRadius = ScreenUtils.udim(0, ScreenUtils.getCornerRadius(12))
                     }),
-                    Gradient = React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
-                        }),
+                    Gradient = GradientUtils.CreateReactGradient(GradientUtils.WHITE_TO_GRAY, {
                         Transparency = NumberSequence.new({
                             NumberSequenceKeypoint.new(0, 0.3),
                             NumberSequenceKeypoint.new(1, 0.6)
-                        }),
-                        Rotation = 90,
+                        })
                     }),
                 }),
                 
@@ -1514,15 +1494,7 @@ local function PetMixerUI()
                             ZIndex = 10,
                         }, {
                             -- Pink to blue gradient like Pet UI
-                            ShinyGradient = React.createElement("UIGradient", {
-                                Color = ColorSequence.new({
-                                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
-                                    ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
-                                    ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
-                                    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
-                                }),
-                                Rotation = 0
-                            })
+                            ShinyGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
                         }),
                         
                         -- Hover detector for tooltip

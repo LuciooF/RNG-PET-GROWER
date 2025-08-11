@@ -6,6 +6,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 -- Wait for config to be available
 local configFolder = ReplicatedStorage:WaitForChild("config", 10)
@@ -326,59 +327,19 @@ local function RewardCard(props)
         }),
         
         -- Rainbow gradient background
-        reward.special == "rainbow" and React.createElement("UIGradient", {
-            Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-            }),
-            Rotation = 45
-        }) or nil,
+        reward.special == "rainbow" and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_DIAGONAL) or nil,
         
         -- Black market gradient background
-        (reward.special == "black_market" or reward.special == "black_market_rainbow_text") and React.createElement("UIGradient", {
-            Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-            }),
-            Rotation = 135
-        }) or nil,
+        (reward.special == "black_market" or reward.special == "black_market_rainbow_text") and GradientUtils.CreateReactGradient(GradientUtils.BLACK_MARKET) or nil,
         
         -- Colored border
         ColorOutline = React.createElement("UIStroke", {
             Color = reward.color or Color3.fromRGB(200, 200, 200),
             Thickness = ScreenUtils.getProportionalSize(4),
         }, {
-            reward.special == "rainbow" and React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                }),
-                Rotation = 45
-            }) or nil,
+            reward.special == "rainbow" and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_DIAGONAL) or nil,
             
-            (reward.special == "black_market" or reward.special == "black_market_rainbow_text") and React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-                }),
-                Rotation = 135
-            }) or nil,
+            (reward.special == "black_market" or reward.special == "black_market_rainbow_text") and GradientUtils.CreateReactGradient(GradientUtils.BLACK_MARKET) or nil,
         }),
         
         -- Content container
@@ -525,17 +486,7 @@ local function RewardCard(props)
                 ZIndex = 1005,
             }, {
                 -- Rainbow text gradient for ultra-rare chest
-                reward.special == "black_market_rainbow_text" and React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                    })
-                }) or nil,
+                reward.special == "black_market_rainbow_text" and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW) or nil,
             }),
             
             -- No pet name for cleaner UI - viewport model and boost text is enough
@@ -596,47 +547,16 @@ local function AnimationCard(props)
         }),
         
         -- Rainbow gradient background
-        reward.special == "rainbow" and React.createElement("UIGradient", {
-            Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-            }),
-            Rotation = 45
-        }) or nil,
+        reward.special == "rainbow" and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_DIAGONAL) or nil,
         
         -- Thick border
         Stroke = React.createElement("UIStroke", {
             Color = reward.color or Color3.fromRGB(200, 200, 200),
             Thickness = ScreenUtils.getProportionalSize(4),
         }, {
-            reward.special == "rainbow" and React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                }),
-                Rotation = 45
-            }) or nil,
+            reward.special == "rainbow" and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_DIAGONAL) or nil,
             
-            (reward.special == "black_market" or reward.special == "black_market_rainbow_text") and React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                    ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-                }),
-                Rotation = 135
-            }) or nil,
+            (reward.special == "black_market" or reward.special == "black_market_rainbow_text") and GradientUtils.CreateReactGradient(GradientUtils.BLACK_MARKET) or nil,
         }),
         
         -- Pet model or currency icon
@@ -1383,28 +1303,12 @@ function CrazyChestUI.new(props)
                                 -- Add gradient if needed
                                 if reward.special == "rainbow" then
                                     local gradient = Instance.new("UIGradient")
-                                    gradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                                    })
-                                    gradient.Rotation = 45
                                     gradient.Parent = previewCard
+                                    GradientUtils.ApplyGradient(GradientUtils.RAINBOW_DIAGONAL, gradient)
                                 elseif reward.special == "black_market" or reward.special == "black_market_rainbow_text" then
                                     local gradient = Instance.new("UIGradient")
-                                    gradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-                                    })
-                                    gradient.Rotation = 135
                                     gradient.Parent = previewCard
+                                    GradientUtils.ApplyGradient(GradientUtils.BLACK_MARKET, gradient)
                                 end
                                 
                                 -- Add stroke
@@ -1416,28 +1320,12 @@ function CrazyChestUI.new(props)
                                 -- Add gradient to stroke if needed
                                 if reward.special == "rainbow" then
                                     local strokeGradient = Instance.new("UIGradient")
-                                    strokeGradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                                    })
-                                    strokeGradient.Rotation = 45
                                     strokeGradient.Parent = stroke
+                                    GradientUtils.ApplyGradient(GradientUtils.RAINBOW_DIAGONAL, strokeGradient)
                                 elseif reward.special == "black_market" or reward.special == "black_market_rainbow_text" then
                                     local strokeGradient = Instance.new("UIGradient")
-                                    strokeGradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-                                    })
-                                    strokeGradient.Rotation = 135
                                     strokeGradient.Parent = stroke
+                                    GradientUtils.ApplyGradient(GradientUtils.BLACK_MARKET, strokeGradient)
                                 end
                                 
                                 -- Add content container
@@ -1594,16 +1482,8 @@ function CrazyChestUI.new(props)
                                 -- Add rainbow gradient to reward text for ultra-rare chest
                                 if reward.special == "black_market_rainbow_text" then
                                     local textGradient = Instance.new("UIGradient")
-                                    textGradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                                    })
                                     textGradient.Parent = rewardText
+                                    GradientUtils.ApplyGradient(GradientUtils.RAINBOW, textGradient)
                                 end
                                 
                                 -- Add chance label with same styling as original (white text, not green)
@@ -1795,28 +1675,12 @@ function CrazyChestUI.new(props)
                                 corner.Parent = previewCard
                                 if reward.special == "rainbow" then
                                     local gradient = Instance.new("UIGradient")
-                                    gradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                                    })
-                                    gradient.Rotation = 45
                                     gradient.Parent = previewCard
+                                    GradientUtils.ApplyGradient(GradientUtils.RAINBOW_DIAGONAL, gradient)
                                 elseif reward.special == "black_market" or reward.special == "black_market_rainbow_text" then
                                     local gradient = Instance.new("UIGradient")
-                                    gradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-                                    })
-                                    gradient.Rotation = 135
                                     gradient.Parent = previewCard
+                                    GradientUtils.ApplyGradient(GradientUtils.BLACK_MARKET, gradient)
                                 end
                                 
                                 local stroke = Instance.new("UIStroke")
@@ -1825,28 +1689,12 @@ function CrazyChestUI.new(props)
                                 stroke.Parent = previewCard
                                 if reward.special == "rainbow" then
                                     local strokeGradient = Instance.new("UIGradient")
-                                    strokeGradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                                    })
-                                    strokeGradient.Rotation = 45
                                     strokeGradient.Parent = stroke
+                                    GradientUtils.ApplyGradient(GradientUtils.RAINBOW_DIAGONAL, strokeGradient)
                                 elseif reward.special == "black_market" or reward.special == "black_market_rainbow_text" then
                                     local strokeGradient = Instance.new("UIGradient")
-                                    strokeGradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(40, 20, 40)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 20)),
-                                        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(40, 20, 60)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-                                    })
-                                    strokeGradient.Rotation = 135
                                     strokeGradient.Parent = stroke
+                                    GradientUtils.ApplyGradient(GradientUtils.BLACK_MARKET, strokeGradient)
                                 end
                                 
                                 local contentContainer = Instance.new("Frame")
@@ -1970,16 +1818,8 @@ function CrazyChestUI.new(props)
                                 -- Add rainbow gradient to reward text for ultra-rare chest
                                 if reward.special == "black_market_rainbow_text" then
                                     local textGradient = Instance.new("UIGradient")
-                                    textGradient.Color = ColorSequence.new({
-                                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-                                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-                                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                                    })
                                     textGradient.Parent = rewardText
+                                    GradientUtils.ApplyGradient(GradientUtils.RAINBOW, textGradient)
                                 end
                                 
                                 local chanceLabel = Instance.new("TextLabel")

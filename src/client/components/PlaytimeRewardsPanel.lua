@@ -1,7 +1,6 @@
 -- PlaytimeRewardsPanel - UI panel showing playtime milestone rewards in card grid layout
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
-local RunService = game:GetService("RunService")
 local React = require(ReplicatedStorage.Packages.react)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
@@ -10,6 +9,7 @@ local PlaytimeRewardsConfig = require(ReplicatedStorage.config.PlaytimeRewardsCo
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local ViewportModelUtils = require(ReplicatedStorage.utils.ViewportModelUtils)
 local RewardsService = require(script.Parent.Parent.services.RewardsService)
+local AnimationService = require(script.Parent.Parent.services.AnimationService)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -30,77 +30,77 @@ local function PlaytimeRewardsPanel(props)
     local sessionStartTime = props.sharedSessionStartTime or tick()
     local currentSessionTime, setCurrentSessionTime = React.useState(0)
     
-    -- Animation state for breathing effect
+    -- Animation state for breathing effect and shake animations
     local animationOffset, setAnimationOffset = React.useState(0)
+    local rewardShakeScale, setRewardShakeScale = React.useState(1)
+    local rewardShakeRotation, setRewardShakeRotation = React.useState(0)
     
-    -- Animation state for shake effect on claimable rewards
-    local shakeOffset, setShakeOffset = React.useState(0)
-    local shakeScale, setShakeScale = React.useState(1)
-    local lastShakeTime = React.useRef(0)
+    -- Animation references for cleanup
+    local activeAnimations = React.useRef({})
     
     -- Use shared session claimed rewards from App component
     local sessionClaimedRewards = props.sharedSessionClaimedRewards or {}
     local setSessionClaimedRewards = props.setSharedSessionClaimedRewards or function() end
     
-    -- Update session timer every second and animate breathing effect
+    -- Setup animations using AnimationService
     React.useEffect(function()
+        -- Create bouncing animation for warning text using callback method (same as Pet Index)
+        local bounceAnimation = AnimationService:CreateReactBounceAnimation({
+            duration = 0.8, -- Same as Pet Index
+            upOffset = 10, -- Same as Pet Index  
+            downOffset = 10, -- Same as Pet Index
+            pauseBetween = 0.5 -- Same as Pet Index
+        }, {
+            onPositionChange = setAnimationOffset
+        })
+        activeAnimations.current.warningBounce = bounceAnimation
+        
+        -- Setup shake animation for claimable rewards using callback method
+        local shakeAnimation = AnimationService:CreateReactShakeAnimation({
+            interval = 1.5, -- Every 1.5 seconds like original
+            growPhase = 0.1, -- 100ms grow phase
+            shakePhase = 0.3, -- 300ms shake phase
+            maxScale = 1.15, -- 1.15x scale like original
+            shakeIntensity = 8 -- 8 pixels of shake converted to rotation
+        }, {
+            onScaleChange = setRewardShakeScale,
+            onRotationChange = setRewardShakeRotation
+        })
+        activeAnimations.current.rewardShake = shakeAnimation
+        
+        -- Timer for session updates only (animations handled by AnimationService)
+        local lastSessionUpdate = 0
         local updateTimer = function()
             local currentTime = tick()
             local sessionMinutes = (currentTime - sessionStartTime) / 60
-            setCurrentSessionTime(sessionMinutes)
             
-            -- Breathing animation - slow sine wave (3 second cycle)
-            local breathingOffset = math.sin(currentTime * 2) * ScreenUtils.getProportionalSize(3) -- 3 pixel breathing movement
-            setAnimationOffset(breathingOffset)
-            
-            -- Shake animation for claimable rewards every 1.5 seconds (breathing effect)
-            if currentTime - lastShakeTime.current >= 1.5 then
-                lastShakeTime.current = currentTime
-                
-                -- Create shake animation for claimable rewards
-                local animationStartTime = currentTime
-                local animationConnection
-                animationConnection = RunService.Heartbeat:Connect(function()
-                    local elapsed = tick() - animationStartTime
-                    
-                    if elapsed < 0.1 then 
-                        -- Phase 1: Size increase (100ms)
-                        local sizeProgress = elapsed / 0.1
-                        local currentScale = 1 + (0.15 * sizeProgress) -- Grow to 1.15x size
-                        setShakeScale(currentScale)
-                        setShakeOffset(0) -- No shake during size change
-                    elseif elapsed < 0.4 then 
-                        -- Phase 2: Shake while returning to normal size (300ms)
-                        local shakeElapsed = elapsed - 0.1
-                        local sizeProgress = 1 - (shakeElapsed / 0.3) -- Return to normal size
-                        local currentScale = 1 + (0.15 * sizeProgress)
-                        setShakeScale(currentScale)
-                        
-                        -- Shake animation
-                        local shakeIntensity = ScreenUtils.getProportionalSize(8) -- pixels of shake
-                        local frequency = 25 -- shake speed
-                        local shake = math.sin(shakeElapsed * frequency) * shakeIntensity * (1 - shakeElapsed/0.3)
-                        setShakeOffset(shake)
-                    else
-                        -- Phase 3: Return to base state
-                        setShakeScale(1) -- Normal size
-                        setShakeOffset(0) -- No shake
-                        animationConnection:Disconnect()
-                    end
-                end)
+            -- Only update session time state once per second to avoid React loops
+            if currentTime - lastSessionUpdate >= 1 then
+                lastSessionUpdate = currentTime
+                setCurrentSessionTime(sessionMinutes)
             end
         end
         
         -- Update immediately
         updateTimer()
         
-        -- Then update every frame for smooth animation
+        -- Setup timer connection (only for session time updates)
         local heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(updateTimer)
         
+        -- All animations now handled by AnimationService above
+        
+        -- Cleanup function
         return function()
             if heartbeatConnection then
                 heartbeatConnection:Disconnect()
             end
+            -- Cleanup all animations
+            for _, animation in pairs(activeAnimations.current) do
+                if animation and animation.Stop then
+                    animation:Stop()
+                end
+            end
+            activeAnimations.current = {}
         end
     end, {})
     
@@ -227,12 +227,13 @@ local function PlaytimeRewardsPanel(props)
                 -- Currency Icon, Pet Model, or Rebirth Icon (Dynamic based on reward type)
                 reward.type == "Pet" and React.createElement("ViewportFrame", {
                     Name = "PetModel",
-                    Size = UDim2.new(0, ScreenUtils.getProportionalSize(120) * (canClaim and shakeScale or 1), 0, ScreenUtils.getProportionalSize(120) * (canClaim and shakeScale or 1)), -- Animated size for claimable rewards
-                    Position = UDim2.new(0.5, canClaim and shakeOffset or 0, 0, 0), -- Shake animation for claimable rewards
-                    AnchorPoint = Vector2.new(0.5, 0), -- Center anchor for shake animation
+                    Size = UDim2.new(0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1), 0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1)), -- React state animation
+                    Position = UDim2.new(0.5, 0, 0, 0), -- Base position
+                    AnchorPoint = Vector2.new(0.5, 0), -- Center anchor
                     BackgroundTransparency = 1,
                     LayoutOrder = 1,
                     ZIndex = 103,
+                    Rotation = canClaim and rewardShakeRotation or 0, -- React state rotation
                     -- Load pet model when viewport is created
                     [React.Event.AncestryChanged] = function(rbx)
                         if rbx.Parent then
@@ -331,16 +332,17 @@ local function PlaytimeRewardsPanel(props)
                     end
                 }) or React.createElement("ImageLabel", {
                     Name = reward.type == "Rebirth" and "RebirthIcon" or "CurrencyIcon",
-                    Size = UDim2.new(0, ScreenUtils.getProportionalSize(120) * (canClaim and shakeScale or 1), 0, ScreenUtils.getProportionalSize(120) * (canClaim and shakeScale or 1)), -- Animated size for claimable rewards
-                    Position = UDim2.new(0.5, canClaim and shakeOffset or 0, 0, 0), -- Shake animation for claimable rewards
-                    AnchorPoint = Vector2.new(0.5, 0), -- Center anchor for shake animation
+                    Size = UDim2.new(0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1), 0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1)), -- React state animation
+                    Position = UDim2.new(0.5, 0, 0, 0), -- Base position
+                    AnchorPoint = Vector2.new(0.5, 0), -- Center anchor
                     BackgroundTransparency = 1,
                     Image = reward.type == "Rebirth" and IconAssets.getIcon("UI", "REBIRTH") -- Proper rebirth icon
                         or (reward.type == "Diamonds" and IconAssets.getIcon("CURRENCY", "DIAMONDS") or IconAssets.getIcon("CURRENCY", "MONEY")),
                     ScaleType = Enum.ScaleType.Fit,
                     ImageColor3 = Color3.fromRGB(255, 255, 255), -- No tinting - natural icon colors for all types
                     LayoutOrder = 1,
-                    ZIndex = 103
+                    ZIndex = 103,
+                    Rotation = canClaim and rewardShakeRotation or 0 -- React state rotation
                 }),
                 
                 -- Currency amount text - dynamic based on reward type

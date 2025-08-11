@@ -12,6 +12,8 @@ local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local PetConstants = require(ReplicatedStorage.constants.PetConstants)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local AnimationService = require(script.Parent.Parent.services.AnimationService)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 -- Pet inventory limit
 local MAX_PET_INVENTORY = 1000
@@ -132,10 +134,36 @@ local function PetInventoryUI(props)
     local tooltipPosition, setTooltipPosition = React.useState(UDim2.new(0, 0, 0, 0))
     local equippedTab, setEquippedTab = React.useState("Regular") -- "Regular" or "OP"
     
+    -- Animation state for bouncing disclaimer text
+    local disclaimerBounceOffset, setDisclaimerBounceOffset = React.useState(0)
+    local activeAnimations = React.useRef({})
+    
     -- Update visibility when props change
     React.useEffect(function()
         setIsVisible(props.visible or false)
     end, {props.visible})
+    
+    -- Setup bounce animation for disclaimer text (same as Pet Index)
+    React.useEffect(function()
+        if isVisible then
+            local bounceAnimation = AnimationService:CreateReactBounceAnimation({
+                duration = 0.8, -- Same as Pet Index
+                upOffset = 10, -- Same as Pet Index  
+                downOffset = 10, -- Same as Pet Index
+                pauseBetween = 0.5 -- Same as Pet Index
+            }, {
+                onPositionChange = setDisclaimerBounceOffset
+            })
+            activeAnimations.current.disclaimerBounce = bounceAnimation
+            
+            return function()
+                if bounceAnimation then
+                    bounceAnimation:Stop()
+                end
+                activeAnimations.current = {}
+            end
+        end
+    end, {isVisible})
 
     -- Subscribe to data changes
     React.useEffect(function()
@@ -291,18 +319,7 @@ local function PetInventoryUI(props)
                     CornerRadius = ScreenUtils.udim(0, 58) -- Circular clipping
                 }),
                 -- Rainbow gradient for OP pets
-                RainbowGradient = isOPPet and React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                    }),
-                    Rotation = 45 -- Diagonal gradient
-                }) or nil
+                RainbowGradient = isOPPet and GradientUtils.CreateReactGradient(GradientUtils.WithRotation(GradientUtils.RAINBOW_CYAN, 45)) or nil
             }),
             
             -- Pet model viewport (takes most of the card space)
@@ -411,15 +428,7 @@ local function PetInventoryUI(props)
                 ZIndex = 14,
             }, {
                 -- Shiny pink to blue gradient overlay
-                ShinyGradient = React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
-                        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
-                        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
-                    }),
-                    Rotation = 0 -- Horizontal gradient
-                })
+                ShinyGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
             }),
             
             -- Pet name at bottom (with rarity color or rainbow for OP)
@@ -439,18 +448,7 @@ local function PetInventoryUI(props)
                 ZIndex = 14,
             }, {
                 -- Rainbow gradient for OP pet names
-                RainbowGradient = isOPPet and React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                    }),
-                    Rotation = 0 -- Horizontal gradient
-                }) or nil
+                RainbowGradient = isOPPet and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_CYAN) or nil
             }),
             
             -- Hover detection for tooltip
@@ -542,13 +540,11 @@ local function PetInventoryUI(props)
             }),
             
             -- Gradient background for modern look
-            Gradient = React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 240, 240))
-                }),
-                Rotation = 45,
-            }),
+            Gradient = GradientUtils.CreateReactGradient(GradientUtils.CreateSimple(
+                Color3.fromRGB(255, 255, 255),
+                Color3.fromRGB(240, 240, 240),
+                45
+            )),
             
             -- Pet name (title)
             Name = React.createElement("TextLabel", {
@@ -576,18 +572,7 @@ local function PetInventoryUI(props)
                 ZIndex = 1001,
             }, {
                 -- Rainbow gradient for OP pet rarity
-                RainbowGradient = isOPPet and React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                    }),
-                    Rotation = 0 -- Horizontal gradient
-                }) or nil
+                RainbowGradient = isOPPet and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_CYAN) or nil
             }),
             
             -- Variation (with color or rainbow for OP)
@@ -603,18 +588,7 @@ local function PetInventoryUI(props)
                 ZIndex = 1001,
             }, {
                 -- Rainbow gradient for OP pet variation
-                RainbowGradient = isOPPet and React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                    }),
-                    Rotation = 0 -- Horizontal gradient
-                }) or nil
+                RainbowGradient = isOPPet and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_CYAN) or nil
             }),
             
             -- Rarity chance (1 in xxx format)
@@ -693,15 +667,7 @@ local function PetInventoryUI(props)
                     ZIndex = 1002,
                 }, {
                     -- Same pink to blue gradient as inventory cards
-                    ShinyGradient = React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),   -- Deep Pink
-                            ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)), -- Hot Pink
-                            ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),  -- Blue Violet
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))     -- Dodger Blue
-                        }),
-                        Rotation = 0 -- Horizontal gradient
-                    })
+                    ShinyGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
                 })
             })
         })
@@ -773,16 +739,11 @@ local function PetInventoryUI(props)
                     Corner = React.createElement("UICorner", {
                         CornerRadius = ScreenUtils.udim(0, 12)
                     }),
-                    Gradient = React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
-                        }),
+                    Gradient = GradientUtils.CreateReactGradient(GradientUtils.WHITE_TO_GRAY, {
                         Transparency = NumberSequence.new({
                             NumberSequenceKeypoint.new(0, 0.3),
                             NumberSequenceKeypoint.new(1, 0.6)
-                        }),
-                        Rotation = 90,
+                        })
                     }),
                 }),
                 
@@ -848,18 +809,7 @@ local function PetInventoryUI(props)
                         CornerRadius = ScreenUtils.udim(0, 8)
                     }),
                     -- Rainbow gradient for OP pets
-                    RainbowGradient = equippedTab == "OP" and React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),     -- Light Red
-                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 200, 100)), -- Light Orange
-                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 150)), -- Light Yellow
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 255, 150)),   -- Light Green
-                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(150, 150, 255)),  -- Light Blue
-                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(200, 150, 255)), -- Light Indigo
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 255))    -- Light Violet
-                        }),
-                        Rotation = 45 -- Diagonal gradient
-                    }) or nil
+                    RainbowGradient = equippedTab == "OP" and GradientUtils.CreateReactGradient(GradientUtils.LIGHT_RAINBOW) or nil
                 }),
                 
                 -- Background image for equipped pets section
@@ -932,75 +882,25 @@ local function PetInventoryUI(props)
                             CornerRadius = ScreenUtils.udim(0, 8)
                         }),
                         -- Rainbow gradient for OP tab when active
-                        Gradient = equippedTab == "OP" and React.createElement("UIGradient", {
-                            Color = ColorSequence.new({
-                                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                                ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)),
-                                ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-                                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
-                                ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
-                                ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)),
-                                ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))
-                            }),
-                            Rotation = 0
-                        }) or nil
+                        Gradient = equippedTab == "OP" and GradientUtils.CreateReactGradient(GradientUtils.RAINBOW) or nil
                     })
                 }),
                 
-                -- Auto-equip disclaimer with animation (top-left, tilted) - conditional based on tab
+                -- Auto-equip disclaimer with AnimationService bounce (same as Pet Index)
                 Disclaimer = equippedTab == "Regular" and React.createElement("TextLabel", {
                     Size = ScreenUtils.udim2(0, 320, 0, 50), -- Even bigger to fit two lines
-                    Position = ScreenUtils.udim2(0, 20, 0, 50), -- Moved down to avoid tab overlap
+                    Position = ScreenUtils.udim2(0, 20, 0, 50 + disclaimerBounceOffset), -- AnimationService bounce offset
                     AnchorPoint = Vector2.new(0, 0),
                     BackgroundTransparency = 1,
                     Text = "Best pets automatically get equipped!\nThe boost affects the money production!",
-                    TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient
+                    TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger text
                     Font = Enum.Font.FredokaOne, -- Bold for emphasis
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextStrokeTransparency = 0,
-                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
                     Rotation = 0, -- Straight text (no tilt)
                     ZIndex = 8,
-                    
-                    -- Animation setup
-                    [React.Event.AncestryChanged] = function(rbx)
-                        if rbx.Parent then
-                            -- Create bouncing animation
-                            local startY = rbx.Position.Y.Offset
-                            local startX = rbx.Position.X.Offset
-                            local amplitude = 6 -- Bounce 6 pixels (gentler)
-                            local speed = 0.5 -- 0.5 cycles per second (much slower)
-                            
-                            task.spawn(function()
-                                local connection
-                                connection = RunService.Heartbeat:Connect(function()
-                                    if not rbx.Parent then
-                                        connection:Disconnect()
-                                        return
-                                    end
-                                    
-                                    local time = tick()
-                                    local bounce = math.sin(time * speed * math.pi * 2) * amplitude
-                                    rbx.Position = UDim2.new(0, startX, 0, startY + bounce)
-                                end)
-                            end)
-                        end
-                    end,
-                }, {
-                    -- Rainbow gradient overlay
-                    RainbowGradient = React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-                        }),
-                        Rotation = 0 -- Horizontal rainbow gradient
-                    })
                 }) or nil,
                 
                 EquippedGrid = React.createElement("ScrollingFrame", {
@@ -1175,18 +1075,7 @@ local function PetInventoryUI(props)
                 ZIndex = 8,
             }, {
                 -- Rainbow gradient overlay
-                RainbowGradient = React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                    }),
-                    Rotation = 0 -- Horizontal rainbow gradient
-                })
+                RainbowGradient = GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_CYAN)
             }) or nil
         }),
         

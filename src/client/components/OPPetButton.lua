@@ -8,6 +8,8 @@ local React = require(ReplicatedStorage.Packages.react)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local OPPetConfig = require(ReplicatedStorage.config.OPPetConfig)
+local AnimationService = require(script.Parent.Parent.services.AnimationService)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 local player = Players.LocalPlayer
 
@@ -17,7 +19,10 @@ local function OPPetButton(props)
     local devProductPrice, setDevProductPrice = React.useState("Loading...")
     local viewportRef = React.useRef()
     
-    -- Shaking animation state for OP text
+    -- Animation references for cleanup
+    local activeAnimations = React.useRef({})
+    
+    -- OP text animation state (like RightSideBar)
     local textRotation, setTextRotation = React.useState(0)
     local textScale, setTextScale = React.useState(1)
     local lastShakeTime = React.useRef(0)
@@ -99,105 +104,51 @@ local function OPPetButton(props)
     -- Animation refs
     local squiggleRef = React.useRef()
     
-    -- Start breathing, spinning, and shaking animations
+    -- Setup simple animations (temporarily back to inline while fixing AnimationService)
     React.useEffect(function()
         local viewport = viewportRef.current
         local squiggle = squiggleRef.current
         
-        local cleanupFunctions = {}
-        
-        -- Breathing animation for viewport
-        local breathingInfo = TweenInfo.new(
-            2, -- Duration
-            Enum.EasingStyle.Sine,
-            Enum.EasingDirection.InOut,
-            -1, -- Repeat infinitely
-            true -- Reverse
-        )
-        
+        -- Breathing animation for viewport using AnimationService
         if viewport then
-            local breathingTween = TweenService:Create(viewport, breathingInfo, {
-                Size = UDim2.new(1.45, 0, 1.45, 0) -- Breathe between 1.4 and 1.45
+            local breathingAnimation = AnimationService:CreateBreathingAnimation(viewport, {
+                duration = 2,
+                maxScale = 1.05 -- This should work now with the fixed AnimationService
             })
-            
-            breathingTween:Play()
-            table.insert(cleanupFunctions, function() breathingTween:Cancel() end)
+            activeAnimations.current.breathing = breathingAnimation
         end
         
-        -- Shaking animation for OP text (every 3 seconds)
-        local shakeConnection = RunService.Heartbeat:Connect(function()
-            local currentTime = tick()
-            
-            -- Trigger shake every 3 seconds
-            if currentTime - lastShakeTime.current >= 3 then
-                lastShakeTime.current = currentTime
-                
-                -- Create shake animation
-                local animationStartTime = currentTime
-                local animationConnection
-                animationConnection = RunService.Heartbeat:Connect(function()
-                    local elapsed = tick() - animationStartTime
-                    
-                    if elapsed < 0.1 then 
-                        -- Phase 1: Size increase (100ms)
-                        local sizeProgress = elapsed / 0.1
-                        local currentScale = 1 + (0.25 * sizeProgress) -- Grow to 1.25x size
-                        setTextScale(currentScale)
-                        setTextRotation(0) -- No rotation during size change
-                    elseif elapsed < 0.5 then 
-                        -- Phase 2: Shake while returning to normal size (400ms)
-                        local shakeElapsed = elapsed - 0.1
-                        local sizeProgress = 1 - (shakeElapsed / 0.4) -- Return to normal size
-                        local currentScale = 1 + (0.25 * sizeProgress)
-                        setTextScale(currentScale)
-                        
-                        -- Shake animation
-                        local shakeIntensity = 20 -- degrees of shake (more intense for OP!)
-                        local frequency = 25 -- shake speed (faster)
-                        local shake = math.sin(shakeElapsed * frequency) * shakeIntensity * (1 - shakeElapsed/0.4)
-                        setTextRotation(shake)
-                    else
-                        -- Phase 3: Return to base state
-                        setTextScale(1) -- Normal size
-                        setTextRotation(0) -- No rotation
-                        animationConnection:Disconnect()
-                    end
-                end)
-            end
-        end)
-        
-        table.insert(cleanupFunctions, function() shakeConnection:Disconnect() end)
-        
-        -- Spinning animation for background
+        -- Spinning animation for background using AnimationService
         if squiggle then
-            local spinningInfo = TweenInfo.new(
-                8, -- 8 second rotation
-                Enum.EasingStyle.Linear,
-                Enum.EasingDirection.InOut,
-                -1, -- Repeat infinitely
-                false -- No reverse
-            )
-            
-            local spinningTween = TweenService:Create(squiggle, spinningInfo, {
-                Rotation = 360
+            local spinAnimation = AnimationService:CreateSpinAnimation(squiggle, {
+                duration = 8
             })
-            
-            spinningTween:Play()
-            
-            -- Reset rotation when complete to avoid accumulation
-            spinningTween.Completed:Connect(function()
-                if squiggle and squiggle.Parent then
-                    squiggle.Rotation = 0
-                end
-            end)
-            
-            table.insert(cleanupFunctions, function() spinningTween:Cancel() end)
+            activeAnimations.current.spin = spinAnimation
         end
         
+        -- OP text shake animation using AnimationService with React callbacks
+        local shakeAnimation = AnimationService:CreateReactShakeAnimation({
+            interval = 3, -- Every 3 seconds like original
+            growPhase = 0.1, -- 100ms grow phase like original
+            shakePhase = 0.4, -- 400ms shake phase like original
+            maxScale = 1.25, -- 1.25x size like original
+            shakeIntensity = 20, -- 20 degrees rotation like original
+            shakeFrequency = 25 -- 25 oscillations per second like original
+        }, {
+            onScaleChange = setTextScale,
+            onRotationChange = setTextRotation
+        })
+        
+        activeAnimations.current.opTextShake = shakeAnimation
+        
+        -- Cleanup function
         return function()
-            for _, cleanup in ipairs(cleanupFunctions) do
-                cleanup()
+            for _, animation in pairs(activeAnimations.current) do
+                if animation and animation.Stop then
+                    animation:Stop()
+                end
             end
+            activeAnimations.current = {}
         end
     end, {})
     
@@ -233,18 +184,7 @@ local function OPPetButton(props)
                 CornerRadius = UDim.new(0.5, 0) -- Circular clipping
             }),
             -- Rainbow gradient on squiggle (matching gamepass UI)
-            RainbowGradient = React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                    ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-                    ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-                }),
-                Rotation = 45
-            })
+            RainbowGradient = GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_DIAGONAL)
         }),
         
         -- Pet viewport with breathing animation (made 2x bigger!)
@@ -277,7 +217,7 @@ local function OPPetButton(props)
         
         -- "OP!" text at bottom with gradient and shake animation
         OPText = React.createElement("TextLabel", {
-            Size = UDim2.new(0.8 * textScale, 0, 0.3 * textScale, 0), -- Apply scale animation
+            Size = UDim2.new(0.8 * textScale, 0, 0.3 * textScale, 0), -- Apply React state scale animation
             Position = UDim2.new(0.5, 0, 0.85, 0), -- Moved to bottom
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundTransparency = 1,
@@ -290,7 +230,7 @@ local function OPPetButton(props)
             TextScaled = true,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
-            Rotation = textRotation, -- Apply shake rotation
+            Rotation = textRotation, -- Apply React state rotation animation
             ZIndex = 6,
         }, {
             -- Add UIStroke for thicker outline
@@ -300,14 +240,7 @@ local function OPPetButton(props)
                 Transparency = 0
             }),
             -- Gradient from dark orange-red to golden
-            TextGradient = React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 60, 20)), -- Dark orange-red
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 0)), -- Orange
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 0)) -- Golden
-                }),
-                Rotation = 90 -- Vertical gradient
-            })
+            TextGradient = GradientUtils.CreateReactGradient(GradientUtils.OP_TEXT)
         }),
         
         

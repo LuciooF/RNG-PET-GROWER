@@ -8,6 +8,7 @@ local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local AnimationService = require(script.Parent.Parent.services.AnimationService)
 
 -- Load the current PetConfig and PetConstants
 local PetConfig = require(ReplicatedStorage.config.PetConfig)
@@ -104,6 +105,10 @@ local function PetIndexUI(props)
     local playerData, setPlayerData = React.useState(nil)
     local selectedLevel, setSelectedLevel = React.useState(1)
     
+    -- Animation state for bouncing text
+    local bounceOffset, setBounceOffset = React.useState(0)
+    local activeAnimations = React.useRef({})
+    
     -- Subscribe to player data changes
     React.useEffect(function()
         local unsubscribe = DataSyncService:Subscribe(function(newState)
@@ -114,6 +119,28 @@ local function PetIndexUI(props)
         
         return unsubscribe
     end, {})
+    
+    -- Setup bounce animation using AnimationService
+    React.useEffect(function()
+        if visible then
+            local bounceAnimation = AnimationService:CreateReactBounceAnimation({
+                duration = 0.8, -- 0.8 seconds like original
+                upOffset = 10, -- 10 pixels up like original
+                downOffset = 10, -- 10 pixels down like original  
+                pauseBetween = 0.5 -- 0.5 second pause like original
+            }, {
+                onPositionChange = setBounceOffset
+            })
+            activeAnimations.current.bounce = bounceAnimation
+            
+            return function()
+                if bounceAnimation then
+                    bounceAnimation:Stop()
+                end
+                activeAnimations.current = {}
+            end
+        end
+    end, {visible})
     
     -- Keyboard shortcut (I key)
     React.useEffect(function()
@@ -884,10 +911,10 @@ local function PetIndexUI(props)
                 }, petCards)
             }),
             
-            -- Rainbow bouncing text at the bottom
+            -- Rainbow bouncing text at the bottom using AnimationService
             BouncingText = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, -40, 0, 35),
-                Position = ScreenUtils.udim2(0, 20, 1, -45), -- Bottom of modal
+                Position = ScreenUtils.udim2(0, 20, 1, -45 + bounceOffset), -- AnimationService bounce offset
                 BackgroundTransparency = 1,
                 Text = "Here you can see how rare your pets really are!",
                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
@@ -911,46 +938,7 @@ local function PetIndexUI(props)
                         ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
                     }),
                     Rotation = 0 -- Horizontal gradient
-                }),
-                
-                -- Cool bouncing and scaling animation
-                Bounce = React.createElement("UIScale", {
-                    Scale = 1.0,
-                    [React.Event.AncestryChanged] = function(rbx)
-                        if rbx.Parent and rbx.Parent.Parent then
-                            task.spawn(function()
-                                local TweenService = game:GetService("TweenService")
-                                local textLabel = rbx.Parent
-                                
-                                -- Bouncing up and down animation
-                                local function animateBounce()
-                                    while textLabel.Parent do
-                                        -- Bounce up
-                                        local bounceUp = TweenService:Create(textLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                                            Position = ScreenUtils.udim2(0, 20, 1, -55) -- Move up 10 pixels
-                                        })
-                                        bounceUp:Play()
-                                        bounceUp.Completed:Wait()
-                                        
-                                        -- Bounce down
-                                        local bounceDown = TweenService:Create(textLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                                            Position = ScreenUtils.udim2(0, 20, 1, -35) -- Move down 10 pixels
-                                        })
-                                        bounceDown:Play()
-                                        bounceDown.Completed:Wait()
-                                        
-                                        task.wait(0.5) -- Pause between bounces
-                                    end
-                                end
-                                
-                                -- No more rainbow animation - using gradient instead
-                                
-                                -- Start bouncing animation only
-                                task.spawn(animateBounce)
-                            end)
-                        end
-                    end,
-                })
+                }) -- Animation now handled by AnimationService
             })
         }),
         
