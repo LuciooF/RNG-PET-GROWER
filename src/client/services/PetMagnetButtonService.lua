@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
-local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 
 local PetMagnetButtonService = {}
 PetMagnetButtonService.__index = PetMagnetButtonService
@@ -277,7 +277,7 @@ function PetMagnetButtonService:HideGamepassGUIsInOtherAreas()
     if not playerAreas then return end
     
     -- Get player's own area for comparison
-    local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
     local playerArea = PlayerAreaFinder:FindPlayerArea()
     
     for _, area in pairs(playerAreas:GetChildren()) do

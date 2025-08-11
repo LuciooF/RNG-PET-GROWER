@@ -1,9 +1,11 @@
--- PhysicalLeaderboardService - Manages physical leaderboard GUI surfaces in workspace (fixed)
--- Changes:
--- - Use userId (not playerId) to match server
--- - Roblox-native thumbnails (rbxthumb) with small cache
--- - Safer InvokeServer with pcall + quick retry
--- - Minor UI polish & cleanup
+-- PhysicalLeaderboardService - Manages physical leaderboard GUI surfaces in workspace (improved)
+-- Notes:
+-- - Uses userId consistently (matches server)
+-- - Roblox-native thumbnails (rbxthumb) with a tiny cache
+-- - Safer InvokeServer with pcall + a quick retry
+-- - Per-board refresh cooldown + checksum to avoid unnecessary repaints
+-- - Empty-state message when no data
+-- - Keeps names/labels/period strings exactly the same to avoid UI breakage
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -43,6 +45,10 @@ local LEADERBOARD_CONFIGS = {
 	},
 }
 
+-- Refresh cadence (client → server). Keep it gentle; server already caches.
+local REFRESH_SECONDS = 30
+local TAB_SWITCH_MIN_INTERVAL = 1.5 -- don't spam server when flipping tabs fast
+
 -- Thumbnail cache (very small, avoids repeated web hits)
 local ThumbCache: {[number]: string} = {}
 
@@ -50,7 +56,9 @@ local function getPlayerHeadshot(userId: number): string
 	if ThumbCache[userId] then
 		return ThumbCache[userId]
 	end
-	local ok, content, _isReady = pcall(Players.GetUserThumbnailAsync, Players, userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+	local ok, content = pcall(function()
+		return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+	end)
 	if ok and content then
 		ThumbCache[userId] = content
 		return content
@@ -91,6 +99,10 @@ local function insertLivePlayerData(serverLeaderboardData: {{rank: number?, user
 	for i, e in ipairs(live) do
 		if e.rank == nil then
 			e.rank = i
+		end
+		-- ensure numeric
+		if e.value ~= nil then
+			e.value = tonumber(e.value) or 0
 		end
 	end
 
@@ -151,11 +163,26 @@ local function formatValue(value: number, leaderboardType: string): string
 	end
 end
 
+-- Simple checksum to detect data changes and avoid repainting
+local function checksum(entries: {{rank: number?, userId: number, playerName: string, value: number}}): string
+	local parts = table.create(math.min(#entries, 25))
+	for i = 1, math.min(#entries, 25) do
+		local e = entries[i]
+		parts[i] = string.format("%d:%d:%s:%s", i, e.userId or 0, tostring(e.playerName or ""), tostring(e.value or 0))
+	end
+	return table.concat(parts, "|")
+end
+
 -- Title GUI
 function PhysicalLeaderboardService:CreateTitleGUI(surfacePart: BasePart?, leaderboardType: string)
 	if not surfacePart then
 		warn("PhysicalLeaderboardService: Title surface part not found")
 		return nil
+	end
+
+	local existing = surfacePart:FindFirstChild("LeaderboardTitleGUI_" .. leaderboardType)
+	if existing and existing:IsA("SurfaceGui") then
+		existing:Destroy()
 	end
 
 	local sg = Instance.new("SurfaceGui")
@@ -223,6 +250,11 @@ function PhysicalLeaderboardService:CreateLeaderboardGUI(surfacePart: BasePart?,
 	if not surfacePart then
 		warn("PhysicalLeaderboardService: Surface part not found")
 		return nil
+	end
+
+	local existing = surfacePart:FindFirstChild("LeaderboardGUI_" .. leaderboardType)
+	if existing and existing:IsA("SurfaceGui") then
+		existing:Destroy()
 	end
 
 	local sg = Instance.new("SurfaceGui")
@@ -304,6 +336,20 @@ function PhysicalLeaderboardService:CreateLeaderboardGUI(surfacePart: BasePart?,
 	scrollCorner.CornerRadius = UDim.new(0, 30)
 	scrollCorner.Parent = scrollFrame
 
+	local emptyLabel = Instance.new("TextLabel")
+	emptyLabel.Name = "EmptyState"
+	emptyLabel.Size = UDim2.new(1, 0, 1, -90)
+	emptyLabel.Position = UDim2.new(0, 0, 0, 80)
+	emptyLabel.BackgroundTransparency = 1
+	emptyLabel.Text = "No entries yet."
+	emptyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	emptyLabel.TextSize = 32
+	emptyLabel.Font = Enum.Font.FredokaOne
+	emptyLabel.TextXAlignment = Enum.TextXAlignment.Center
+	emptyLabel.TextYAlignment = Enum.TextYAlignment.Center
+	emptyLabel.Visible = false
+	emptyLabel.Parent = main
+
 	local guiManager = {
 		surfaceGui = sg,
 		scrollFrame = scrollFrame,
@@ -311,6 +357,9 @@ function PhysicalLeaderboardService:CreateLeaderboardGUI(surfacePart: BasePart?,
 		weeklyTab = weeklyTab,
 		leaderboardType = leaderboardType,
 		currentPeriod = "All-Time",
+		_lastFetchT = 0,
+		_lastChecksum = nil,
+		_emptyLabel = emptyLabel,
 	}
 
 	local function setActive(tabBtn: TextButton, active: boolean)
@@ -324,25 +373,34 @@ function PhysicalLeaderboardService:CreateLeaderboardGUI(surfacePart: BasePart?,
 	end
 
 	allTimeTab.Activated:Connect(function()
+		if os.clock() - guiManager._lastFetchT < TAB_SWITCH_MIN_INTERVAL then return end
 		guiManager.currentPeriod = "All-Time"
 		setActive(allTimeTab, true)
 		setActive(weeklyTab, false)
-		PhysicalLeaderboardService:UpdateLeaderboardData(guiManager)
+		PhysicalLeaderboardService:UpdateLeaderboardData(guiManager, true)
 	end)
 
 	weeklyTab.Activated:Connect(function()
+		if os.clock() - guiManager._lastFetchT < TAB_SWITCH_MIN_INTERVAL then return end
 		guiManager.currentPeriod = "Weekly"
 		setActive(weeklyTab, true)
 		setActive(allTimeTab, false)
-		PhysicalLeaderboardService:UpdateLeaderboardData(guiManager)
+		PhysicalLeaderboardService:UpdateLeaderboardData(guiManager, true)
 	end)
 
 	return guiManager
 end
 
 -- Fetch + populate
-function PhysicalLeaderboardService:UpdateLeaderboardData(guiManager)
+function PhysicalLeaderboardService:UpdateLeaderboardData(guiManager, forceNow: boolean?)
 	if not guiManager then return end
+	if not guiManager.scrollFrame then return end
+
+	local now = os.clock()
+	if not forceNow and (now - guiManager._lastFetchT < REFRESH_SECONDS) then
+		return
+	end
+	guiManager._lastFetchT = now
 
 	local remote = ReplicatedStorage:FindFirstChild("GetLeaderboardData")
 	if not remote or not remote.IsA or not remote:IsA("RemoteFunction") then
@@ -365,7 +423,19 @@ function PhysicalLeaderboardService:UpdateLeaderboardData(guiManager)
 		if ok and data then
 			-- Expecting entries: { rank, userId, playerName, value }
 			local liveData = insertLivePlayerData(data, guiManager.leaderboardType)
-			self:PopulateLeaderboardEntries(guiManager, liveData)
+
+			-- Empty state toggle
+			local hasAny = #liveData > 0
+			if guiManager._emptyLabel then
+				guiManager._emptyLabel.Visible = not hasAny
+			end
+
+			-- Checksum to avoid unnecessary rebuilds
+			local sig = checksum(liveData)
+			if sig ~= guiManager._lastChecksum then
+				guiManager._lastChecksum = sig
+				self:PopulateLeaderboardEntries(guiManager, liveData)
+			end
 		else
 			warn("PhysicalLeaderboardService: Failed to fetch leaderboard data")
 		end
@@ -376,7 +446,7 @@ end
 function PhysicalLeaderboardService:PopulateLeaderboardEntries(guiManager, leaderboardData)
 	if not guiManager or not guiManager.scrollFrame then return end
 
-	-- Clear
+	-- Clear old entries (keep other non-entry children)
 	for _, child in ipairs(guiManager.scrollFrame:GetChildren()) do
 		if child:IsA("Frame") and (child.Name:match("^Entry_") or child.Name == "Separator") then
 			child:Destroy()
@@ -553,20 +623,22 @@ function PhysicalLeaderboardService:Initialize()
 
 	for _, config in ipairs(LEADERBOARD_CONFIGS) do
 		-- walk the path
-		local model = workspace
+		local model: Instance = workspace
 		for _, seg in ipairs(config.pathParts) do
-			model = model:FindFirstChild(seg)
-			if not model then
+			local nextModel = (model and model:FindFirstChild(seg)) or nil
+			if not nextModel then
 				warn("PhysicalLeaderboardService: Missing path segment", seg, "for", config.name)
+				model = nil
 				break
 			end
+			model = nextModel
 		end
 
 		if model then
 			local boardPart = model:FindFirstChild(config.partName)
 			local titlePart = model:FindFirstChild(config.titlePartName)
 
-			if boardPart and titlePart then
+			if boardPart and titlePart and boardPart:IsA("BasePart") and titlePart:IsA("BasePart") then
 				local okTitle = pcall(function()
 					self:CreateTitleGUI(titlePart :: BasePart, config.type)
 				end)
@@ -579,7 +651,7 @@ function PhysicalLeaderboardService:Initialize()
 				end)
 				if ok and guiManager then
 					managers[config.name] = guiManager
-					self:UpdateLeaderboardData(guiManager)
+					self:UpdateLeaderboardData(guiManager, true)
 				else
 					warn("PhysicalLeaderboardService: Failed to create leaderboard GUI for", config.name)
 				end
@@ -594,10 +666,10 @@ function PhysicalLeaderboardService:Initialize()
 		end
 	end
 
-	-- periodic refresh (keep it light; server already caches)
+	-- periodic refresh (lightweight; server already caches)
 	task.spawn(function()
 		while true do
-			task.wait(15)
+			task.wait(REFRESH_SECONDS)
 			for _, manager in pairs(managers) do
 				self:UpdateLeaderboardData(manager)
 			end

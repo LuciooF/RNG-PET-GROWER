@@ -39,7 +39,12 @@ end
 
 -- Helper function to get player headshot image
 local function getPlayerHeadshot(playerId)
-    return "https://www.roblox.com/headshot-thumbnail/image?userId=" .. playerId .. "&width=150&height=150&format=png"
+    -- Handle nil or invalid playerId
+    if not playerId or type(playerId) ~= "number" then
+        -- Return a default/placeholder image or empty string
+        return ""
+    end
+    return "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(playerId) .. "&width=150&height=150&format=png"
 end
 
 -- Helper function to get current player's live value for a leaderboard type
@@ -67,16 +72,19 @@ local function insertLivePlayerData(serverLeaderboardData, selectedType)
     local currentPlayerValue = getCurrentPlayerValue(selectedType)
     local currentPlayerId = player.UserId
     
-    -- Create a copy of the server data
+    -- Create a copy of the server data (only include entries with userId)
     local liveLeaderboard = {}
     for i, entry in ipairs(serverLeaderboardData) do
-        table.insert(liveLeaderboard, {
-            rank = entry.rank,
-            playerId = entry.playerId,
-            playerName = entry.playerName,
-            value = entry.value,
-            isLiveUpdate = false
-        })
+        -- Only include entries that have a userId (ignore old data)
+        if entry.userId then
+            table.insert(liveLeaderboard, {
+                rank = entry.rank,
+                playerId = entry.userId, -- Use userId consistently
+                playerName = entry.playerName,
+                value = entry.value,
+                isLiveUpdate = false
+            })
+        end
     end
     
     -- Remove existing entry for current player (if any)

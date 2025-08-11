@@ -8,7 +8,7 @@ local SoundService = game:GetService("SoundService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local PetUtils = require(ReplicatedStorage.utils.PetUtils)
-local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 
 local PetMixerAnimationService = {}
 PetMixerAnimationService.__index = PetMixerAnimationService
@@ -62,34 +62,10 @@ function PetMixerAnimationService:FindMixerParts()
         player.CharacterAdded:Wait()
     end
     
-    task.wait(2) -- Wait for area assignment
-    
-    -- Find player's area
-    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        warn("PetMixerAnimationService: PlayerAreas not found")
-        return
-    end
-    
-    -- Find the player's assigned area
-    local playerArea = nil
-    for _, area in pairs(playerAreas:GetChildren()) do
-        if area.Name:match("PlayerArea") then
-            local nameplate = area:FindFirstChild("AreaNameplate")
-            if nameplate then
-                local billboard = nameplate:FindFirstChild("NameplateBillboard")
-                if billboard then
-                    local textLabel = billboard:FindFirstChild("TextLabel")
-                    if textLabel and textLabel.Text == (player.Name .. "'s Area") then
-                        playerArea = area
-                        -- Found player's area
-                        break
-                    end
-                end
-            end
-        end
-    end
-    
+    -- Use the improved PlayerAreaFinder utility
+    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(15)
+
     if not playerArea then
         warn("PetMixerAnimationService: Player area not found")
         return

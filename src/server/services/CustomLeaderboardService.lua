@@ -1,9 +1,10 @@
 -- CustomLeaderboardService - Server-side custom leaderboard tracking with fixes
 -- - Uses FULL in-memory cache, only slices data when sending to clients
 -- - Consistent identity (userId everywhere)
--- - UpdateAsync for safer writes
+-- - UpdateAsync for safer writes with CROSS-SERVER MERGE (no more wipes)
 -- - Real immediate updates for joins/leaves (force flag bypass)
 -- - Weekly period uses configurable reset day/hour
+-- - Load-before-write guarantees (per-key), dirty-key tracking to reduce churn
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -69,6 +70,12 @@ local leaderboardFullCache = {
 -- Pending updates and timing
 local playersToUpdate: {[number]: {player: Player, timestamp: number}} = {}
 local lastUpdateTime = 0
+
+-- Per-key load tracking: guarantees we always load from DS before saving
+local loadedKeys: {[string]: boolean} = {}
+
+-- Dirty-key tracking: only write keys that actually changed
+local dirtyKeys: {[string]: boolean} = {}
 
 -- ========= Time helpers =========
 
@@ -140,6 +147,16 @@ local function ensureTables(period: string, leaderboardType: string)
 	if not leaderboardCache[period][leaderboardType] then leaderboardCache[period][leaderboardType] = {} end
 end
 
+-- Ensure we have loaded the full list for a given key before any mutation/save
+local function ensureLoaded(period: string, leaderboardType: string, targetPlayer: Player?)
+	ensureTables(period, leaderboardType)
+	local key = makeKey(period, leaderboardType)
+	if not loadedKeys[key] then
+		CustomLeaderboardService:LoadLeaderboardData(period, leaderboardType, targetPlayer)
+		loadedKeys[key] = true
+	end
+end
+
 -- ========= Value accessor =========
 
 function CustomLeaderboardService:GetPlayerValue(player: Player?, leaderboardType: string): number
@@ -180,6 +197,10 @@ function CustomLeaderboardService:LoadLeaderboardData(period: string, leaderboar
 			e.userId = e.playerId
 			e.playerId = nil
 		end
+		-- normalize numeric
+		if e.value ~= nil then
+			e.value = tonumber(e.value) or 0
+		end
 	end
 
 	table.sort(fullData, function(a, b)
@@ -216,18 +237,77 @@ function CustomLeaderboardService:LoadLeaderboardData(period: string, leaderboar
 	return result, playerRank
 end
 
+-- Merge-saving: merges cache with DS contents by userId, sorts, trims, mirrors back to cache
 function CustomLeaderboardService:SaveLeaderboardData(period: string, leaderboardType: string): boolean
 	ensureTables(period, leaderboardType)
+	ensureLoaded(period, leaderboardType)
+
 	local key = makeKey(period, leaderboardType)
 	local full = leaderboardFullCache[period][leaderboardType] or {}
 
-	-- Keep a cap (server-side retention)
+	-- Local cap (server-side retention)
 	while #full > MAX_LEADERBOARD_SIZE do
 		table.remove(full)
 	end
 
-	return safeDataStoreUpdate(key, function(_old)
-		return full
+	return safeDataStoreUpdate(key, function(old)
+		old = old or {}
+
+		-- Map existing DS entries
+		local byId = {}
+
+		for _, e in ipairs(old) do
+			if e.userId then
+				byId[e.userId] = {
+					userId = e.userId,
+					playerName = e.playerName,
+					value = tonumber(e.value) or 0,
+					lastUpdate = e.lastUpdate or 0,
+				}
+			end
+		end
+
+		-- Merge current cache: prefer higher value; update name/timestamp if improved
+		for _, e in ipairs(full) do
+			if e.userId then
+				local prev = byId[e.userId]
+				local newValue = tonumber(e.value) or 0
+				if not prev then
+					byId[e.userId] = {
+						userId = e.userId,
+						playerName = e.playerName,
+						value = newValue,
+						lastUpdate = e.lastUpdate or os.time(),
+					}
+				else
+					-- If values can only increase, keep max. If they can decrease, consider using lastUpdate newest.
+					if newValue > (tonumber(prev.value) or 0) then
+						prev.value = newValue
+						prev.playerName = e.playerName or prev.playerName
+						prev.lastUpdate = e.lastUpdate or os.time()
+					end
+				end
+			end
+		end
+
+		-- Flatten, sort desc, cap
+		local merged = {}
+		for _, v in pairs(byId) do
+			table.insert(merged, v)
+		end
+
+		table.sort(merged, function(a, b)
+			return (a.value or 0) > (b.value or 0)
+		end)
+
+		while #merged > MAX_LEADERBOARD_SIZE do
+			table.remove(merged)
+		end
+
+		-- Reflect back into this server's full cache so future reads are consistent
+		leaderboardFullCache[period][leaderboardType] = merged
+
+		return merged
 	end)
 end
 
@@ -235,6 +315,7 @@ end
 
 function CustomLeaderboardService:UpdatePlayerInLeaderboard(player: Player, period: string, leaderboardType: string)
 	ensureTables(period, leaderboardType)
+	ensureLoaded(period, leaderboardType, player)
 
 	local value = self:GetPlayerValue(player, leaderboardType)
 	local full = leaderboardFullCache[period][leaderboardType]
@@ -282,6 +363,9 @@ function CustomLeaderboardService:UpdatePlayerInLeaderboard(player: Player, peri
 		slim[i] = { rank = i, userId = e.userId, playerName = e.playerName, value = e.value }
 	end
 	leaderboardCache[period][leaderboardType] = slim
+
+	-- Mark dirty for persistence
+	dirtyKeys[makeKey(period, leaderboardType)] = true
 end
 
 -- ========= Batch update / scheduling =========
@@ -306,18 +390,23 @@ function CustomLeaderboardService:ProcessPendingUpdates(force: boolean?)
 		if player and player.Parent then
 			for _, period in pairs(LEADERBOARD_PERIODS) do
 				for _, leaderboardType in pairs(LEADERBOARD_TYPES) do
+					ensureLoaded(period, leaderboardType, player)
 					self:UpdatePlayerInLeaderboard(player, period, leaderboardType)
 				end
 			end
-			-- print("CustomLeaderboardService: Updated leaderboards for", player.Name)
 		end
 	end
 	playersToUpdate = {}
 
-	-- Persist all lists
+	-- Persist only dirty lists
 	for _, period in pairs(LEADERBOARD_PERIODS) do
 		for _, leaderboardType in pairs(LEADERBOARD_TYPES) do
-			self:SaveLeaderboardData(period, leaderboardType)
+			local key = makeKey(period, leaderboardType)
+			if dirtyKeys[key] then
+				ensureLoaded(period, leaderboardType)
+				self:SaveLeaderboardData(period, leaderboardType)
+				dirtyKeys[key] = nil
+			end
 		end
 	end
 end
@@ -335,7 +424,9 @@ function CustomLeaderboardService:CheckWeeklyReset()
 		for _, leaderboardType in pairs(LEADERBOARD_TYPES) do
 			leaderboardFullCache[LEADERBOARD_PERIODS.WEEKLY][leaderboardType] = {}
 			leaderboardCache[LEADERBOARD_PERIODS.WEEKLY][leaderboardType] = {}
+			loadedKeys[makeKey(LEADERBOARD_PERIODS.WEEKLY, leaderboardType)] = true -- prevent immediate reload of old week
 			self:SaveLeaderboardData(LEADERBOARD_PERIODS.WEEKLY, leaderboardType)
+			-- nothing to mark dirty; we intentionally wrote reset
 		end
 
 		safeDataStoreUpdate("CurrentWeekId", function(_old)
@@ -352,7 +443,7 @@ end
 function CustomLeaderboardService:GetLeaderboard(period: string, leaderboardType: string, maxEntries: number?, requestingPlayer: Player?)
 	maxEntries = maxEntries or 50
 
-	-- Map friendly names if needed
+	-- Map friendly names if needed (kept identical)
 	local serverPeriod = period
 	if period == "All-Time" then serverPeriod = LEADERBOARD_PERIODS.ALL_TIME end
 	if period == "Weekly"   then serverPeriod = LEADERBOARD_PERIODS.WEEKLY   end
@@ -367,6 +458,7 @@ function CustomLeaderboardService:GetLeaderboard(period: string, leaderboardType
 	-- Load full list once if empty
 	if (#leaderboardFullCache[serverPeriod][serverType] == 0) then
 		self:LoadLeaderboardData(serverPeriod, serverType, requestingPlayer)
+		loadedKeys[makeKey(serverPeriod, serverType)] = true
 	end
 
 	local full = leaderboardFullCache[serverPeriod][serverType]
@@ -426,7 +518,7 @@ function CustomLeaderboardService:Initialize()
 		-- Give your data layer a moment to populate
 		task.wait(5)
 		self:MarkPlayerForUpdate(player)
-		-- Force an immediate write so new players appear right away
+		-- Force an immediate write so new players appear right away (safe: we load first)
 		self:ProcessPendingUpdates(true)
 	end)
 
@@ -438,8 +530,10 @@ function CustomLeaderboardService:Initialize()
 			task.wait(1)
 			for _, period in pairs(LEADERBOARD_PERIODS) do
 				for _, leaderboardType in pairs(LEADERBOARD_TYPES) do
+					ensureLoaded(period, leaderboardType, player)
 					self:UpdatePlayerInLeaderboard(player, period, leaderboardType)
 					self:SaveLeaderboardData(period, leaderboardType)
+					-- no need to dirty here; we just saved
 				end
 			end
 		end)

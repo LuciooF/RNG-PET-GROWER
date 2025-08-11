@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
-local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 
 local VIPButtonService = {}
 VIPButtonService.__index = VIPButtonService

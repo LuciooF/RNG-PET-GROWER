@@ -4,9 +4,9 @@ local CrazyChestConfig = {}
 -- Import rarity colors for consistent theming
 local PetConstants = require(script.Parent.Parent.constants.PetConstants)
 
--- Cost calculation based on rebirths (cheaper for new players)
+-- Cost calculation based on rebirths (scales with player progression)
 function CrazyChestConfig.getCost(rebirthCount)
-    local baseCost = 50 -- Base cost for 0 rebirths
+    local baseCost = 200 -- Base cost of 200 diamonds for 0 rebirths
     local rebirthMultiplier = 1.2 -- Increases by 20% per rebirth
     
     return math.floor(baseCost * (rebirthMultiplier ^ rebirthCount))
@@ -17,7 +17,7 @@ end
 CrazyChestConfig.REWARDS = {
     {
         money = 5000,
-        chance = 0.1, -- 40% chance - COMMON
+        chance = 40, -- 40% chance - COMMON
         color = PetConstants.RarityColors[PetConstants.Rarity.COMMON], -- Gray
         rarity = "COMMON",
         name = "Small Money",
@@ -72,7 +72,7 @@ CrazyChestConfig.REWARDS = {
         boost = 40,
         value = 10000,
         amount = 1,
-        chance = 40, -- 0.1% chance - OMNISCIENT (Insanely Rare!)
+        chance = 0.1, -- 0.1% chance - OMNISCIENT (Insanely Rare!)
         color = Color3.fromRGB(255, 255, 255), -- White base for rainbow gradient background
         rarity = "OMNISCIENT",
         name = "40X Sombrero Chihuahua",

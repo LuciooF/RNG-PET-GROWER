@@ -6,7 +6,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local GamepassConfig = require(ReplicatedStorage.config.GamepassConfig)
-local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 
 local TwoXMoneyButtonService = {}
 TwoXMoneyButtonService.__index = TwoXMoneyButtonService

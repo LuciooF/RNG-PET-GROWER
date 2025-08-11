@@ -31,70 +31,9 @@ function PetMixerButtonService:FindMixerButtons()
         player.CharacterAdded:Wait()
     end
     
-    -- Wait for PlayerAreas to exist, then find player's area
-    local playerAreas = game.Workspace:WaitForChild("PlayerAreas", 10)
-    if not playerAreas then
-        warn("PetMixerButtonService: PlayerAreas not found")
-        return
-    end
-    
-    -- Wait for player's area to be assigned (event-based instead of delay-based)
-    local playerArea = nil
-    local function findPlayerArea()
-        for _, area in pairs(playerAreas:GetChildren()) do
-            if area.Name:match("PlayerArea") then
-                local nameplate = area:FindFirstChild("AreaNameplate")
-                if nameplate then
-                    local billboard = nameplate:FindFirstChild("NameplateBillboard")
-                    if billboard then
-                        local textLabel = billboard:FindFirstChild("TextLabel")
-                        if textLabel and textLabel.Text == (player.Name .. "'s Area") then
-                            return area
-                        end
-                    end
-                end
-            end
-        end
-        return nil
-    end
-    
-    -- Try to find area immediately
-    playerArea = findPlayerArea()
-    
-    -- If not found, wait for area assignments to be updated
-    if not playerArea then
-        local connection
-        connection = playerAreas.ChildAdded:Connect(function()
-            playerArea = findPlayerArea()
-            if playerArea then
-                connection:Disconnect()
-            end
-        end)
-        
-        -- Also check for nameplate updates
-        local nameplateConnection
-        nameplateConnection = playerAreas.DescendantAdded:Connect(function(descendant)
-            if descendant.Name == "AreaNameplate" then
-                task.wait(0.1) -- Small delay for nameplate to be fully set up
-                playerArea = findPlayerArea()
-                if playerArea then
-                    nameplateConnection:Disconnect()
-                end
-            end
-        end)
-        
-        -- Wait with timeout
-        local attempts = 0
-        while not playerArea and attempts < 100 do -- 10 second timeout
-            task.wait(0.1)
-            attempts = attempts + 1
-            playerArea = findPlayerArea()
-        end
-        
-        -- Clean up connections
-        if connection then connection:Disconnect() end
-        if nameplateConnection then nameplateConnection:Disconnect() end
-    end
+    -- Use the improved PlayerAreaFinder utility
+    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(15)
     
     if not playerArea then
         warn("PetMixerButtonService: Player area not found")

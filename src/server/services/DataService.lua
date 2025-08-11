@@ -351,7 +351,6 @@ function DataService:ScheduleDebouncedAutoEquip(player)
         task.cancel(autoEquipDebounceTimers[player])
     end
     
-    print("DataService: Scheduling auto-equip for", player.Name)
     
     -- Schedule new auto-equip after a short delay (0.5 seconds for chest pets to ensure proper sync)
     autoEquipDebounceTimers[player] = task.delay(0.5, function()
@@ -360,7 +359,6 @@ function DataService:ScheduleDebouncedAutoEquip(player)
         
         -- Perform auto-equip if player is still valid
         if player.Parent == game.Players then
-            print("DataService: Running auto-equip for", player.Name)
             local PetService = require(script.Parent.PetService)
             local success, error = pcall(function()
                 PetService:AutoEquipBestPets(player, 3) -- Max 3 equipped pets
@@ -369,7 +367,6 @@ function DataService:ScheduleDebouncedAutoEquip(player)
             if not success then
                 warn("DataService: Auto-equip failed for", player.Name, ":", error)
             else
-                print("DataService: Auto-equip completed for", player.Name)
             end
         end
     end)

@@ -6,7 +6,7 @@ local SoundService = game:GetService("SoundService")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local CrazyChestConfig = require(ReplicatedStorage.config.CrazyChestConfig)
-local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 local CrazyChestAnimationService = require(script.Parent.CrazyChestAnimationService)
 local RewardsService = require(script.Parent.RewardsService)
 

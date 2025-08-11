@@ -43,37 +43,9 @@ function RebirthButtonService:FindRebirthButton()
         player.CharacterAdded:Wait()
     end
     
-    -- Use event-based waiting instead of hardcoded delay
-    
-    -- Find player's area (similar to how PlotVisual does it)
-    local playerAreas = game.Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        warn("RebirthButtonService: PlayerAreas not found")
-        return
-    end
-    
-    
-    -- Find the player's assigned area by checking the area nameplate
-    local playerArea = nil
-    for _, area in pairs(playerAreas:GetChildren()) do
-        if area.Name:match("PlayerArea") then
-            -- Check if this area belongs to the current player by looking at the nameplate
-            local nameplate = area:FindFirstChild("AreaNameplate")
-            if nameplate then
-                local billboard = nameplate:FindFirstChild("NameplateBillboard")
-                if billboard then
-                    local textLabel = billboard:FindFirstChild("TextLabel")
-                    if textLabel then
-                        if textLabel.Text == (player.Name .. "'s Area") then
-                            playerArea = area
-                            break
-                        end
-                    end
-                end
-            else
-            end
-        end
-    end
+    -- Use the improved PlayerAreaFinder utility
+    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(15)
     
     if not playerArea then
         warn("RebirthButtonService: Player area not found")

@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local React = require(ReplicatedStorage.Packages.react)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
@@ -15,6 +16,11 @@ local function OPPetButton(props)
     local featuredOPPet = OPPetConfig.OPPets[1] -- Constellation King
     local devProductPrice, setDevProductPrice = React.useState("Loading...")
     local viewportRef = React.useRef()
+    
+    -- Shaking animation state for OP text
+    local textRotation, setTextRotation = React.useState(0)
+    local textScale, setTextScale = React.useState(1)
+    local lastShakeTime = React.useRef(0)
     
     -- Fetch dynamic price from MarketplaceService
     React.useEffect(function()
@@ -93,7 +99,7 @@ local function OPPetButton(props)
     -- Animation refs
     local squiggleRef = React.useRef()
     
-    -- Start breathing, spinning, and viewport rotation animations
+    -- Start breathing, spinning, and shaking animations
     React.useEffect(function()
         local viewport = viewportRef.current
         local squiggle = squiggleRef.current
@@ -101,15 +107,15 @@ local function OPPetButton(props)
         local cleanupFunctions = {}
         
         -- Breathing animation for viewport
+        local breathingInfo = TweenInfo.new(
+            2, -- Duration
+            Enum.EasingStyle.Sine,
+            Enum.EasingDirection.InOut,
+            -1, -- Repeat infinitely
+            true -- Reverse
+        )
+        
         if viewport then
-            local breathingInfo = TweenInfo.new(
-                2, -- Duration
-                Enum.EasingStyle.Sine,
-                Enum.EasingDirection.InOut,
-                -1, -- Repeat infinitely
-                true -- Reverse
-            )
-            
             local breathingTween = TweenService:Create(viewport, breathingInfo, {
                 Size = UDim2.new(1.45, 0, 1.45, 0) -- Breathe between 1.4 and 1.45
             })
@@ -117,6 +123,50 @@ local function OPPetButton(props)
             breathingTween:Play()
             table.insert(cleanupFunctions, function() breathingTween:Cancel() end)
         end
+        
+        -- Shaking animation for OP text (every 3 seconds)
+        local shakeConnection = RunService.Heartbeat:Connect(function()
+            local currentTime = tick()
+            
+            -- Trigger shake every 3 seconds
+            if currentTime - lastShakeTime.current >= 3 then
+                lastShakeTime.current = currentTime
+                
+                -- Create shake animation
+                local animationStartTime = currentTime
+                local animationConnection
+                animationConnection = RunService.Heartbeat:Connect(function()
+                    local elapsed = tick() - animationStartTime
+                    
+                    if elapsed < 0.1 then 
+                        -- Phase 1: Size increase (100ms)
+                        local sizeProgress = elapsed / 0.1
+                        local currentScale = 1 + (0.25 * sizeProgress) -- Grow to 1.25x size
+                        setTextScale(currentScale)
+                        setTextRotation(0) -- No rotation during size change
+                    elseif elapsed < 0.5 then 
+                        -- Phase 2: Shake while returning to normal size (400ms)
+                        local shakeElapsed = elapsed - 0.1
+                        local sizeProgress = 1 - (shakeElapsed / 0.4) -- Return to normal size
+                        local currentScale = 1 + (0.25 * sizeProgress)
+                        setTextScale(currentScale)
+                        
+                        -- Shake animation
+                        local shakeIntensity = 20 -- degrees of shake (more intense for OP!)
+                        local frequency = 25 -- shake speed (faster)
+                        local shake = math.sin(shakeElapsed * frequency) * shakeIntensity * (1 - shakeElapsed/0.4)
+                        setTextRotation(shake)
+                    else
+                        -- Phase 3: Return to base state
+                        setTextScale(1) -- Normal size
+                        setTextRotation(0) -- No rotation
+                        animationConnection:Disconnect()
+                    end
+                end)
+            end
+        end)
+        
+        table.insert(cleanupFunctions, function() shakeConnection:Disconnect() end)
         
         -- Spinning animation for background
         if squiggle then
@@ -225,110 +275,76 @@ local function OPPetButton(props)
             })
         }),
         
-        -- Title text overlaying the top of the button (MUCH bigger and nicer)
-        TitleText = React.createElement("TextLabel", {
-            Size = UDim2.new(0, buttonSize + 100, 0, 50), -- Much wider and taller
-            Position = UDim2.new(0, -50, 0, -10), -- Overlaying top of button
+        -- "OP!" text at bottom with gradient and shake animation
+        OPText = React.createElement("TextLabel", {
+            Size = UDim2.new(0.8 * textScale, 0, 0.3 * textScale, 0), -- Apply scale animation
+            Position = UDim2.new(0.5, 0, 0.85, 0), -- Moved to bottom
+            AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundTransparency = 1,
-            Text = "[OP] Constellation King",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = ScreenUtils.TEXT_SIZES.HEADER() + 8, -- MUCH bigger text
+            Text = "OP!",
+            TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
+            TextSize = math.floor(buttonSize * 0.35), -- Responsive text size
             TextStrokeTransparency = 0,
-            TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline for visibility
+            TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
             Font = Enum.Font.FredokaOne,
+            TextScaled = true,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextYAlignment = Enum.TextYAlignment.Center,
-            ZIndex = 7,
+            Rotation = textRotation, -- Apply shake rotation
+            ZIndex = 6,
         }, {
-            -- Rainbow gradient for title text
-            TitleGradient = React.createElement("UIGradient", {
+            -- Add UIStroke for thicker outline
+            Stroke = React.createElement("UIStroke", {
+                Color = Color3.fromRGB(0, 0, 0),
+                Thickness = 2,
+                Transparency = 0
+            }),
+            -- Gradient from dark orange-red to golden
+            TextGradient = React.createElement("UIGradient", {
                 Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                    ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                    ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 60, 20)), -- Dark orange-red
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 0)), -- Orange
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 0)) -- Golden
                 }),
-                Rotation = 0 -- Horizontal gradient
+                Rotation = 90 -- Vertical gradient
             })
         }),
         
-        -- Boost text overlaying the bottom of the button (MUCH bigger)
-        BoostText = React.createElement("TextLabel", {
-            Size = UDim2.new(0, buttonSize + 80, 0, 40), -- Much bigger
-            Position = UDim2.new(0, -40, 1, -30), -- Overlaying bottom of button
-            BackgroundTransparency = 1,
-            Text = "(100K Boost)",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 6, -- MUCH bigger text
-            TextStrokeTransparency = 0,
-            TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline for visibility
-            Font = Enum.Font.FredokaOne,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            TextYAlignment = Enum.TextYAlignment.Center,
-            ZIndex = 7,
-        }, {
-            -- Rainbow gradient for boost text
-            BoostGradient = React.createElement("UIGradient", {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                    ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                    ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                    ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                }),
-                Rotation = 0 -- Horizontal gradient
-            })
-        }),
         
-        -- Price label container (MUCH bigger and nicer)
+        -- Price container at top right
         PriceContainer = React.createElement("Frame", {
-            Size = UDim2.new(0, buttonSize + 60, 0, 35), -- Much bigger
-            Position = UDim2.new(0, -30, 1, 15), -- Just below button
+            Size = UDim2.new(0.9, 0, 0.2, 0),
+            Position = UDim2.new(0.95, 0, 0.05, 0),
+            AnchorPoint = Vector2.new(1, 0),
             BackgroundTransparency = 1,
             ZIndex = 7,
         }, {
-            -- Robux icon
+            -- Robux icon (green to match price)
             RobuxIcon = React.createElement("ImageLabel", {
-                Size = UDim2.new(0, 30, 0, 30), -- Much bigger icon
-                Position = UDim2.new(0.5, -40, 0.5, -15),
+                Size = UDim2.new(0, math.floor(buttonSize * 0.15), 0, math.floor(buttonSize * 0.15)),
+                Position = UDim2.new(1, -math.floor(buttonSize * 0.35), 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundTransparency = 1,
-                Image = IconAssets.getIcon("CURRENCY", "ROBUX") or "rbxasset://textures/ui/Shell/Icons/Robux.png",
+                Image = "rbxasset://textures/ui/common/robux.png",
+                ImageColor3 = Color3.fromRGB(85, 255, 85), -- Green color to match price
                 ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 8,
             }),
-            -- Price text
+            -- Price text in green
             PriceText = React.createElement("TextLabel", {
-                Size = UDim2.new(0, 80, 1, 0), -- Much bigger
-                Position = UDim2.new(0.5, -10, 0, 0),
+                Size = UDim2.new(0, math.floor(buttonSize * 0.3), 1, 0),
+                Position = UDim2.new(1, -math.floor(buttonSize * 0.15), 0, 0),
                 BackgroundTransparency = 1,
                 Text = devProductPrice,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 4, -- MUCH bigger text
-                TextStrokeTransparency = 0,
-                TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline for visibility
+                TextColor3 = Color3.fromRGB(85, 255, 85), -- Nice green color
+                TextSize = math.floor(buttonSize * 0.12), -- Responsive text size
+                TextStrokeTransparency = 0.5,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 Font = Enum.Font.FredokaOne,
+                TextScaled = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Center,
                 ZIndex = 8,
-            }, {
-                -- Rainbow gradient for price text
-                PriceGradient = React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                        ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)), -- Orange
-                        ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)), -- Yellow  
-                        ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 0)),   -- Green
-                        ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)), -- Cyan
-                        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),   -- Blue
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))    -- Magenta
-                    }),
-                    Rotation = 0 -- Horizontal gradient
-                })
             })
         })
     })

@@ -8,7 +8,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local store = require(ReplicatedStorage.store)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
-local PlayerAreaFinder = require(script.Parent.Parent.utils.PlayerAreaFinder)
+local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 
 local TutorialService = {}
 TutorialService.__index = TutorialService
