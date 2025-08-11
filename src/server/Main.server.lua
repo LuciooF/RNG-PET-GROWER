@@ -17,6 +17,7 @@ local AnnouncementService = require(ServerScriptService.services.AnnouncementSer
 local PlaytimeTrackingService = require(ServerScriptService.services.PlaytimeTrackingService)
 local PlaytimeRewardsService = require(ServerScriptService.services.PlaytimeRewardsService)
 local CustomLeaderboardService = require(ServerScriptService.services.CustomLeaderboardService)
+local PotionService = require(ServerScriptService.services.PotionService)
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 DataService:Initialize()
@@ -29,6 +30,7 @@ AnnouncementService:Initialize()
 PlaytimeTrackingService:Initialize()
 PlaytimeRewardsService:Initialize()
 CustomLeaderboardService:Initialize()
+PotionService:Initialize()
 
 -- Initialize Crazy Chest service
 local CrazyChestService = require(ServerScriptService.services.CrazyChestService)
@@ -459,6 +461,14 @@ if not debugCommandRemote then
     debugCommandRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote event for reward popups
+local showRewardRemote = ReplicatedStorage:FindFirstChild("ShowReward")
+if not showRewardRemote then
+    showRewardRemote = Instance.new("RemoteEvent")
+    showRewardRemote.Name = "ShowReward"
+    showRewardRemote.Parent = ReplicatedStorage
+end
+
 
 -- Handle pet collection from client
 collectPetRemote.OnServerEvent:Connect(function(player, petData)
@@ -472,9 +482,11 @@ collectPetRemote.OnServerEvent:Connect(function(player, petData)
     local success, result = DataService:AddPetToPlayer(player, petData)
     
     if success then
-        -- Give player diamonds for collecting a pet ball (with gamepass multipliers)
+        -- Give player diamonds for collecting a pet ball (with gamepass and potion multipliers)
         local baseDiamonds = 1
-        local finalDiamonds = PetService:ApplyGamepassMultipliers(player, baseDiamonds, "Diamonds")
+        local gamepassMultipliedDiamonds = PetService:ApplyGamepassMultipliers(player, baseDiamonds, "Diamonds")
+        local potionMultiplier = PotionService:GetBoostMultiplier(player, "Diamonds")
+        local finalDiamonds = math.floor(gamepassMultipliedDiamonds * potionMultiplier)
         DataService:UpdatePlayerResources(player, "Diamonds", finalDiamonds)
         
         -- DataService methods already auto-sync to client, no manual sync needed
@@ -904,6 +916,23 @@ debugCommandRemote.OnServerEvent:Connect(function(player, commandType, ...)
             print("Main: Created custom pet for", player.Name, "- Name:", petName, "Boost:", boost, "Value:", value)
         else
             warn("Main: Failed to create custom pet for", player.Name, "- Reason:", result)
+        end
+        
+    elseif commandType == "GivePotion" then
+        -- Give potions for debugging
+        local potionId, quantity = ...
+        if not potionId then
+            warn("Main: Invalid potion ID for debug command")
+            return
+        end
+        
+        quantity = tonumber(quantity) or 1
+        
+        local success = PotionService:GivePotionWithReward(player, potionId, quantity, "Debug Commands")
+        if not success then
+            warn("Main: Failed to give potion", potionId, "to", player.Name)
+        else
+            print("Main: Successfully gave", quantity, "x", potionId, "to", player.Name, "with reward popup")
         end
         
     else

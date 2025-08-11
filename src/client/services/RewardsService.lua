@@ -9,6 +9,7 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
+local PotionConfig = require(ReplicatedStorage.config.PotionConfig)
 
 local RewardsService = {}
 RewardsService.__index = RewardsService
@@ -39,6 +40,12 @@ local function playRewardSound()
 end
 
 function RewardsService:Initialize()
+    -- Set up remote event listener for server-triggered rewards
+    local showRewardRemote = ReplicatedStorage:WaitForChild("ShowReward")
+    showRewardRemote.OnClientEvent:Connect(function(rewardData)
+        self:ShowReward(rewardData)
+    end)
+    
     -- RewardsService ready
 end
 
@@ -204,6 +211,23 @@ function RewardsService:GetRewardDisplayInfo(rewardData)
         displayInfo.subText = "Instant Rebirth!"
         displayInfo.icon = IconAssets.getIcon("UI", "REBIRTH")
         displayInfo.iconColor = Color3.fromRGB(255, 165, 0) -- Orange color
+        
+    elseif rewardData.type == "Potion" then
+        local potionConfig = PotionConfig.GetPotion(rewardData.potionId)
+        if potionConfig then
+            displayInfo.title = "🧪 POTION REWARD! 🧪"
+            displayInfo.mainText = potionConfig.Name
+            local boostText = potionConfig.BoostType == PotionConfig.BoostTypes.PET_MAGNET and potionConfig.BoostType or (PotionConfig.FormatBoostAmount(potionConfig.BoostAmount, potionConfig.BoostType) .. " " .. potionConfig.BoostType)
+            displayInfo.subText = "x" .. (rewardData.amount or 1) .. " - " .. boostText
+            displayInfo.icon = potionConfig.Icon
+            displayInfo.iconColor = PotionConfig.GetRarityColor(potionConfig.Rarity)
+        else
+            displayInfo.title = "🧪 POTION REWARD! 🧪"
+            displayInfo.mainText = "Unknown Potion"
+            displayInfo.subText = "x" .. (rewardData.amount or 1)
+            displayInfo.icon = "rbxassetid://104089702525726" -- Default diamond potion icon
+            displayInfo.iconColor = Color3.fromRGB(200, 200, 200) -- Gray for unknown
+        end
     end
     
     return displayInfo

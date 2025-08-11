@@ -97,6 +97,19 @@ local function DebugPanel(props)
         sendDebugCommand("StopTutorial")
     end
     
+    -- Potion debug functions
+    local function giveDiamondPotion()
+        sendDebugCommand("GivePotion", "diamond_2x_10m", 5)
+    end
+    
+    local function giveMoneyPotion()
+        sendDebugCommand("GivePotion", "money_2x_10m", 5)
+    end
+    
+    local function givePetMagnetPotion()
+        sendDebugCommand("GivePotion", "pet_magnet_10m", 3)
+    end
+    
     -- Helper function to create a styled button
     local function createButton(props)
         return React.createElement("TextButton", {
@@ -311,8 +324,9 @@ local function DebugPanel(props)
                 
                 ResourcesTab = createTabButton("resources", "💰 Resources", 1),
                 PetsTab = createTabButton("pets", "🐕 Pets", 2),
-                DataTab = createTabButton("data", "⚠️ Data", 3),
-                UtilsTab = createTabButton("utils", "🔧 Utils", 4),
+                PotionsTab = createTabButton("potions", "🧪 Potions", 3),
+                DataTab = createTabButton("data", "⚠️ Data", 4),
+                UtilsTab = createTabButton("utils", "🔧 Utils", 5),
             }),
         
             -- Scrollable content area
@@ -542,6 +556,36 @@ local function DebugPanel(props)
                         strokeThickness = 3,
                         onActivated = createCustomPet
                     }),
+                }) or nil,
+                
+                -- Potions Tab Content
+                PotionsContent = selectedTab == "potions" and React.createElement(React.Fragment, nil, {
+                    PotionHeader = createSectionHeader("🧪 Potion Debug Commands", Color3.fromRGB(138, 43, 226), 1),
+                    
+                    DiamondPotionButton = createButton({
+                        text = "Give 5x Diamond Potions",
+                        color = Color3.fromRGB(0, 191, 255),
+                        layoutOrder = 2,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = giveDiamondPotion
+                    }),
+                    
+                    MoneyPotionButton = createButton({
+                        text = "Give 5x Money Potions",
+                        color = Color3.fromRGB(255, 215, 0),
+                        layoutOrder = 3,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = giveMoneyPotion
+                    }),
+                    
+                    PetMagnetPotionButton = createButton({
+                        text = "Give Pet Magnet Potions",
+                        color = Color3.fromRGB(50, 255, 50),
+                        layoutOrder = 4,
+                        size = ScreenUtils.udim2(1, 0, 0, 35),
+                        onActivated = givePetMagnetPotion
+                    })
+                    
                 }) or nil,
                 
                 -- Data Tab Content
