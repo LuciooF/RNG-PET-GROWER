@@ -149,6 +149,9 @@ function PotionService:HandlePotionActivation(player, potionId)
     -- Start expiration timer
     self:StartPotionTimer(player, potionId, potionConfig.Duration)
     
+    -- Sync updated player data to client (for DataSyncService/Redux store)
+    DataService:SyncPlayerDataToClient(player)
+    
     -- Notify client
     potionActivatedRemote:FireClient(player, activePotionData)
     
@@ -203,6 +206,9 @@ function PotionService:ExpirePotion(player, potionId)
         end
         -- ProfileService handles auto-saving
     end
+    
+    -- Sync updated player data to client (for DataSyncService/Redux store)
+    DataService:SyncPlayerDataToClient(player)
     
     -- Notify client
     potionExpiredRemote:FireClient(player, potionId)
@@ -365,6 +371,9 @@ function PotionService:GivePotion(player, potionId, quantity)
     
     playerPotions[potionId] = newQuantity
     playerData.Potions = playerPotions
+    
+    -- Sync updated player data to client (for DataSyncService/Redux store)
+    DataService:SyncPlayerDataToClient(player)
     
     -- ProfileService handles auto-saving
     

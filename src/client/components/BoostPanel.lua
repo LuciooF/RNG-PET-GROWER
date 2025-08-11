@@ -5,6 +5,7 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+local BoostCalculator = require(ReplicatedStorage.utils.BoostCalculator)
 
 local function BoostPanel(props)
     -- Subscribe to player data for boost calculation
@@ -34,55 +35,33 @@ local function BoostPanel(props)
         end
     end, {})
     
-    -- Calculate boost breakdown
-    local petBoostMultiplier = 0 -- Start at 0, not 1
-    local petCount = 0
+    -- Use centralized boost calculation
+    local boostBreakdown = BoostCalculator.getBoostBreakdown(playerData)
     
-    for _, pet in pairs(playerData.EquippedPets or {}) do
-        petCount = petCount + 1
-        if pet.FinalBoost then
-            petBoostMultiplier = petBoostMultiplier + (pet.FinalBoost - 1) -- Convert 1.36x to 0.36, then add
-        end
-    end
+    -- Extract individual boost components for display
+    local petBoostMultiplier = boostBreakdown.petBoost
+    local opPetBoostMultiplier = boostBreakdown.opPetBoost
+    local gamepassMultiplier = boostBreakdown.gamepassBoost
+    local rebirthMultiplier = boostBreakdown.rebirthBoost
+    local potionBoosts = boostBreakdown.potionBoosts
+    local totalMultiplier = boostBreakdown.totalBoost
+    local petCount = boostBreakdown.petCount
+    local opPetCount = boostBreakdown.opPetCount
     
-    -- Calculate OP pet boost
-    local opPetBoostMultiplier = 0 -- Start at 0, not 1
-    local opPetCount = 0
-    
-    for _, opPet in pairs(playerData.OPPets or {}) do
-        opPetCount = opPetCount + 1
-        if opPet.FinalBoost then
-            opPetBoostMultiplier = opPetBoostMultiplier + (opPet.FinalBoost - 1) -- Convert 1.36x to 0.36, then add
-        elseif opPet.BaseBoost then
-            opPetBoostMultiplier = opPetBoostMultiplier + (opPet.BaseBoost - 1) -- Fallback to BaseBoost
-        end
-    end
-    
-    -- Calculate gamepass boost
-    local gamepassMultiplier = 1
-    local gamepasses = {}
+    -- Create gamepass names for display
     local gamepassNames = {}
-    
+    local gamepasses = {}
     for _, gamepassName in pairs(playerData.OwnedGamepasses or {}) do
         gamepasses[gamepassName] = true
     end
     
     if gamepasses.TwoXMoney then
-        gamepassMultiplier = gamepassMultiplier * 2
         table.insert(gamepassNames, "2x Money")
     end
     
     if gamepasses.VIP then
-        gamepassMultiplier = gamepassMultiplier * 2
         table.insert(gamepassNames, "VIP")
     end
-    
-    -- Calculate rebirth multiplier (0.5x per rebirth: 0 rebirths = 1x, 1 rebirth = 1.5x, 2 rebirths = 2x, etc.)
-    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
-    local rebirthMultiplier = 1 + (playerRebirths * 0.5)
-    
-    -- Total boost calculation: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus (all additive)
-    local totalMultiplier = 1 + petBoostMultiplier + opPetBoostMultiplier + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
     
     -- Don't render if not visible
     if not props.visible then
@@ -353,6 +332,24 @@ local function BoostPanel(props)
                     })
                 }),
                 
+                -- Potion boost display (Money potions only for now)
+                PotionBoostLabel = React.createElement("TextLabel", {
+                    Name = "PotionBoostLabel",
+                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(40)), -- Same size as other boosts
+                    BackgroundTransparency = 1,
+                    Text = potionBoosts.Money > 1 and 
+                        string.format("🧪 Potion Boost: %sx (Money)", NumberFormatter.formatBoost(potionBoosts.Money)) or 
+                        "🧪 Potion Boost: 1x",
+                    TextColor3 = potionBoosts.Money > 1 and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(120, 120, 120), -- Purple theme for potions
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() + 3, -- Same size as other boosts
+                    Font = Enum.Font.FredokaOne,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    TextStrokeTransparency = 1, -- Remove outline
+                    ZIndex = 202,
+                    LayoutOrder = 6,
+                }),
+                
                 -- Pet count display
                 PetCountLabel = React.createElement("TextLabel", {
                     Name = "PetCountLabel",
@@ -366,7 +363,7 @@ local function BoostPanel(props)
                     TextYAlignment = Enum.TextYAlignment.Center,
                     TextStrokeTransparency = 1, -- Remove outline
                     ZIndex = 202,
-                    LayoutOrder = 6,
+                    LayoutOrder = 7,
                 })
             })
         })

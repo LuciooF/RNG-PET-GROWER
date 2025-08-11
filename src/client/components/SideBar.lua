@@ -10,6 +10,7 @@ local TooltipUtils = require(ReplicatedStorage.utils.TooltipUtils)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local SoundService = game:GetService("SoundService")
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
+local BoostCalculator = require(ReplicatedStorage.utils.BoostCalculator)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -59,45 +60,8 @@ local function SideBar(props)
     local petCount = #(playerData.Pets or {})
     local petCountText = NumberFormatter.format(petCount)
     
-    -- Calculate total boost for boost button (matches BoostPanel calculation)
-    -- Pet boost calculation
-    local petBoostMultiplier = 0 -- Start at 0, not 1
-    for _, pet in pairs(playerData.EquippedPets or {}) do
-        if pet.FinalBoost then
-            petBoostMultiplier = petBoostMultiplier + (pet.FinalBoost - 1)
-        end
-    end
-    
-    -- OP Pet boost calculation
-    local opPetBoostMultiplier = 0 -- Start at 0, not 1
-    for _, opPet in pairs(playerData.OPPets or {}) do
-        if opPet.FinalBoost then
-            opPetBoostMultiplier = opPetBoostMultiplier + (opPet.FinalBoost - 1)
-        elseif opPet.BaseBoost then
-            opPetBoostMultiplier = opPetBoostMultiplier + (opPet.BaseBoost - 1)
-        end
-    end
-    
-    -- Gamepass boost calculation
-    local gamepassMultiplier = 1
-    local gamepasses = {}
-    for _, gamepassName in pairs(playerData.OwnedGamepasses or {}) do
-        gamepasses[gamepassName] = true
-    end
-    
-    if gamepasses["TwoXMoney"] then
-        gamepassMultiplier = gamepassMultiplier * 2
-    end
-    if gamepasses["VIP"] then
-        gamepassMultiplier = gamepassMultiplier * 2
-    end
-    
-    -- Calculate rebirth multiplier
-    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
-    local rebirthMultiplier = 1 + (playerRebirths * 0.5)
-    
-    -- Total boost calculation: base 1x + pet boost + OP pet boost + gamepass bonus + rebirth bonus (all additive)
-    local totalBoostMultiplier = 1 + petBoostMultiplier + opPetBoostMultiplier + (gamepassMultiplier - 1) + (rebirthMultiplier - 1)
+    -- Use centralized boost calculation
+    local totalBoostMultiplier = BoostCalculator.calculateTotalBoostMultiplier(playerData)
     
     -- Responsive button setup
     local screenSize = ScreenUtils.getScreenSize()
@@ -148,15 +112,20 @@ local function SideBar(props)
         
         PetCountBadge = React.createElement("Frame", {
             Name = "PetCountBadge",
-            Size = ScreenUtils.udim2(0, 24, 0, 16),
-            Position = ScreenUtils.udim2(1, -12, 0, -2),
+            Size = ScreenUtils.udim2(0, 36, 0, 24), -- Bigger badge
+            Position = ScreenUtils.udim2(1, -18, 0, -4),
             AnchorPoint = Vector2.new(0.5, 0),
             BackgroundColor3 = Color3.fromRGB(255, 100, 100),
             BorderSizePixel = 0,
             ZIndex = 52
         }, {
             UICorner = React.createElement("UICorner", {
-                CornerRadius = ScreenUtils.udim(0, 8)
+                CornerRadius = ScreenUtils.udim(0, 12)
+            }),
+            UIStroke = React.createElement("UIStroke", {
+                Color = Color3.fromRGB(0, 0, 0),
+                Thickness = 2,
+                Transparency = 0
             }),
             CountText = React.createElement("TextLabel", {
                 Size = ScreenUtils.udim2(1, 0, 1, 0),
@@ -165,7 +134,7 @@ local function SideBar(props)
                 TextColor3 = Color3.fromRGB(255, 255, 255),
                 TextStrokeTransparency = 0,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                TextSize = 10,
+                TextSize = 16, -- Bigger text
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,

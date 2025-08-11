@@ -6,15 +6,12 @@ local Workspace = game:GetService("Workspace")
 local SoundService = game:GetService("SoundService")
 
 local DataService = require(script.Parent.DataService)
+local PlotConfig = require(ReplicatedStorage.config.PlotConfig)
 
 local PlotService = {}
 PlotService.__index = PlotService
 
--- Configuration - BALANCED: Increased plot costs for better progression
-local PLOT_BASE_COST = 5  -- Increased from 2 for better challenge
-local TOTAL_PLOTS = 49
-local TUBEPLOT_BASE_COST = 10  -- Increased from 5 for better challenge
-local TOTAL_TUBEPLOTS = 10
+-- Configuration - Now centralized in PlotConfig
 local UI_VISIBILITY_DISTANCE = 50 -- Distance to show plot UIs
 
 -- Sound configuration
@@ -80,69 +77,7 @@ local spawningDoors = {}
 local MAX_PET_BALLS_PER_AREA = 50 -- Kept for GUI display purposes only
 
 
--- Helper functions for rebirth requirements
-local function isMiddlePlotOfRow(plotNumber)
-    -- Check if this plot is the middle plot of its row
-    -- Level 2 (8-14): middle = 11
-    -- Level 3 (15-21): middle = 18
-    -- Level 4 (22-28): middle = 25
-    -- Level 5 (29-35): middle = 32
-    return plotNumber == 11 or plotNumber == 18 or plotNumber == 25 or plotNumber == 32
-end
-
-local function getTubePlotRebirthRequirement(tubePlotNumber)
-    -- TubePlot 1: 0 rebirths
-    -- TubePlot 2: 1 rebirth
-    -- TubePlot 3: 2 rebirths
-    -- etc.
-    return tubePlotNumber - 1
-end
-
-local function shouldShowTubePlotRebirthText(tubePlotNumber, playerRebirths)
-    -- For tubeplots, only show rebirth requirement on the first tubeplot that needs higher rebirth
-    -- This way we don't spam the same message across multiple tubeplots
-    local requiredRebirths = getTubePlotRebirthRequirement(tubePlotNumber)
-    
-    -- Only show on the first tubeplot that the player can't access
-    if playerRebirths < requiredRebirths then
-        -- Check if this is the first inaccessible tubeplot
-        for i = 1, tubePlotNumber - 1 do
-            local prevRequired = getTubePlotRebirthRequirement(i)
-            if playerRebirths < prevRequired then
-                return false -- Not the first one
-            end
-        end
-        return true -- This is the first inaccessible one
-    end
-    return false
-end
-
-local function getPlotRebirthRequirement(plotNumber)
-    -- Plots 1-5: 0 rebirths (Level 1)
-    -- Plots 8-14: 1 rebirth (Level 2)
-    -- Plots 15-21: 2 rebirths (Level 3)
-    -- Plots 22-28: 4 rebirths (Level 4) - SKIP rebirth 3 (reserved for mixer)
-    -- Plots 29-35: 5 rebirths (Level 5)
-    -- Plots 36-42: 6 rebirths (Level 6)
-    -- Plots 43-49: 7 rebirths (Level 7)
-    if plotNumber >= 1 and plotNumber <= 5 then
-        return 0
-    elseif plotNumber >= 8 and plotNumber <= 14 then
-        return 1
-    elseif plotNumber >= 15 and plotNumber <= 21 then
-        return 2
-    elseif plotNumber >= 22 and plotNumber <= 28 then
-        return 4 -- Skip rebirth 3
-    elseif plotNumber >= 29 and plotNumber <= 35 then
-        return 5
-    elseif plotNumber >= 36 and plotNumber <= 42 then
-        return 6
-    elseif plotNumber >= 43 and plotNumber <= 49 then
-        return 7
-    else
-        return 999 -- Invalid plot numbers (6, 7)
-    end
-end
+-- Helper functions now centralized in PlotConfig
 
 function PlotService:SetupCollisionGroups()
     local PhysicsService = game:GetService("PhysicsService")
@@ -262,7 +197,7 @@ function PlotService:SetupAreaPlots(area)
     -- self:AddDoorSurfaceGuis(area) -- DEFERRED FOR PERFORMANCE
     
     -- Set up touch detection for each plot
-    for i = 1, TOTAL_PLOTS do
+    for i = 1, PlotConfig.TOTAL_PLOTS do
         local plotName = "Plot" .. i
         local plot = buttonsFolder:FindFirstChild(plotName)
         
@@ -274,7 +209,7 @@ function PlotService:SetupAreaPlots(area)
     end
     
     -- Set up touch detection for each TubePlot
-    for i = 1, TOTAL_TUBEPLOTS do
+    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
         local tubePlotName = "TubePlot" .. i
         local tubePlot = buttonsFolder:FindFirstChild(tubePlotName)
         
@@ -484,7 +419,7 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
     end
     
     -- Check rebirth requirement
-    local requiredRebirths = getPlotRebirthRequirement(plotNumber)
+    local requiredRebirths = PlotConfig.getPlotRebirthRequirement(plotNumber)
     local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
     if playerRebirths < requiredRebirths then
         return false
@@ -556,7 +491,7 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     end
     
     -- Check rebirth requirement
-    local requiredRebirths = getTubePlotRebirthRequirement(tubePlotNumber)
+    local requiredRebirths = PlotConfig.getTubePlotRebirthRequirement(tubePlotNumber)
     local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
     if playerRebirths < requiredRebirths then
         return false
@@ -614,55 +549,11 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
 end
 
 function PlotService:GetPlotCost(plotNumber, playerRebirths)
-    -- First plot is free
-    if plotNumber == 1 then
-        return 0
-    end
-    
-    -- Start at 25 for second plot, increment by 70% (1.7x) for each subsequent plot
-    local baseCost = 25
-    local scalingFactor = 1.7 -- 70% increment per plot
-    
-    -- Apply rebirth-based multipliers to the base cost
-    playerRebirths = playerRebirths or 0
-    local rebirthMultiplier = 1.0
-    
-    if playerRebirths <= 1 then
-        -- Easier for first two rebirths (20% cheaper)
-        rebirthMultiplier = 0.8
-    elseif playerRebirths <= 3 then
-        -- Normal pricing for rebirths 2-3
-        rebirthMultiplier = 1.0
-    else
-        -- 50% more expensive after rebirth 4+
-        rebirthMultiplier = 1.5
-    end
-    
-    local finalCost = baseCost * (scalingFactor ^ (plotNumber - 2)) * rebirthMultiplier
-    return math.floor(finalCost)
+    return PlotConfig.getPlotCost(plotNumber, playerRebirths)
 end
 
 function PlotService:GetTubePlotCost(tubePlotNumber, playerRebirths)
-    -- First tubeplot is free, then make it quite hard as requested
-    if tubePlotNumber == 1 then
-        return 0
-    end
-    
-    -- Make tube plots quite hard with aggressive scaling
-    playerRebirths = playerRebirths or 0
-    local baseCost = 50 -- Much higher base cost than regular plots
-    local scalingFactor = 3.5 -- Aggressive 3.5x scaling instead of 2x
-    
-    -- Even harder scaling for higher rebirths to maintain challenge
-    if playerRebirths >= 4 then
-        baseCost = 100
-        scalingFactor = 4.0
-    elseif playerRebirths >= 2 then
-        baseCost = 75
-        scalingFactor = 3.8
-    end
-    
-    return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))
+    return PlotConfig.getTubePlotCost(tubePlotNumber, playerRebirths)
 end
 
 function PlotService:PlayerOwnsArea(player, areaNumber)
@@ -1021,14 +912,14 @@ function PlotService:UpdatePlotUIVisibility(player)
         local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
         if areaNumber and self:PlayerOwnsArea(player, areaNumber) then
             -- Check each plot UI in this area
-            for i = 1, TOTAL_PLOTS do
+            for i = 1, PlotConfig.TOTAL_PLOTS do
                 local uiPart = area:FindFirstChild("PlotUI_" .. i)
                 if uiPart then
                     local distance = (playerPosition - uiPart.Position).Magnitude
                     local billboard = uiPart:FindFirstChild("PlotBillboard")
                     
                     -- Check if player should be able to see this plot
-                    local plotRebirthRequirement = getPlotRebirthRequirement(i)
+                    local plotRebirthRequirement = PlotConfig.getPlotRebirthRequirement(i)
                     local shouldShowPlot = playerRebirths >= (plotRebirthRequirement - 1) -- Can see current level + next level
                     
                     if distance <= UI_VISIBILITY_DISTANCE and not self:PlayerOwnsPlot(player, i) and shouldShowPlot then
@@ -1046,14 +937,14 @@ function PlotService:UpdatePlotUIVisibility(player)
             end
             
             -- Check each TubePlot UI in this area
-            for i = 1, TOTAL_TUBEPLOTS do
+            for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
                 local uiPart = area:FindFirstChild("TubePlotUI_" .. i)
                 if uiPart then
                     local distance = (playerPosition - uiPart.Position).Magnitude
                     local billboard = uiPart:FindFirstChild("TubePlotBillboard")
                     
                     -- Check if player should be able to see this tubeplot
-                    local tubePlotRebirthRequirement = getTubePlotRebirthRequirement(i)
+                    local tubePlotRebirthRequirement = PlotConfig.getTubePlotRebirthRequirement(i)
                     local shouldShowTubePlot = playerRebirths >= (tubePlotRebirthRequirement - 1) -- Can see current level + next level
                     
                     if distance <= UI_VISIBILITY_DISTANCE and not self:PlayerOwnsTube(player, i) and shouldShowTubePlot then
@@ -1524,7 +1415,7 @@ function PlotService:HideAllTubesInArea(area)
         local innerTubesFolder = tubesFolder:FindFirstChild("Tubes")
         if innerTubesFolder then
             -- Hide all tubes by moving them underground
-            for i = 1, TOTAL_TUBEPLOTS do
+            for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
                 local tube = innerTubesFolder:FindFirstChild("Tube" .. i)
                 if tube then
                     -- Move tube far underground to hide it (only if not already hidden)
@@ -2127,7 +2018,7 @@ end
 
 -- Restore all plot UIs in an area (after data reset)
 function PlotService:RestoreAllPlotUIs(area)
-    for i = 1, TOTAL_PLOTS do
+    for i = 1, PlotConfig.TOTAL_PLOTS do
         -- Check if UI already exists
         -- Plot UI creation is now handled client-side by PlotGUIService
     end
@@ -2135,7 +2026,7 @@ end
 
 -- Restore all TubePlot UIs in an area (after data reset)
 function PlotService:RestoreAllTubePlotUIs(area)
-    for i = 1, TOTAL_TUBEPLOTS do
+    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
         -- TubePlot UI creation is now handled client-side by PlotGUIService
     end
 end
@@ -2227,12 +2118,12 @@ function PlotService:UpdatePlotVisibility(area, player)
     end
     
     -- Update plot visibility
-    for i = 1, TOTAL_PLOTS do
+    for i = 1, PlotConfig.TOTAL_PLOTS do
         local plotName = "Plot" .. i
         local plot = buttonsFolder:FindFirstChild(plotName)
         
         if plot then
-            local plotRebirthRequirement = getPlotRebirthRequirement(i)
+            local plotRebirthRequirement = PlotConfig.getPlotRebirthRequirement(i)
             local shouldShowPlot = playerRebirths >= (plotRebirthRequirement - 1) -- Can see current level + next level
             
             -- Hide/show the entire plot model
@@ -2260,12 +2151,12 @@ function PlotService:UpdatePlotVisibility(area, player)
     end
     
     -- Update tubeplot visibility
-    for i = 1, TOTAL_TUBEPLOTS do
+    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
         local tubePlotName = "TubePlot" .. i
         local tubePlot = buttonsFolder:FindFirstChild(tubePlotName)
         
         if tubePlot then
-            local tubePlotRebirthRequirement = getTubePlotRebirthRequirement(i)
+            local tubePlotRebirthRequirement = PlotConfig.getTubePlotRebirthRequirement(i)
             local shouldShowTubePlot = playerRebirths >= (tubePlotRebirthRequirement - 1) -- Can see current level + next level
             
             -- Hide/show the entire tubeplot model
@@ -2345,7 +2236,7 @@ function PlotService:UpdatePlotGUIs(area, player)
     end
     
     -- Update plot GUIs
-    for plotNumber = 1, TOTAL_PLOTS do
+    for plotNumber = 1, PlotConfig.TOTAL_PLOTS do
         if plotNumber ~= 6 and plotNumber ~= 7 then
             local uiPart = area:FindFirstChild("PlotUI_" .. plotNumber)
             if uiPart then
@@ -2353,7 +2244,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                 if billboard then
                     local costLabel = billboard:FindFirstChild("CostLabel")
                     if costLabel then
-                        local requiredRebirths = getPlotRebirthRequirement(plotNumber)
+                        local requiredRebirths = PlotConfig.getPlotRebirthRequirement(plotNumber)
                         local plotCost = self:GetPlotCost(plotNumber, playerRebirths)
                         
                         if ownedPlotsSet[plotNumber] then
@@ -2364,7 +2255,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                             costLabel.TextSize = 24
                         elseif playerRebirths < requiredRebirths then
                             -- Only show rebirth requirement on middle plot of row
-                            if isMiddlePlotOfRow(plotNumber) then
+                            if PlotConfig.isMiddlePlotOfRow(plotNumber) then
                                 -- Large black text with white outline for rebirth requirement
                                 costLabel.Text = requiredRebirths .. " Rebirths Required"
                                 costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -2394,14 +2285,14 @@ function PlotService:UpdatePlotGUIs(area, player)
     end
     
     -- Update tubeplot GUIs
-    for tubeNumber = 1, TOTAL_TUBEPLOTS do
+    for tubeNumber = 1, PlotConfig.TOTAL_TUBEPLOTS do
         local uiPart = area:FindFirstChild("TubePlotUI_" .. tubeNumber)
         if uiPart then
             local billboard = uiPart:FindFirstChild("TubePlotBillboard")
             if billboard then
                 local costLabel = billboard:FindFirstChild("CostLabel")
                 if costLabel then
-                    local requiredRebirths = getTubePlotRebirthRequirement(tubeNumber)
+                    local requiredRebirths = PlotConfig.getTubePlotRebirthRequirement(tubeNumber)
                     local tubePlotCost = self:GetTubePlotCost(tubeNumber, playerRebirths)
                     
                     if ownedTubesSet[tubeNumber] then
@@ -2412,7 +2303,7 @@ function PlotService:UpdatePlotGUIs(area, player)
                         costLabel.TextSize = 24
                     elseif playerRebirths < requiredRebirths then
                         -- Only show rebirth requirement on first inaccessible tubeplot
-                        if shouldShowTubePlotRebirthText(tubeNumber, playerRebirths) then
+                        if PlotConfig.shouldShowTubePlotRebirthText(tubeNumber, playerRebirths) then
                             -- Large black text with white outline for rebirth requirement
                             costLabel.Text = requiredRebirths .. " Rebirths Required"
                             costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -2462,7 +2353,7 @@ function PlotService:UpdatePlotColors(area, player)
     end
     
     -- Only add "Purchased" SurfaceGuis for owned plots/tubes
-    for plotNumber = 1, TOTAL_PLOTS do
+    for plotNumber = 1, PlotConfig.TOTAL_PLOTS do
         if plotNumber ~= 6 and plotNumber ~= 7 and ownedPlotsSet[plotNumber] then
             local buttonsFolder = area:FindFirstChild("Buttons")
             if buttonsFolder then
@@ -2474,7 +2365,7 @@ function PlotService:UpdatePlotColors(area, player)
         end
     end
     
-    for tubeNumber = 1, TOTAL_TUBEPLOTS do
+    for tubeNumber = 1, PlotConfig.TOTAL_TUBEPLOTS do
         if ownedTubesSet[tubeNumber] then
             local buttonsFolder = area:FindFirstChild("Buttons")
             if buttonsFolder then

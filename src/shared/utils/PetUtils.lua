@@ -1,6 +1,7 @@
 -- Pet utility functions
 local PetConstants = require(script.Parent.Parent.constants.PetConstants)
 local PetConfig = require(script.Parent.Parent.config.PetConfig)
+local BoostCalculator = require(script.Parent.BoostCalculator)
 
 local PetUtils = {}
 
@@ -22,17 +23,9 @@ function PetUtils.getDisplayColor(pet)
     end
 end
 
--- Calculate total boost from a list of pets
-function PetUtils.calculateTotalBoost(pets)
-    local totalBoost = 1.0
-    
-    for _, pet in pairs(pets) do
-        if pet.FinalBoost then
-            totalBoost = totalBoost * pet.FinalBoost
-        end
-    end
-    
-    return totalBoost
+-- Calculate total boost from a list of pets (now centralized)
+function PetUtils.calculateTotalBoost(pets, useBaseBoost)
+    return BoostCalculator.calculatePetListBoost(pets, useBaseBoost)
 end
 
 -- Calculate total value from a list of pets

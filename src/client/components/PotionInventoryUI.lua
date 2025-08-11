@@ -639,8 +639,12 @@ local function PotionInventoryUI(props)
                         local index = 1
                         
                         for potionId, activePotionData in pairs(activePotions) do
-                            activePotionElements["ActivePotion_" .. potionId] = createActivePotionCard(potionId, activePotionData, index)
-                            index = index + 1
+                            local timeRemaining = activePotionData.RemainingTime or 0
+                            -- Only show potions that still have time remaining
+                            if timeRemaining > 0 then
+                                activePotionElements["ActivePotion_" .. potionId] = createActivePotionCard(potionId, activePotionData, index)
+                                index = index + 1
+                            end
                         end
                         
                         return activePotionElements
