@@ -136,6 +136,26 @@ function PotionService:ActivatePotion(potionId)
     return true
 end
 
+-- Cancel an active potion
+function PotionService:CancelActivePotion(potionId)
+    if not activePotions[potionId] then
+        warn("PotionService: Potion", potionId, "is not active")
+        return false
+    end
+    
+    print("PotionService: Requesting cancellation of", potionId)
+    
+    -- Get the cancel remote
+    local cancelPotionRemote = ReplicatedStorage:FindFirstChild("CancelPotion")
+    if not cancelPotionRemote then
+        warn("PotionService: CancelPotion remote not found")
+        return false
+    end
+    
+    cancelPotionRemote:FireServer(potionId)
+    return true
+end
+
 -- Handle successful potion activation from server
 function PotionService:OnPotionActivated(activePotionData)
     print("PotionService: Potion activated:", activePotionData.PotionId)

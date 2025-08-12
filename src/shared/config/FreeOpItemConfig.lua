@@ -30,7 +30,7 @@ FreeOpItemConfig.Config = {
     
     -- Progress tracking
     TrackingEnabled = true,
-    DebugMode = true, -- Set to true for faster testing (reduces times)
+    DebugMode = false, -- Set to true for faster testing (reduces times)
 }
 
 -- Debug configuration (for testing)

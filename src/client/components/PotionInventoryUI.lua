@@ -140,6 +140,13 @@ local function PotionInventoryUI(props)
         PotionService:ActivatePotion(potionId)
     end
 
+    -- Handle potion cancellation/removal
+    local function handlePotionCancellation(potionId)
+        print("PotionInventoryUI: Cancelling active potion", potionId)
+        -- Call PotionService to remove the active potion
+        PotionService:CancelActivePotion(potionId)
+    end
+
     -- Create active potion card component
     local function createActivePotionCard(potionId, activePotionData, index)
         local potionConfig = PotionConfig.GetPotion(potionId)
@@ -277,6 +284,19 @@ local function PotionInventoryUI(props)
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 13,
                 })
+            }),
+
+            -- Close button (X) to cancel the potion
+            CloseButton = React.createElement("ImageButton", {
+                Size = ScreenUtils.udim2(0, 20, 0, 20),
+                Position = ScreenUtils.udim2(1, -25, 0, 5),
+                BackgroundTransparency = 1,
+                Image = IconAssets.getIcon("UI", "X_BUTTON"),
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 14,
+                [React.Event.Activated] = function()
+                    handlePotionCancellation(potionId)
+                end
             })
         })
     end

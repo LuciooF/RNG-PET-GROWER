@@ -291,8 +291,8 @@ function RewardsService:ShowRewardPopup(rewardData)
         -- Pet viewport
         iconOrViewport = Instance.new("ViewportFrame")
         iconOrViewport.Name = "PetViewport"
-        iconOrViewport.Size = ScreenUtils.udim2(0, 300, 0, 300) -- Fixed: removed double scaling
-        iconOrViewport.Position = ScreenUtils.udim2(0, 25, 0, 50) -- Fixed: removed double scaling
+        iconOrViewport.Size = ScreenUtils.udim2(0, 270, 0, 270) -- Scaled down by 10%
+        iconOrViewport.Position = ScreenUtils.udim2(0, 23, 0, 45) -- Scaled down by 10%
         iconOrViewport.BackgroundTransparency = 1
         iconOrViewport.ZIndex = 1001
         iconOrViewport.Parent = popupFrame
@@ -307,8 +307,8 @@ function RewardsService:ShowRewardPopup(rewardData)
         -- Icon display
         iconOrViewport = Instance.new("ImageLabel")
         iconOrViewport.Name = "RewardIcon"
-        iconOrViewport.Size = ScreenUtils.udim2(0, 250, 0, 250) -- Fixed: removed double scaling
-        iconOrViewport.Position = ScreenUtils.udim2(0, 50, 0, 75) -- Fixed: removed double scaling
+        iconOrViewport.Size = ScreenUtils.udim2(0, 225, 0, 225) -- Scaled down by 10%
+        iconOrViewport.Position = ScreenUtils.udim2(0, 45, 0, 68) -- Scaled down by 10%
         iconOrViewport.BackgroundTransparency = 1
         iconOrViewport.Image = displayInfo.icon
         iconOrViewport.ImageColor3 = displayInfo.iconColor
@@ -320,8 +320,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Title (top center)
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = ScreenUtils.udim2(1, -60, 0, 60) -- Fixed: removed double scaling
-    titleLabel.Position = ScreenUtils.udim2(0, 30, 0, 15) -- Fixed: removed double scaling
+    titleLabel.Size = ScreenUtils.udim2(1, -54, 0, 54) -- Scaled down by 10%
+    titleLabel.Position = ScreenUtils.udim2(0, 27, 0, 14) -- Scaled down by 10%
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = displayInfo.title
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
@@ -336,8 +336,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Info panel (right side of icon/viewport)
     local infoPanel = Instance.new("Frame")
     infoPanel.Name = "InfoPanel"
-    infoPanel.Size = ScreenUtils.udim2(0, 360, 0, 270) -- Fixed: removed double scaling
-    infoPanel.Position = ScreenUtils.udim2(0, 350, 0, 75) -- Fixed: removed double scaling
+    infoPanel.Size = ScreenUtils.udim2(0, 324, 0, 243) -- Scaled down by 10%
+    infoPanel.Position = ScreenUtils.udim2(0, 315, 0, 68) -- Scaled down by 10%
     infoPanel.BackgroundTransparency = 1
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
@@ -345,7 +345,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Main reward text (amount/pet name)
     local mainLabel = Instance.new("TextLabel")
     mainLabel.Name = "MainReward"
-    mainLabel.Size = ScreenUtils.udim2(1, 0, 0, 90) -- Fixed: removed double scaling
+    mainLabel.Size = ScreenUtils.udim2(1, 0, 0, 81) -- Scaled down by 10%
     mainLabel.Position = ScreenUtils.udim2(0, 0, 0, 0)
     mainLabel.BackgroundTransparency = 1
     mainLabel.Text = displayInfo.mainText
@@ -375,8 +375,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Sub text (reward type)
     local subLabel = Instance.new("TextLabel")
     subLabel.Name = "SubText"
-    subLabel.Size = ScreenUtils.udim2(1, 0, 0, 50) -- Fixed: removed double scaling
-    subLabel.Position = ScreenUtils.udim2(0, 0, 0, 95) -- Fixed: removed double scaling
+    subLabel.Size = ScreenUtils.udim2(1, 0, 0, 45) -- Scaled down by 10%
+    subLabel.Position = ScreenUtils.udim2(0, 0, 0, 86) -- Scaled down by 10%
     subLabel.BackgroundTransparency = 1
     subLabel.Text = displayInfo.subText
     subLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -391,8 +391,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Source text (where the reward came from)
     local sourceLabel = Instance.new("TextLabel")
     sourceLabel.Name = "Source"
-    sourceLabel.Size = ScreenUtils.udim2(1, 0, 0, 40) -- Fixed: removed double scaling
-    sourceLabel.Position = ScreenUtils.udim2(0, 0, 0, 160) -- Fixed: removed double scaling
+    sourceLabel.Size = ScreenUtils.udim2(1, 0, 0, 36) -- Scaled down by 10%
+    sourceLabel.Position = ScreenUtils.udim2(0, 0, 0, 144) -- Scaled down by 10%
     sourceLabel.BackgroundTransparency = 1
     sourceLabel.Text = "From: " .. displayInfo.sourceText
     sourceLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -407,8 +407,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Congratulations message
     local congratsLabel = Instance.new("TextLabel")
     congratsLabel.Name = "Congrats"
-    congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, 60) -- Fixed: removed double scaling
-    congratsLabel.Position = ScreenUtils.udim2(0, 0, 0, 210) -- Fixed: removed double scaling
+    congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, 54) -- Scaled down by 10%
+    congratsLabel.Position = ScreenUtils.udim2(0, 0, 0, 189) -- Scaled down by 10%
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "Reward Added!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
@@ -421,7 +421,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     congratsLabel.Parent = infoPanel
     
     -- AMAZING POP OUT ANIMATION - Every element animates individually!
-    local finalSize = ScreenUtils.udim2(0, 750, 0, 390) -- Fixed: removed double scaling
+    local finalSize = ScreenUtils.udim2(0, 675, 0, 351) -- Scaled down by 10%
     
     -- Set all elements to start invisible/small for pop-out effect
     local elementsToAnimate = {

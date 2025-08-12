@@ -353,8 +353,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Pet viewport (left side) - 1.5x bigger
     local petViewport = Instance.new("ViewportFrame")
     petViewport.Name = "PetViewport"
-    petViewport.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(300), 0, ScreenUtils.getProportionalSize(300))
-    petViewport.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(25), 0, ScreenUtils.getProportionalSize(50))
+    petViewport.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(270), 0, ScreenUtils.getProportionalSize(270))
+    petViewport.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(23), 0, ScreenUtils.getProportionalSize(45))
     petViewport.BackgroundTransparency = 1
     petViewport.ZIndex = 1001
     petViewport.Parent = popupFrame
@@ -369,12 +369,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- "New Pet Discovered!" title (top center) - 1.5x bigger
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60))
-    titleLabel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(15))
+    titleLabel.Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(54), 0, ScreenUtils.getProportionalSize(54))
+    titleLabel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(27), 0, ScreenUtils.getProportionalSize(14))
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = discovery.variation and "🌟 NEW VARIATION DISCOVERED! 🌟" or "🎉 NEW PET DISCOVERED! 🎉"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.5 -- 1.5x bigger text
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.35 -- Scaled down by 10%
     titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -385,8 +385,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Info panel (right side of viewport) - 1.5x bigger
     local infoPanel = Instance.new("Frame")
     infoPanel.Name = "InfoPanel"
-    infoPanel.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(360), 0, ScreenUtils.getProportionalSize(270))
-    infoPanel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(350), 0, ScreenUtils.getProportionalSize(75))
+    infoPanel.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(324), 0, ScreenUtils.getProportionalSize(243))
+    infoPanel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(315), 0, ScreenUtils.getProportionalSize(68))
     infoPanel.BackgroundTransparency = 1
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
@@ -394,12 +394,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Pet name - 1.5x bigger
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "PetName"
-    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(75))
+    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(68))
     nameLabel.Position = ScreenUtils.udim2(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = actualPetName
     nameLabel.TextColor3 = rarityColor
-    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.3 -- 1.5x bigger text
+    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.17 -- Scaled down by 10%
     nameLabel.Font = Enum.Font.FredokaOne
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
@@ -412,12 +412,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     if discovery.variation then
         local variationLabel = Instance.new("TextLabel")
         variationLabel.Name = "Variation"
-        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(45))
+        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(41))
         variationLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
         variationLabel.BackgroundTransparency = 1
         variationLabel.Text = discovery.variation .. " Variation"
         variationLabel.TextColor3 = variationColor
-        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.5 -- 1.5x bigger text
+        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.35 -- Scaled down by 10%
         variationLabel.Font = Enum.Font.FredokaOne
         variationLabel.TextXAlignment = Enum.TextXAlignment.Center
         variationLabel.TextStrokeTransparency = 0
@@ -521,7 +521,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.Parent = infoPanel
     
     -- AMAZING POP OUT ANIMATION - Every element animates individually!
-    local finalSize = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(750), 0, ScreenUtils.getProportionalSize(390)) -- 1.5x bigger popup size
+    local finalSize = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(675), 0, ScreenUtils.getProportionalSize(351)) -- Scaled down by 10%
     
     -- Set all elements to start invisible/small for pop-out effect
     local elementsToAnimate = {

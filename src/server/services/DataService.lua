@@ -144,11 +144,11 @@ function DataService:InitializePlayerData(player, data)
             -- Wait a moment for player to be fully loaded
             task.wait(2)
             
-            -- Give 2x Diamond potion
-            PotionService:GivePotion(player, "diamond_2x_10m", 2)
+            -- Give 1x Diamond potion
+            PotionService:GivePotion(player, "diamond_2x_10m", 1)
             
-            -- Give 2x Money potion
-            PotionService:GivePotion(player, "money_2x_10m", 2)
+            -- Give 1x Money potion
+            PotionService:GivePotion(player, "money_2x_10m", 1)
             
             -- Give 1x Pet Magnet potion
             PotionService:GivePotion(player, "pet_magnet_10m", 1)

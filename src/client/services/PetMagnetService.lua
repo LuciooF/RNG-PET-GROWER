@@ -25,7 +25,7 @@ local magnetBenefits = GamepassConfig.getBenefits("PetMagnet") or {}
 local function coalesce(v, d) return (v == nil) and d or v end
 
 -- Your constraints: speed/range do not change at runtime
-local MAGNET_RANGE       = coalesce(magnetBenefits.magnetRange, 100)
+local MAGNET_RANGE       = coalesce(magnetBenefits.magnetRange, 1000)
 local MAGNET_SPEED       = coalesce(magnetBenefits.magnetSpeed, 25) -- used indirectly via time per stud
 local THROUGH_WALLS      = coalesce(magnetBenefits.throughWalls, true)
 
@@ -404,7 +404,7 @@ function PetMagnetService:SetupDataSubscription()
 end
 
 function PetMagnetService:SetupPotionSubscription()
-    local function onPotionEvent()
+    local function onPotionEvent(eventData)
         local playerData = DataSyncService:GetPlayerData()
         if playerData then
             self:UpdateMagnetStatus(playerData)

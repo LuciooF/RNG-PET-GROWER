@@ -44,6 +44,13 @@ if not getActivePotionsRemote then
     getActivePotionsRemote.Parent = ReplicatedStorage
 end
 
+local cancelPotionRemote = ReplicatedStorage:FindFirstChild("CancelPotion")
+if not cancelPotionRemote then
+    cancelPotionRemote = Instance.new("RemoteEvent")
+    cancelPotionRemote.Name = "CancelPotion"
+    cancelPotionRemote.Parent = ReplicatedStorage
+end
+
 -- Initialize the service
 function PotionService:Initialize()
     print("PotionService: Initializing server-side potion management")
@@ -51,6 +58,11 @@ function PotionService:Initialize()
     -- Handle potion activation requests
     activatePotionRemote.OnServerEvent:Connect(function(player, potionId)
         self:HandlePotionActivation(player, potionId)
+    end)
+    
+    -- Handle potion cancellation requests
+    cancelPotionRemote.OnServerEvent:Connect(function(player, potionId)
+        self:HandlePotionCancellation(player, potionId)
     end)
     
     -- Handle get active potions requests
@@ -158,6 +170,69 @@ function PotionService:HandlePotionActivation(player, potionId)
     print("PotionService: Activated", potionId, "for player", player.Name)
 end
 
+-- Handle potion cancellation (remove active potion)
+function PotionService:HandlePotionCancellation(player, potionId)
+    if not player or not potionId then
+        warn("PotionService: Invalid cancellation request")
+        return
+    end
+    
+    -- Get player data
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        warn("PotionService: Could not get player data for", player.Name)
+        return
+    end
+    
+    -- Check if potion is currently active
+    local activePotions = playerData.ActivePotions
+    if not activePotions then
+        warn("PotionService: No active potions for player", player.Name)
+        return
+    end
+    
+    local potionIndex = nil
+    for i, activePotion in ipairs(activePotions) do
+        if activePotion.PotionId == potionId then
+            potionIndex = i
+            break
+        end
+    end
+    
+    if not potionIndex then
+        warn("PotionService: Potion", potionId, "is not active for player", player.Name)
+        return
+    end
+    
+    -- Remove the potion from active potions
+    table.remove(activePotions, potionIndex)
+    playerData.ActivePotions = activePotions
+    
+    -- Cancel the timer (use pcall for safety)
+    if potionTimers[player] and potionTimers[player][potionId] then
+        local timer = potionTimers[player][potionId]
+        potionTimers[player][potionId] = nil -- Clear reference first
+        
+        -- Cancel the timer
+        pcall(function()
+            task.cancel(timer)
+        end)
+    end
+    
+    -- Remove from in-memory active potions tracking
+    if activePlayerPotions[player] then
+        activePlayerPotions[player][potionId] = nil
+    end
+    
+    -- Sync updated player data to client
+    DataService:SyncPlayerDataToClient(player)
+    
+    -- Notify client that potion was cancelled/expired
+    potionExpiredRemote:FireClient(player, potionId)
+    
+    print("PotionService: Cancelled", potionId, "for player", player.Name)
+end
+
 -- Start a timer for potion expiration
 function PotionService:StartPotionTimer(player, potionId, duration)
     if not potionTimers[player] then
@@ -166,7 +241,10 @@ function PotionService:StartPotionTimer(player, potionId, duration)
     
     -- Clear existing timer if any
     if potionTimers[player][potionId] then
-        task.cancel(potionTimers[player][potionId])
+        pcall(function()
+            task.cancel(potionTimers[player][potionId])
+        end)
+        potionTimers[player][potionId] = nil
     end
     
     -- Create new timer thread
@@ -188,10 +266,15 @@ function PotionService:ExpirePotion(player, potionId)
         activePlayerPotions[player][potionId] = nil
     end
     
-    -- Clear timer
+    -- Clear timer (use pcall since timer may have already completed naturally)
     if potionTimers[player] and potionTimers[player][potionId] then
-        task.cancel(potionTimers[player][potionId])
-        potionTimers[player][potionId] = nil
+        local timer = potionTimers[player][potionId]
+        potionTimers[player][potionId] = nil -- Clear reference first
+        
+        -- Try to cancel if it hasn't completed yet
+        pcall(function()
+            task.cancel(timer)
+        end)
     end
     
     -- Update player data
