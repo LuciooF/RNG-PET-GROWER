@@ -145,8 +145,10 @@ function CrazyChestService:HandleChestOpen(player, isRobuxPurchase)
     elseif reward.type == "diamonds" then
         reward.diamonds = math.floor(reward.diamonds * rewardMultiplier)
     elseif reward.type == "potion" then
-        -- Potions are discrete items, apply multiplier to quantity
-        reward.quantity = math.floor(reward.quantity * rewardMultiplier)
+        -- Potions scale differently: +1 potion every 10 levels
+        local chestLevel = DataService:GetChestLevel(player) or 1
+        local potionBonus = math.floor(chestLevel / 10) -- +1 every 10 levels
+        reward.quantity = reward.quantity + potionBonus
     elseif reward.type == "pet" then
         reward.boost = math.floor(reward.boost * rewardMultiplier)
     end

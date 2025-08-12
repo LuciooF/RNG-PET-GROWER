@@ -7,6 +7,7 @@ local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
+local store = require(ReplicatedStorage.store)
 
 -- Wait for config to be available
 local configFolder = ReplicatedStorage:WaitForChild("config", 10)
@@ -28,6 +29,21 @@ local function formatPotionRewardText(reward, multiplier)
     local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
     if not potionConfig then
         return NumberFormatter.format(math.floor(reward.quantity * multiplier)) .. "\nPotion!"
+    end
+    
+    -- Get the chest level for proper potion scaling
+    local playerData = store:getState().playerData
+    local chestLevel = playerData and playerData.CrazyChest and playerData.CrazyChest.Level or 1
+    local potionBonus = math.floor(chestLevel / 10) -- +1 every 10 levels
+    local finalQuantity = reward.quantity + potionBonus
+    
+    -- Format based on potion type
+    if reward.potionId == "money_2x_10m" then
+        return finalQuantity .. "x\n2x Money!"
+    elseif reward.potionId == "diamonds_2x_10m" then
+        return finalQuantity .. "x\n2x Diamonds!"
+    elseif reward.potionId == "pet_magnet_10m" then
+        return finalQuantity .. "x\nPet Magnet!"
     end
     
     local duration = PotionConfig.FormatDuration and PotionConfig.FormatDuration(potionConfig.Duration) or "10m"
@@ -479,7 +495,10 @@ local function RewardCard(props)
                 Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)), -- 10% bigger: 60 * 1.1 = 66
                 BackgroundTransparency = 1, -- Transparent
                 Image = reward.type == "money" and "rbxassetid://80960000119108" or 
-                       (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468"),
+                       (reward.type == "potion" and (function()
+                           local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+                           return potionConfig and potionConfig.Icon or "rbxassetid://118134400760699"
+                       end)() or "rbxassetid://135421873302468"),
                 ImageColor3 = Color3.fromRGB(255, 255, 255),
                 LayoutOrder = 1,
                 ZIndex = 1005,

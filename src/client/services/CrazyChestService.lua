@@ -42,6 +42,10 @@ local connections = {}
 local isChestUIOpen = false
 local isRewarding = false -- Track reward display state
 
+-- Anti-spam protection
+local lastOpenTime = 0
+local OPEN_COOLDOWN = 3 -- 3 seconds cooldown between opens
+
 function CrazyChestService:Initialize()
     -- Prevent multiple initializations
     if clientInitialized then
@@ -289,6 +293,14 @@ end
 
 function CrazyChestService:HandleChestOpen()
     
+    -- Client-side cooldown protection (immediate prevention against auto-clickers)
+    local currentTime = tick()
+    if currentTime - lastOpenTime < OPEN_COOLDOWN then
+        warn("CrazyChestService: Chest opening on cooldown -", math.ceil(OPEN_COOLDOWN - (currentTime - lastOpenTime)), "seconds remaining")
+        return
+    end
+    lastOpenTime = currentTime
+    
     -- Check if animation is already running or rewarding (prevent multiple openings)
     if CrazyChestAnimationService.isAnimating or isRewarding then
         warn("CrazyChestService: Cannot open chest - animation or reward in progress!")
@@ -412,6 +424,14 @@ end
 
 -- Robux purchase for chest opening
 function CrazyChestService:OpenChestRobux(devProductId)
+    -- Client-side cooldown protection (same as diamond opening)
+    local currentTime = tick()
+    if currentTime - lastOpenTime < OPEN_COOLDOWN then
+        warn("CrazyChestService: Robux chest opening on cooldown -", math.ceil(OPEN_COOLDOWN - (currentTime - lastOpenTime)), "seconds remaining")
+        return
+    end
+    lastOpenTime = currentTime
+    
     print("CrazyChestService: Attempting robux purchase for chest opening - Product ID:", devProductId)
     print("CrazyChestService: Player:", player.Name)
     print("CrazyChestService: MarketplaceService available:", MarketplaceService ~= nil)

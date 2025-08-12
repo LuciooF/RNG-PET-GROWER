@@ -25,6 +25,20 @@ PotionConfig.Rarities = {
 -- Base potion definitions
 PotionConfig.Potions = {
     -- Diamond Boost Potion (2x for 10 minutes)
+    diamonds_2x_10m = {
+        PotionId = "diamonds_2x_10m",
+        Name = "2x Diamond Potion",
+        Description = "Doubles all diamond earnings for 10 minutes",
+        Icon = "rbxassetid://104089702525726",
+        BoostType = PotionConfig.BoostTypes.DIAMONDS,
+        BoostAmount = 2, -- 2x multiplier
+        Duration = 600, -- 10 minutes in seconds
+        Rarity = PotionConfig.Rarities.COMMON,
+        StackLimit = 10, -- Max quantity player can hold
+        SortOrder = 1 -- For UI ordering
+    },
+    
+    -- Legacy diamond potion ID (for compatibility)
     diamond_2x_10m = {
         PotionId = "diamond_2x_10m",
         Name = "2x Diamond Potion",

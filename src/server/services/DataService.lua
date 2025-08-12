@@ -742,16 +742,45 @@ function DataService:GetChestRewardMultiplier(player)
     return 1 + (chestLevel - 1) * 0.6 -- 60% increase per level (1x, 1.6x, 2.2x, 2.8x, etc.)
 end
 
+-- Get crazy chest level (for potion scaling)
+function DataService:GetChestLevel(player)
+    local profile = Profiles[player]
+    if not profile then
+        return 1
+    end
+    
+    return profile.Data.CrazyChest.Level or 1
+end
+
 -- Get crazy chest upgrade cost
 function DataService:GetChestUpgradeCost(player)
     local profile = Profiles[player]
     if not profile then
-        return 250 -- Default cost for level 1
+        return 500 -- Default cost for level 1
     end
     
     local currentLevel = profile.Data.CrazyChest.Level or 1
-    local baseCost = 250 -- Starting cost in diamonds
-    return math.floor(baseCost * (1.5 ^ (currentLevel - 1))) -- 50% increase per level
+    
+    -- Progressive scaling: starts gentle, gets steeper at higher levels
+    -- Levels 1-5: ~500, 1000, 1750, 2750, 4000
+    -- Levels 6-10: ~5500, 7500, 10000, 13000, 17000
+    -- Levels 11+: Exponential growth
+    
+    if currentLevel <= 5 then
+        -- Early levels: 500, 1000, 1750, 2750, 4000
+        local costs = {500, 1000, 1750, 2750, 4000}
+        return costs[currentLevel] or 4000
+    elseif currentLevel <= 10 then
+        -- Mid levels: more aggressive scaling
+        local baseCost = 4000
+        local levelOffset = currentLevel - 5
+        return math.floor(baseCost + (levelOffset * levelOffset * 500) + (levelOffset * 1000))
+    else
+        -- High levels: exponential scaling
+        local baseCost = 17000
+        local levelOffset = currentLevel - 10
+        return math.floor(baseCost * (1.4 ^ levelOffset))
+    end
 end
 
 -- Upgrade crazy chest luck with diamond cost
@@ -768,7 +797,22 @@ function DataService:UpgradeCrazyChestLuck(player)
     
     -- Get current luck level
     local currentLuck = profile.Data.CrazyChest.Luck
-    local upgradeCost = currentLuck * 500 -- Cost increases by 500 diamonds per luck level (more expensive than level upgrade)
+    -- Progressive luck cost scaling: more expensive than chest levels
+    local upgradeCost
+    if currentLuck <= 3 then
+        -- Early luck levels: 750, 1500, 2500
+        upgradeCost = currentLuck * 750
+    elseif currentLuck <= 7 then
+        -- Mid luck levels: steeper increase
+        local baseCost = 2500
+        local levelOffset = currentLuck - 3
+        upgradeCost = math.floor(baseCost + (levelOffset * levelOffset * 750) + (levelOffset * 1500))
+    else
+        -- High luck levels: exponential
+        local baseCost = 15000
+        local levelOffset = currentLuck - 7
+        upgradeCost = math.floor(baseCost * (1.5 ^ levelOffset))
+    end
     
     -- Check if player has enough diamonds
     if not profile.Data.Resources.Diamonds or profile.Data.Resources.Diamonds < upgradeCost then

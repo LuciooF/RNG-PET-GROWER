@@ -24,12 +24,13 @@ CrazyChestConfig.REWARDS = {
         type = "money"
     },
     {
-        diamonds = 250,
+        potionId = "money_2x_10m",
+        quantity = 1,
         chance = 25, -- 25% chance - UNCOMMON  
         color = PetConstants.RarityColors[PetConstants.Rarity.UNCOMMON], -- Green
         rarity = "UNCOMMON",
-        name = "Diamonds",
-        type = "diamonds"
+        name = "2x Money Potion",
+        type = "potion"
     },
     {
         money = 20000,
@@ -40,12 +41,13 @@ CrazyChestConfig.REWARDS = {
         type = "money"
     },
     {
-        diamonds = 2500,
-        chance = 10, -- 0.9% chance - MYTHIC (Ultra Rare!)
+        potionId = "diamonds_2x_10m",
+        quantity = 1,
+        chance = 10, -- 10% chance - MYTHIC (Ultra Rare!)
         color = PetConstants.RarityColors[PetConstants.Rarity.MYTHIC], -- Gold
         rarity = "MYTHIC",
-        name = "MYTHIC DIAMONDS",
-        type = "diamonds",
+        name = "2x Diamond Potion",
+        type = "potion",
         special = "glow" -- Special effect indicator
     },
     {

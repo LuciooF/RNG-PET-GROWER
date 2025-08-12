@@ -113,7 +113,7 @@ PlaytimeRewardsConfig.rewards = {
     {
         timeMinutes = 45, -- 1 hour - CONFIGURABLE: Change to any time
         type = "Diamonds", -- Reward 13: Diamonds (alternating pattern)
-        amount = 20000, -- CONFIGURABLE: Change amount as needed
+        amount = 10000, -- CONFIGURABLE: Change amount as needed
         title = "One Hour",
         description = "Play for 1 hour",
         icon = "💎"
@@ -129,7 +129,7 @@ PlaytimeRewardsConfig.rewards = {
     {
         timeMinutes = 60, -- 3 hours - CONFIGURABLE: Change to any time
         type = "Diamonds", -- Reward 15: Diamonds (alternating pattern)
-        amount = 1000000, -- CONFIGURABLE: Change amount as needed
+        amount = 20000, -- CONFIGURABLE: Change amount as needed
         title = "Three Hours",
         description = "Play for 3 hours",
         icon = "💎"

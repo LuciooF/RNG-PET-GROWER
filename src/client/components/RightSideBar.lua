@@ -229,18 +229,18 @@ local function RightSideBar(props)
     local leftPadding = ScreenUtils.getProportionalSize(20) -- Slightly more left padding
     local rawButtonWidth = textBounds.X + textPadding * 2 + leftPadding
     local playtimeButtonWidth = getBucketedWidth(rawButtonWidth) -- Bucketed width to prevent flickering
-    local playtimeButtonHeight = ScreenUtils.getProportionalSize(90)
-    local iconSize = ScreenUtils.getProportionalSize(103) -- 25% bigger (82.5 * 1.25)
+    local playtimeButtonHeight = ScreenUtils.getProportionalSize(81) -- 10% smaller (90 * 0.9)
+    local iconSize = ScreenUtils.getProportionalSize(93) -- 10% smaller (103 * 0.9)
     local iconOffset = iconSize / 2 -- Half the icon width for half-in/half-out effect
-    local borderThickness = ScreenUtils.getProportionalSize(4)
-    local cornerRadius = ScreenUtils.getProportionalSize(28)
-    local innerCornerRadius = ScreenUtils.getProportionalSize(24)
+    local borderThickness = ScreenUtils.getProportionalSize(4) -- Keep border thickness same
+    local cornerRadius = ScreenUtils.getProportionalSize(25) -- 10% smaller (28 * 0.9)
+    local innerCornerRadius = ScreenUtils.getProportionalSize(22) -- 10% smaller (24 * 0.9)
     
-    -- Standard button setup for other buttons (same as left sidebar)
+    -- Standard button setup for other buttons (10% smaller to match left sidebar)
     local screenSize = ScreenUtils.getScreenSize()
     local screenHeight = screenSize.Y
-    local buttonPixelSize = screenHeight * 0.07 -- 7% of screen height for buttons
-    local spacingPixelSize = screenHeight * 0.04 -- 4% of screen height for spacing
+    local buttonPixelSize = screenHeight * 0.063 -- 6.3% of screen height for buttons (10% smaller)
+    local spacingPixelSize = screenHeight * 0.036 -- 3.6% of screen height for spacing (10% smaller)
     local buttonSize = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize)
     
     -- Create buttons array in the order we want them to appear
@@ -473,16 +473,57 @@ local function RightSideBar(props)
             FillDirection = Enum.FillDirection.Vertical,
             HorizontalAlignment = Enum.HorizontalAlignment.Center,
             VerticalAlignment = Enum.VerticalAlignment.Center,
-            Padding = UDim.new(0, spacingPixelSize),
+            Padding = UDim.new(0, spacingPixelSize * 0.6), -- Reduce spacing between rows
             SortOrder = Enum.SortOrder.Name
         })
     }
     
-    -- Add buttons to children in alphabetical order for Name sorting
-    children["A_FreeOpItem"] = buttons[1]  -- Free OP Item
-    children["B_PlaytimeRewards"] = buttons[2]  -- Playtime Rewards
-    children["C_Potion"] = buttons[3]  -- Potion
-    children["D_Leaderboard"] = buttons[4]  -- Leaderboard
+    -- Row 1: Free OP Item Button (centered)
+    children["Row1_FreeOpItem"] = React.createElement("Frame", {
+        Size = UDim2.new(0, maxRowWidth, 0, buttonPixelSize), -- Use full row width
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        Layout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center, -- Center the button
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.Name
+        }),
+        FreeOpItemButton = buttons[1]
+    })
+    
+    -- Row 2: Potions Button | Leaderboard Button (side by side)
+    children["Row2_PotionsAndLeaderboard"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize * 2 + spacingPixelSize * 0.5, 0, buttonPixelSize),
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        Layout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, spacingPixelSize * 0.5),
+            SortOrder = Enum.SortOrder.Name
+        }),
+        PotionButton = buttons[3],  -- Potions
+        LeaderboardButton = buttons[4]  -- Leaderboard
+    })
+    
+    -- Row 3: Playtime Rewards Button (centered)
+    children["Row3_PlaytimeRewards"] = React.createElement("Frame", {
+        Size = UDim2.new(0, maxRowWidth, 0, playtimeButtonHeight), -- Use full row width
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        Layout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center, -- Center the button
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.Name
+        }),
+        PlaytimeRewardsButton = buttons[2]
+    })
     
     -- Calculate the maximum button width including FreeOpItem button
     local textService = game:GetService("TextService")
@@ -504,14 +545,16 @@ local function RightSideBar(props)
     local rawFreeOpItemWidth = freeOpItemTextBounds.X + textPadding * 2 + leftPadding
     local freeOpItemButtonWidth = getBucketedWidth(rawFreeOpItemWidth)
     
-    -- Find the maximum width among all buttons
-    local maxButtonWidth = math.max(buttonPixelSize, playtimeButtonWidth, freeOpItemButtonWidth)
-    local rightPadding = 40 -- Increase right padding to ensure visibility
+    -- Find the maximum width among all button configurations
+    local maxSingleButtonWidth = math.max(buttonPixelSize, playtimeButtonWidth, freeOpItemButtonWidth)
+    local doubleButtonWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 -- Width of row with 2 buttons
+    local maxRowWidth = math.max(maxSingleButtonWidth, doubleButtonWidth)
+    local rightPadding = 50 -- Increased padding from right edge to prevent cutoff
     
     return React.createElement("Frame", {
         Name = "RightSideBar",
-        Size = ScreenUtils.udim2(0, maxButtonWidth + rightPadding, 1, 0),
-        Position = ScreenUtils.udim2(1, -maxButtonWidth - rightPadding, 0, 0), -- Right side with proper padding
+        Size = ScreenUtils.udim2(0, maxRowWidth + rightPadding, 1, 0),
+        Position = ScreenUtils.udim2(1, -maxRowWidth - rightPadding, 0, 0), -- Right side with proper padding
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {

@@ -63,11 +63,11 @@ local function SideBar(props)
     -- Use centralized boost calculation
     local totalBoostMultiplier = BoostCalculator.calculateTotalBoostMultiplier(playerData)
     
-    -- Responsive button setup
+    -- Responsive button setup (10% smaller)
     local screenSize = ScreenUtils.getScreenSize()
     local screenHeight = screenSize.Y
-    local buttonPixelSize = screenHeight * 0.07 -- 7% of screen height for buttons
-    local spacingPixelSize = screenHeight * 0.04 -- 4% of screen height for spacing
+    local buttonPixelSize = screenHeight * 0.063 -- 6.3% of screen height for buttons (10% smaller)
+    local spacingPixelSize = screenHeight * 0.036 -- 3.6% of screen height for spacing (10% smaller)
     local buttonSize = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize)
     
     -- Create buttons array in the EXACT order we want them to appear
@@ -249,29 +249,75 @@ local function SideBar(props)
     })
     
     
-    -- Convert array to React children object
+    -- Create structured layout with rows
     local children = {
         UIListLayout = React.createElement("UIListLayout", {
             FillDirection = Enum.FillDirection.Vertical,
             HorizontalAlignment = Enum.HorizontalAlignment.Center,
             VerticalAlignment = Enum.VerticalAlignment.Center,
-            Padding = UDim.new(0, spacingPixelSize),
+            Padding = UDim.new(0, spacingPixelSize * 0.6), -- Reduce spacing between rows
             SortOrder = Enum.SortOrder.Name
         })
     }
     
-    -- Add buttons to children in alphabetical order for Name sorting
-    children["A_Gamepasses"] = buttons[1]  -- Gamepasses
-    children["B_Pets"] = buttons[2]  -- Pets  
-    children["C_Index"] = buttons[3]  -- Index
-    children["D_Rebirth"] = buttons[4]  -- Rebirth
-    children["E_Debug"] = buttons[5]  -- Debug
-    children["F_Boost"] = buttons[6]  -- Boost
+    -- Row 1: Gamepass Button (centered)
+    children["Row1_Gamepass"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        GamepassButton = buttons[1]
+    })
+    
+    -- Row 2: Pet Button | Pet Index Button (side by side)
+    children["Row2_PetsAndIndex"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize * 2 + spacingPixelSize * 0.5, 0, buttonPixelSize),
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        Layout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, spacingPixelSize * 0.5),
+            SortOrder = Enum.SortOrder.Name
+        }),
+        PetButton = buttons[2],  -- Pets
+        IndexButton = buttons[3]  -- Index
+    })
+    
+    -- Row 3: Rebirth Button | Boost Button (side by side)
+    children["Row3_RebirthAndBoost"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize * 2 + spacingPixelSize * 0.5, 0, buttonPixelSize),
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        Layout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, spacingPixelSize * 0.5),
+            SortOrder = Enum.SortOrder.Name
+        }),
+        RebirthButton = buttons[4],  -- Rebirth
+        BoostButton = buttons[6]  -- Boost
+    })
+    
+    -- Row 4: Debug Button (only if authorized)
+    if AuthorizationUtils.isAuthorized(localPlayer) then
+        children["Row4_Debug"] = React.createElement("Frame", {
+            Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
+            BackgroundTransparency = 1,
+            ZIndex = 50
+        }, {
+            DebugButton = buttons[5]
+        })
+    end
     
     return React.createElement("Frame", {
         Name = "SideBar",
-        Size = ScreenUtils.udim2(0, buttonPixelSize + 20, 1, 0),
-        Position = ScreenUtils.udim2(0, 10, 0, 0),
+        Size = ScreenUtils.udim2(0, buttonPixelSize * 2 + spacingPixelSize + 30, 1, 0), -- Wide enough for 2 buttons + spacing + padding
+        Position = ScreenUtils.udim2(0, 15, 0, 0), -- More padding from left edge
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
