@@ -76,7 +76,7 @@ PotionConfig.Potions = {
         BoostAmount = 1, -- Boolean effect (on/off)
         Duration = 86400, -- 24 hours in seconds (24 * 60 * 60)
         Rarity = PotionConfig.Rarities.LEGENDARY,
-        StackLimit = 1, -- Only hold one at a time since it's so powerful
+        StackLimit = 10, -- Allow stacking up to 10 (since it's a reward item)
         SortOrder = 4 -- For UI ordering
     }
 }

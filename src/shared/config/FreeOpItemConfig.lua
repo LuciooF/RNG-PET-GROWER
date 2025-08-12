@@ -24,6 +24,10 @@ FreeOpItemConfig.Config = {
     -- Pricing for display (estimated Robux value)
     EstimatedRobuxValue = 299, -- Display value for the reward
     
+    -- Group requirement
+    RequiredGroupId = 178892732, -- Roblox group ID required for claiming
+    GroupCheckCooldownSeconds = 30, -- Cooldown between group checks
+    
     -- Progress tracking
     TrackingEnabled = true,
     DebugMode = true, -- Set to true for faster testing (reduces times)
@@ -102,6 +106,15 @@ function FreeOpItemConfig.GetPotionReward()
     return {
         potionId = config.PotionId,
         quantity = config.PotionQuantity
+    }
+end
+
+-- Get group requirement info
+function FreeOpItemConfig.GetGroupRequirement()
+    local config = FreeOpItemConfig.GetConfig()
+    return {
+        groupId = config.RequiredGroupId,
+        checkCooldown = config.GroupCheckCooldownSeconds
     }
 end
 

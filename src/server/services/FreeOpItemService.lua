@@ -121,6 +121,21 @@ function FreeOpItemService:HandleClaimRequest(player, sessionPlaytime)
         return
     end
     
+    -- Check if player is in the required group
+    local success, isInGroup = pcall(function()
+        return player:IsInGroup(config.RequiredGroupId)
+    end)
+    
+    if not success then
+        warn("FreeOpItemService: Failed to check group membership for", player.Name, ":", isInGroup)
+        return
+    end
+    
+    if not isInGroup then
+        warn("FreeOpItemService: Player", player.Name, "is not in the required group", config.RequiredGroupId)
+        return
+    end
+    
     -- Check max claims per session
     local maxClaims = FreeOpItemConfig.GetMaxClaimsPerSession()
     if maxClaims > 0 and sessionData.claimCount >= maxClaims then

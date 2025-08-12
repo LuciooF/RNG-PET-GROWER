@@ -19,6 +19,12 @@ local function FreeOpItemUI(props)
     local gamepassPrice, setGamepassPrice = React.useState("99") -- Fallback to config price
     local gamepassIcon, setGamepassIcon = React.useState("rbxasset://textures/ui/GuiImagePlaceholder.png")
     
+    -- Group check state
+    local isInGroup, setIsInGroup = React.useState(false)
+    local groupCheckCooldown, setGroupCheckCooldown = React.useState(0)
+    local lastGroupCheckTime = React.useRef(0)
+    local hasCheckedOnJoin = React.useRef(false)
+    
     -- Client-side session tracking (like PlaytimeRewards)
     local sessionStartTime = props.sharedSessionStartTime or tick()
     local currentSessionTime, setCurrentSessionTime = React.useState(0)
@@ -34,10 +40,11 @@ local function FreeOpItemUI(props)
     local effectivePlaytime = lastClaimTime > 0 and timeSinceLastClaim or currentSessionTime
     local progress = math.min(effectivePlaytime * 60 / requiredTimeSeconds, 1)
     local timeRemaining = math.max(0, requiredTimeSeconds - (effectivePlaytime * 60))
-    local canClaim = progress >= 1
+    local timeRequirementMet = progress >= 1
+    local canClaim = timeRequirementMet and isInGroup -- Require both time AND group membership
     local isEligible = true
     
-    -- Fetch dynamic gamepass price and icon from MarketplaceService
+    -- Fetch dynamic gamepass price and icon from MarketplaceService + initial group check
     React.useEffect(function()
         local petMagnetConfig = GamepassConfig.GAMEPASSES.PetMagnet
         if petMagnetConfig and petMagnetConfig.id then
@@ -56,9 +63,31 @@ local function FreeOpItemUI(props)
                 end
             end)
         end
+        
+        -- Perform automatic group check once per session (when UI first loads)
+        if not hasCheckedOnJoin.current then
+            hasCheckedOnJoin.current = true
+            
+            task.spawn(function()
+                local Players = game:GetService("Players")
+                local player = Players.LocalPlayer
+                
+                local success, result = pcall(function()
+                    return player:IsInGroup(config.RequiredGroupId)
+                end)
+                
+                if success then
+                    setIsInGroup(result)
+                    print("FreeOpItemUI: Initial group check result:", result)
+                else
+                    warn("FreeOpItemUI: Failed initial group check:", result)
+                    setIsInGroup(false)
+                end
+            end)
+        end
     end, {})
     
-    -- Client-side session timer and rainbow animation
+    -- Client-side session timer, rainbow animation, and group check cooldown
     React.useEffect(function()
         local lastUpdateTime = 0
         local updateTimer = function()
@@ -69,6 +98,11 @@ local function FreeOpItemUI(props)
             if currentTime - lastUpdateTime >= 1 then
                 lastUpdateTime = currentTime
                 setCurrentSessionTime(sessionMinutes)
+                
+                -- Update group check cooldown
+                local timeSinceLastCheck = currentTime - lastGroupCheckTime.current
+                local cooldownRemaining = math.max(0, config.GroupCheckCooldownSeconds - timeSinceLastCheck)
+                setGroupCheckCooldown(cooldownRemaining)
             end
             
             -- Animate rainbow gradient rotation (60 degrees per second)
@@ -87,6 +121,38 @@ local function FreeOpItemUI(props)
             end
         end
     end, {})
+    
+    -- Handle group check button
+    local function handleGroupCheck()
+        local currentTime = tick()
+        
+        -- Check cooldown
+        if currentTime - lastGroupCheckTime.current < config.GroupCheckCooldownSeconds then
+            return -- Still on cooldown
+        end
+        
+        -- Update cooldown time
+        lastGroupCheckTime.current = currentTime
+        setGroupCheckCooldown(config.GroupCheckCooldownSeconds)
+        
+        -- Check if player is in group using Roblox's built-in method
+        local Players = game:GetService("Players")
+        local player = Players.LocalPlayer
+        
+        task.spawn(function()
+            local success, result = pcall(function()
+                return player:IsInGroup(config.RequiredGroupId)
+            end)
+            
+            if success then
+                setIsInGroup(result)
+                print("FreeOpItemUI: Group check result:", result)
+            else
+                warn("FreeOpItemUI: Failed to check group membership:", result)
+                setIsInGroup(false)
+            end
+        end)
+    end
     
     -- Handle claim button
     local function handleClaim()
@@ -115,7 +181,7 @@ local function FreeOpItemUI(props)
     
     -- Calculate responsive panel size (less wide, more responsive height)
     local panelWidth = math.max(ScreenUtils.getProportionalSize(360), screenWidth * 0.28)
-    local panelHeight = screenHeight * 0.5 -- 50% of screen height, fully responsive
+    local panelHeight = screenHeight * 0.6 -- 60% of screen height for taller requirements section
     
     -- Format time remaining using client-side calculation
     local timeText = FreeOpItemConfig.FormatTime(timeRemaining)
@@ -133,8 +199,10 @@ local function FreeOpItemUI(props)
     }, {
         FreeOpItemPanel = React.createElement("Frame", {
             Name = "FreeOpItemPanel",
-            Size = UDim2.new(0, panelWidth, 0, panelHeight),
-            Position = UDim2.new(0.5, -panelWidth/2, 0.5, -panelHeight/2),
+            Size = UDim2.new(0, panelWidth, 0, 0), -- No fixed height
+            AutomaticSize = Enum.AutomaticSize.Y, -- Let it size based on content
+            Position = UDim2.new(0.5, 0, 0.5, 0), -- Center both horizontally and vertically  
+            AnchorPoint = Vector2.new(0.5, 0.5), -- Center anchor point
             BackgroundTransparency = 1,
             ZIndex = 200,
         }, {
@@ -265,7 +333,8 @@ local function FreeOpItemUI(props)
             
             -- Content area
             ContentArea = React.createElement("Frame", {
-                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(30), 1, -ScreenUtils.getProportionalSize(85)),
+                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(30), 0, 0), -- No fixed height
+                AutomaticSize = Enum.AutomaticSize.Y, -- Let it size based on content
                 Position = UDim2.new(0, ScreenUtils.getProportionalSize(15), 0, ScreenUtils.getProportionalSize(70)),
                 BackgroundTransparency = 1,
                 ZIndex = 201,
@@ -274,21 +343,21 @@ local function FreeOpItemUI(props)
                     FillDirection = Enum.FillDirection.Vertical,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Top,
-                    Padding = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(15)),
+                    Padding = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(20)), -- Better padding between sections
                     SortOrder = Enum.SortOrder.LayoutOrder,
                 }),
                 
                 -- Gamepass icon container (big icon below text)
                 GamepassIconContainer = React.createElement("Frame", {
                     Name = "GamepassIconContainer",
-                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(130)), -- Container for bigger gamepass icon
+                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(120)), -- Increased height for proper spacing
                     BackgroundTransparency = 1,
                     ZIndex = 202,
                     LayoutOrder = 1,
                 }, {
                     -- Pet Magnet Gamepass icon (big and centered)
                     GamepassIcon = React.createElement("ImageLabel", {
-                        Size = UDim2.new(0, ScreenUtils.getProportionalSize(120), 0, ScreenUtils.getProportionalSize(120)), -- Even bigger!
+                        Size = UDim2.new(0, ScreenUtils.getProportionalSize(90), 0, ScreenUtils.getProportionalSize(90)), -- Reduced size
                         Position = UDim2.new(0.5, 0, 0.5, 0),
                         AnchorPoint = Vector2.new(0.5, 0.5),
                         BackgroundTransparency = 1,
@@ -298,17 +367,19 @@ local function FreeOpItemUI(props)
                     }),
                 }),
                 
-                -- Description container with formatted text
+                -- Description container with formatted text (with padding)
                 DescriptionContainer = React.createElement("Frame", {
                     Name = "DescriptionContainer",
-                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(100)),
+                    Size = UDim2.new(1, -ScreenUtils.getProportionalSize(30), 0, 0), -- No fixed height
+                    AutomaticSize = Enum.AutomaticSize.Y, -- Let it size based on content
                     BackgroundTransparency = 1,
                     ZIndex = 202,
                     LayoutOrder = 2,
                 }, {
                     -- Main description text with inline elements
                     DescriptionLabel = React.createElement("Frame", {
-                        Size = UDim2.new(1, 0, 1, 0),
+                        Size = UDim2.new(1, 0, 0, 0), -- No fixed height
+                        AutomaticSize = Enum.AutomaticSize.Y, -- Let it size based on content
                         BackgroundTransparency = 1,
                         ZIndex = 203,
                     }, {
@@ -321,9 +392,9 @@ local function FreeOpItemUI(props)
                             SortOrder = Enum.SortOrder.LayoutOrder
                         }),
                         
-                        -- Line 1: "Free limited [OP] 24h Pet Magnet potion"
+                        -- Line 1: "Free limited [OP] 24h Pet Magnet potion" (same size as other text)
                         Line1Container = React.createElement("Frame", {
-                            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(30)),
+                            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(28)), -- Reduced height
                             BackgroundTransparency = 1,
                             ZIndex = 204,
                             LayoutOrder = 1
@@ -342,7 +413,7 @@ local function FreeOpItemUI(props)
                                 BackgroundTransparency = 1,
                                 Text = "Free limited [",
                                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
-                                TextSize = ScreenUtils.getTextSize(28),
+                                TextSize = ScreenUtils.getTextSize(32), -- Same size as other text
                                 Font = Enum.Font.FredokaOne, -- Same font as button
                                 TextStrokeTransparency = 0, -- Full black outline
                                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -356,7 +427,7 @@ local function FreeOpItemUI(props)
                                 BackgroundTransparency = 1,
                                 Text = "OP",
                                 TextColor3 = Color3.fromRGB(255, 255, 255),
-                                TextSize = ScreenUtils.getTextSize(28),
+                                TextSize = ScreenUtils.getTextSize(32), -- Same size as other text
                                 Font = Enum.Font.FredokaOne, -- Same font as button
                                 TextStrokeTransparency = 0,
                                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
@@ -385,7 +456,7 @@ local function FreeOpItemUI(props)
                                 BackgroundTransparency = 1,
                                 Text = "] 24h Pet Magnet potion",
                                 TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
-                                TextSize = ScreenUtils.getTextSize(28),
+                                TextSize = ScreenUtils.getTextSize(32), -- Same size as other text
                                 Font = Enum.Font.FredokaOne, -- Same font as button
                                 TextStrokeTransparency = 0, -- Full black outline
                                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -394,9 +465,9 @@ local function FreeOpItemUI(props)
                             })
                         }),
                         
-                        -- Line 2: "Worth {price} Robux!" with green value and icon
+                        -- Line 2: "Worth {price} Robux!" with green value and icon (same text size)
                         Line2Container = React.createElement("Frame", {
-                            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(35)),
+                            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(28)), -- Reduced height
                             BackgroundTransparency = 1,
                             ZIndex = 204,
                             LayoutOrder = 2
@@ -415,7 +486,7 @@ local function FreeOpItemUI(props)
                                 BackgroundTransparency = 1,
                                 Text = "Worth ",
                                 TextColor3 = Color3.fromRGB(255, 255, 255),
-                                TextSize = ScreenUtils.getTextSize(28),
+                                TextSize = ScreenUtils.getTextSize(32), -- 25% smaller than Free limited text (42 * 0.75 = 32)
                                 Font = Enum.Font.FredokaOne,
                                 TextStrokeTransparency = 0,
                                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -429,7 +500,7 @@ local function FreeOpItemUI(props)
                                 BackgroundTransparency = 1,
                                 Text = gamepassPrice, -- Dynamic price from MarketplaceService
                                 TextColor3 = Color3.fromRGB(85, 255, 85), -- Green like OPPetButton
-                                TextSize = ScreenUtils.getTextSize(28),
+                                TextSize = ScreenUtils.getTextSize(32), -- 25% smaller than Free limited text
                                 Font = Enum.Font.FredokaOne,
                                 TextStrokeTransparency = 0,
                                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -453,7 +524,7 @@ local function FreeOpItemUI(props)
                                 BackgroundTransparency = 1,
                                 Text = "!",
                                 TextColor3 = Color3.fromRGB(255, 255, 255),
-                                TextSize = ScreenUtils.getTextSize(28),
+                                TextSize = ScreenUtils.getTextSize(32), -- 25% smaller than Free limited text
                                 Font = Enum.Font.FredokaOne,
                                 TextStrokeTransparency = 0,
                                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
@@ -462,40 +533,102 @@ local function FreeOpItemUI(props)
                             })
                         }),
                         
-                        -- Line 3: "Rewarded for playing for X minutes this session!"
-                        Line3 = React.createElement("TextLabel", {
-                            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(30)),
+                        -- Line 3: Requirements list (structured format)
+                        RequirementsContainer = React.createElement("Frame", {
+                            Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(120)), -- Back to proper height for multi-line requirements
                             BackgroundTransparency = 1,
-                            Text = "Rewarded for playing for " .. config.RequiredPlaytimeMinutes .. " minute" .. (config.RequiredPlaytimeMinutes == 1 and "" or "s") .. " this session!",
-                            TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
-                            TextSize = ScreenUtils.getTextSize(28),
-                            Font = Enum.Font.FredokaOne, -- Same font as button
-                            TextStrokeTransparency = 0, -- Full black outline
-                            TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                            TextXAlignment = Enum.TextXAlignment.Center,
-                            TextWrapped = true,
                             ZIndex = 204,
                             LayoutOrder = 3
+                        }, {
+                            Layout = React.createElement("UIListLayout", {
+                                FillDirection = Enum.FillDirection.Vertical,
+                                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                                VerticalAlignment = Enum.VerticalAlignment.Top,
+                                Padding = UDim.new(0, ScreenUtils.getProportionalSize(2)),
+                                SortOrder = Enum.SortOrder.LayoutOrder
+                            }),
+                            
+                            -- Requirements header
+                            RequirementsHeader = React.createElement("TextLabel", {
+                                Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(35)),
+                                BackgroundTransparency = 1,
+                                Text = "Requirements:",
+                                TextColor3 = Color3.fromRGB(255, 215, 0), -- Gold color for header
+                                TextSize = ScreenUtils.getTextSize(34), -- Slightly bigger for header
+                                Font = Enum.Font.FredokaOne,
+                                TextStrokeTransparency = 0,
+                                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 205,
+                                LayoutOrder = 1
+                            }),
+                            
+                            -- Requirement 1: Play time (with tick when completed)
+                            Requirement1 = React.createElement("TextLabel", {
+                                Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(28)),
+                                BackgroundTransparency = 1,
+                                Text = (timeRequirementMet and "✓ " or "• ") .. "Play for " .. config.RequiredPlaytimeMinutes .. " minute" .. (config.RequiredPlaytimeMinutes == 1 and "" or "s"),
+                                TextColor3 = timeRequirementMet and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 255, 255),
+                                TextSize = ScreenUtils.getTextSize(30),
+                                Font = Enum.Font.FredokaOne,
+                                TextStrokeTransparency = 0,
+                                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 205,
+                                LayoutOrder = 2
+                            }),
+                            
+                            -- Requirement 2: Like the game (always shows heart)
+                            Requirement2 = React.createElement("TextLabel", {
+                                Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(28)),
+                                BackgroundTransparency = 1,
+                                Text = "❤️ Like the game",
+                                TextColor3 = Color3.fromRGB(255, 100, 100), -- Pinkish for heart
+                                TextSize = ScreenUtils.getTextSize(30),
+                                Font = Enum.Font.FredokaOne,
+                                TextStrokeTransparency = 0,
+                                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 205,
+                                LayoutOrder = 3
+                            }),
+                            
+                            -- Requirement 3: Join group (with tick when completed)
+                            Requirement3 = React.createElement("TextLabel", {
+                                Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(28)),
+                                BackgroundTransparency = 1,
+                                Text = (isInGroup and "✓ " or "• ") .. "Join our group!",
+                                TextColor3 = isInGroup and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 255, 255),
+                                TextSize = ScreenUtils.getTextSize(30),
+                                Font = Enum.Font.FredokaOne,
+                                TextStrokeTransparency = 0,
+                                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                                TextXAlignment = Enum.TextXAlignment.Center,
+                                ZIndex = 205,
+                                LayoutOrder = 4
+                            })
                         })
                     })
                 }),
                 
-                -- Progress section
+                -- Progress section (with padding)
                 ProgressSection = React.createElement("Frame", {
                     Name = "ProgressSection",
-                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(60)),
+                    Size = UDim2.new(1, -ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(60)), -- Reduced height
                     BackgroundTransparency = 1,
                     ZIndex = 202,
-                    LayoutOrder = 3,
+                    LayoutOrder = 4,
                 }, {
-                    -- Progress label (2x bigger with white outline)
+                    -- Progress label (bigger with white outline)
                     ProgressLabel = React.createElement("TextLabel", {
-                        Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(30)),
+                        Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(25)), -- Reduced height
                         Position = UDim2.new(0, 0, 0, 0),
                         BackgroundTransparency = 1,
-                        Text = canClaim and "Ready to claim!" or ("Progress: " .. progressPercent .. "% (" .. timeText .. " remaining)"),
+                        Text = canClaim and "All requirements met - Ready to claim!" or (
+                            "Time Progress: " .. progressPercent .. "% (" .. timeText .. " remaining)"
+                        ),
                         TextColor3 = canClaim and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50),
-                        TextSize = ScreenUtils.getTextSize(28), -- 2x bigger
+                        TextSize = ScreenUtils.getTextSize(32), -- 25% smaller than Free limited text
                         Font = Enum.Font.FredokaOne,
                         TextStrokeTransparency = 0,
                         TextStrokeColor3 = Color3.fromRGB(255, 255, 255),
@@ -506,7 +639,7 @@ local function FreeOpItemUI(props)
                     -- Progress bar background
                     ProgressBarBackground = React.createElement("Frame", {
                         Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(20)),
-                        Position = UDim2.new(0, 0, 0, ScreenUtils.getProportionalSize(30)),
+                        Position = UDim2.new(0, 0, 0, ScreenUtils.getProportionalSize(28)), -- Adjusted for smaller text
                         BackgroundColor3 = Color3.fromRGB(200, 200, 200),
                         BorderSizePixel = 0,
                         ZIndex = 203,
@@ -530,21 +663,49 @@ local function FreeOpItemUI(props)
                     }),
                 }),
                 
-                -- Claim button (2x bigger text)
+                -- Group check button (blue)
+                GroupCheckButton = React.createElement("TextButton", {
+                    Name = "GroupCheckButton",
+                    Size = UDim2.new(0.8, 0, 0, ScreenUtils.getProportionalSize(50)), -- Slightly smaller than claim button
+                    BackgroundColor3 = groupCheckCooldown > 0 and Color3.fromRGB(100, 100, 100) or Color3.fromRGB(50, 120, 200), -- Blue or grey if on cooldown
+                    BorderSizePixel = 0,
+                    Text = groupCheckCooldown > 0 and ("Cooldown: " .. math.ceil(groupCheckCooldown) .. "s") or (isInGroup and "✓ In Group!" or "I've joined the group"),
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.getTextSize(32),
+                    Font = Enum.Font.FredokaOne,
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                    Active = groupCheckCooldown <= 0, -- Only active when not on cooldown
+                    ZIndex = 202,
+                    LayoutOrder = 5,
+                    [React.Event.Activated] = handleGroupCheck,
+                }, {
+                    Corner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, 8)
+                    }),
+                    
+                    Stroke = React.createElement("UIStroke", {
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Thickness = 2,
+                        Transparency = 0
+                    })
+                }),
+                
+                -- Claim button (bigger text)
                 ClaimButton = React.createElement("TextButton", {
                     Name = "ClaimButton",
-                    Size = UDim2.new(0.8, 0, 0, ScreenUtils.getProportionalSize(50)),
+                    Size = UDim2.new(0.8, 0, 0, ScreenUtils.getProportionalSize(55)), -- Taller for bigger text
                     BackgroundColor3 = canClaim and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(150, 150, 150),
                     BorderSizePixel = 0,
                     Text = canClaim and "CLAIM REWARD!" or "NOT READY",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.getTextSize(36), -- 2x bigger
+                    TextSize = ScreenUtils.getTextSize(36), -- Keep button text slightly bigger
                     Font = Enum.Font.FredokaOne,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     Active = canClaim,
                     ZIndex = 202,
-                    LayoutOrder = 4,
+                    LayoutOrder = 6, -- After group check button
                     [React.Event.Activated] = handleClaim,
                 }, {
                     Corner = React.createElement("UICorner", {
@@ -556,6 +717,15 @@ local function FreeOpItemUI(props)
                         Thickness = 2,
                         Transparency = 0
                     })
+                }),
+                
+                -- Bottom padding spacer
+                BottomPadding = React.createElement("Frame", {
+                    Name = "BottomPadding",
+                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(25)), -- 25px bottom padding
+                    BackgroundTransparency = 1,
+                    ZIndex = 202,
+                    LayoutOrder = 7, -- After claim button
                 })
             })
         })

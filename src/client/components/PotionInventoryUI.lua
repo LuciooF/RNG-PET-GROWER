@@ -498,12 +498,11 @@ local function PotionInventoryUI(props)
         
         -- Main panel
         MainPanel = React.createElement("TextButton", {
-            Size = ScreenUtils.udim2(0.7, 0, 0.8, 0),
+            Size = ScreenUtils.udim2(0.7, 0, 0, math.min(800, ScreenUtils.getScreenSize().Y * 0.9)), -- Taller responsive height
             Position = ScreenUtils.udim2(0.5, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-            BorderSizePixel = 3,
-            BorderColor3 = Color3.fromRGB(0, 0, 0),
+            BorderSizePixel = 0, -- Remove built-in border, use UIStroke instead
             Text = "",
             AutoButtonColor = false,
             ZIndex = 1,
@@ -513,6 +512,14 @@ local function PotionInventoryUI(props)
         }, {
             Corner = React.createElement("UICorner", {
                 CornerRadius = ScreenUtils.udim(0, 12)
+            }),
+            
+            -- Main panel black outline
+            PanelOutline = React.createElement("UIStroke", {
+                Thickness = 3,
+                Color = Color3.fromRGB(0, 0, 0),
+                Transparency = 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
             }),
             
             -- Header
@@ -602,7 +609,7 @@ local function PotionInventoryUI(props)
                         TextColor3 = Color3.fromRGB(50, 205, 50),
                         TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
                         Font = Enum.Font.FredokaOne,
-                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextXAlignment = Enum.TextXAlignment.Center,
                         TextStrokeTransparency = 0,
                         TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                         ZIndex = 6,
@@ -663,13 +670,13 @@ local function PotionInventoryUI(props)
                 -- Inventory header
                 InventoryHeader = React.createElement("TextLabel", {
                     Size = ScreenUtils.udim2(1, 0, 0, 25),
-                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and 270 or 40),
+                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and 280 or 40), -- Smaller gap increase
                     BackgroundTransparency = 1,
                     Text = "🎒 Potion Inventory",
                     TextColor3 = Color3.fromRGB(100, 150, 255),
                     TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
                     Font = Enum.Font.FredokaOne,
-                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextXAlignment = Enum.TextXAlignment.Center,
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 6,
@@ -677,8 +684,8 @@ local function PotionInventoryUI(props)
 
                 -- Potions grid
                 PotionsGrid = React.createElement("ScrollingFrame", {
-                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and -305 or -75),
-                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and 300 or 70),
+                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and -315 or -75), -- Less aggressive size adjustment
+                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and 310 or 70), -- Less aggressive position adjustment
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
                     ScrollBarThickness = 6,
@@ -718,8 +725,8 @@ local function PotionInventoryUI(props)
 
                 -- Empty state
                 EmptyState = (not hasPotions) and React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and -305 or -75),
-                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and 300 or 70),
+                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and -315 or -75), -- Less aggressive size adjustment
+                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and 310 or 70), -- Less aggressive position adjustment
                     BackgroundTransparency = 1,
                     ZIndex = 5,
                 }, {
