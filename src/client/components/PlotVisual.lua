@@ -5,82 +5,9 @@ local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.react)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
+local PlotConfig = require(ReplicatedStorage.config.PlotConfig)
 
--- Plot configuration
-local TOTAL_PLOTS = 35
-local TOTAL_TUBEPLOTS = 10
-
--- Helper functions for plot requirements
-local function getPlotRebirthRequirement(plotNumber)
-    if plotNumber >= 1 and plotNumber <= 5 then
-        return 0
-    elseif plotNumber >= 8 and plotNumber <= 14 then
-        return 1
-    elseif plotNumber >= 15 and plotNumber <= 21 then
-        return 2
-    elseif plotNumber >= 22 and plotNumber <= 28 then
-        return 4 -- Skip rebirth 3
-    elseif plotNumber >= 29 and plotNumber <= 35 then
-        return 5
-    else
-        return 999 -- Invalid plot numbers (6, 7)
-    end
-end
-
-local function getTubePlotRebirthRequirement(tubePlotNumber)
-    return tubePlotNumber - 1
-end
-
--- Plot cost functions (matches server and client GUI)
-local function getPlotCost(plotNumber, playerRebirths)
-    if plotNumber == 1 then
-        return 0 -- First plot is free
-    end
-    
-    -- Start at 25 for second plot, increment by 70% (1.7x) for each subsequent plot (matches server)
-    local baseCost = 25
-    local scalingFactor = 1.7 -- 70% increment per plot
-    
-    -- Apply rebirth-based multipliers to the base cost
-    playerRebirths = playerRebirths or 0
-    local rebirthMultiplier = 1.0
-    
-    if playerRebirths <= 1 then
-        -- Easier for first two rebirths (20% cheaper)
-        rebirthMultiplier = 0.8
-    elseif playerRebirths <= 3 then
-        -- Normal pricing for rebirths 2-3
-        rebirthMultiplier = 1.0
-    else
-        -- 50% more expensive after rebirth 4+
-        rebirthMultiplier = 1.5
-    end
-    
-    local finalCost = baseCost * (scalingFactor ^ (plotNumber - 2)) * rebirthMultiplier
-    return math.floor(finalCost)
-end
-
-local function getTubePlotCost(tubePlotNumber, playerRebirths)
-    if tubePlotNumber == 1 then
-        return 0 -- First tubeplot is free
-    end
-    
-    -- Make tube plots quite hard with aggressive scaling (matches server)
-    playerRebirths = playerRebirths or 0
-    local baseCost = 50 -- Much higher base cost than regular plots
-    local scalingFactor = 3.5 -- Aggressive 3.5x scaling instead of 2x
-    
-    -- Even harder scaling for higher rebirths to maintain challenge
-    if playerRebirths >= 4 then
-        baseCost = 100
-        scalingFactor = 4.0
-    elseif playerRebirths >= 2 then
-        baseCost = 75
-        scalingFactor = 3.8
-    end
-    
-    return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))
-end
+-- Configuration now centralized in PlotConfig
 
 local function PlotVisual()
     -- Subscribe to player data
@@ -157,7 +84,7 @@ local function PlotVisual()
         
         for _, area in pairs(areasToUpdate) do
             -- Update regular plots
-            for plotNumber = 1, TOTAL_PLOTS do
+            for plotNumber = 1, PlotConfig.TOTAL_PLOTS do
                 if plotNumber ~= 6 and plotNumber ~= 7 then
                     local plot = area:FindFirstChild("Buttons") and area.Buttons:FindFirstChild("Plot" .. plotNumber)
                     if plot and plot:IsA("Model") then
@@ -165,7 +92,7 @@ local function PlotVisual()
                         if cube and cube:IsA("BasePart") then
                             cube.Material = Enum.Material.Neon
                             
-                            local requiredRebirths = getPlotRebirthRequirement(plotNumber)
+                            local requiredRebirths = PlotConfig.getPlotRebirthRequirement(plotNumber)
                             
                             if ownedPlotsSet[plotNumber] then
                                 -- White if purchased
@@ -173,7 +100,7 @@ local function PlotVisual()
                             elseif playerRebirths < requiredRebirths then
                                 -- Black if not enough rebirths
                                 cube.Color = Color3.fromRGB(0, 0, 0)
-                            elseif playerMoney >= getPlotCost(plotNumber, playerRebirths) then
+                            elseif playerMoney >= PlotConfig.getPlotCost(plotNumber, playerRebirths) then
                                 -- Green if can afford
                                 cube.Color = Color3.fromRGB(0, 255, 0)
                             else
@@ -186,14 +113,14 @@ local function PlotVisual()
             end
             
             -- Update tube plots
-            for tubeNumber = 1, TOTAL_TUBEPLOTS do
+            for tubeNumber = 1, PlotConfig.TOTAL_TUBEPLOTS do
                 local tubePlot = area:FindFirstChild("Buttons") and area.Buttons:FindFirstChild("TubePlot" .. tubeNumber)
                 if tubePlot and tubePlot:IsA("Model") then
                     local cube = tubePlot:FindFirstChild("Cube.009")
                     if cube and cube:IsA("BasePart") then
                         cube.Material = Enum.Material.Neon
                         
-                        local requiredRebirths = getTubePlotRebirthRequirement(tubeNumber)
+                        local requiredRebirths = PlotConfig.getTubePlotRebirthRequirement(tubeNumber)
                         
                         if ownedTubesSet[tubeNumber] then
                             -- White if purchased
@@ -201,7 +128,7 @@ local function PlotVisual()
                         elseif playerRebirths < requiredRebirths then
                             -- Black if not enough rebirths
                             cube.Color = Color3.fromRGB(0, 0, 0)
-                        elseif playerMoney >= getTubePlotCost(tubeNumber, playerRebirths) then
+                        elseif playerMoney >= PlotConfig.getTubePlotCost(tubeNumber, playerRebirths) then
                             -- Green if can afford
                             cube.Color = Color3.fromRGB(0, 255, 0)
                         else

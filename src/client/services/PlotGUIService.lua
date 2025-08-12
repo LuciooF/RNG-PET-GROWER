@@ -8,109 +8,13 @@ local store = require(ReplicatedStorage.store)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local PlotConfig = require(ReplicatedStorage.config.PlotConfig)
 
 local PlotGUIService = {}
 local connections = {}
 local createdGUIs = {} -- Track created GUIs to avoid duplicates
 
--- Plot configuration (matches server)
-local TOTAL_PLOTS = 35
-local TOTAL_TUBEPLOTS = 10
-
--- Helper functions for plot requirements (matches server)
-local function getPlotRebirthRequirement(plotNumber)
-    if plotNumber >= 1 and plotNumber <= 5 then
-        return 0
-    elseif plotNumber >= 8 and plotNumber <= 14 then
-        return 1
-    elseif plotNumber >= 15 and plotNumber <= 21 then
-        return 2
-    elseif plotNumber >= 22 and plotNumber <= 28 then
-        return 4 -- Skip rebirth 3
-    elseif plotNumber >= 29 and plotNumber <= 35 then
-        return 5
-    else
-        return 999 -- Invalid plot numbers (6, 7)
-    end
-end
-
-local function getTubePlotRebirthRequirement(tubePlotNumber)
-    return tubePlotNumber - 1
-end
-
--- Plot cost functions (matches server)
-local function getPlotCost(plotNumber, playerRebirths)
-    if plotNumber == 1 then
-        return 0 -- First plot is free
-    end
-    
-    -- Start at 25 for second plot, increment by 70% (1.7x) for each subsequent plot (matches server)
-    local baseCost = 25
-    local scalingFactor = 1.7 -- 70% increment per plot
-    
-    -- Apply rebirth-based multipliers to the base cost
-    playerRebirths = playerRebirths or 0
-    local rebirthMultiplier = 1.0
-    
-    if playerRebirths <= 1 then
-        -- Easier for first two rebirths (20% cheaper)
-        rebirthMultiplier = 0.8
-    elseif playerRebirths <= 3 then
-        -- Normal pricing for rebirths 2-3
-        rebirthMultiplier = 1.0
-    else
-        -- 50% more expensive after rebirth 4+
-        rebirthMultiplier = 1.5
-    end
-    
-    local finalCost = baseCost * (scalingFactor ^ (plotNumber - 2)) * rebirthMultiplier
-    return math.floor(finalCost)
-end
-
-local function getTubePlotCost(tubePlotNumber, playerRebirths)
-    if tubePlotNumber == 1 then
-        return 0 -- First tubeplot is free
-    end
-    
-    -- Make tube plots quite hard with aggressive scaling (matches server)
-    playerRebirths = playerRebirths or 0
-    local baseCost = 50 -- Much higher base cost than regular plots
-    local scalingFactor = 3.5 -- Aggressive 3.5x scaling instead of 2x
-    
-    -- Even harder scaling for higher rebirths to maintain challenge
-    if playerRebirths >= 4 then
-        baseCost = 100
-        scalingFactor = 4.0
-    elseif playerRebirths >= 2 then
-        baseCost = 75
-        scalingFactor = 3.8
-    end
-    
-    return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))
-end
-
--- Helper function to check if plot is middle of row (for rebirth text display)
-local function isMiddlePlotOfRow(plotNumber)
-    if plotNumber >= 1 and plotNumber <= 5 then
-        return plotNumber == 3 -- Middle of first row
-    elseif plotNumber >= 8 and plotNumber <= 14 then
-        return plotNumber == 11 -- Middle of second row
-    elseif plotNumber >= 15 and plotNumber <= 21 then
-        return plotNumber == 18 -- Middle of third row
-    elseif plotNumber >= 22 and plotNumber <= 28 then
-        return plotNumber == 25 -- Middle of fourth row
-    elseif plotNumber >= 29 and plotNumber <= 35 then
-        return plotNumber == 32 -- Middle of fifth row
-    end
-    return false
-end
-
--- Helper function for tubeplot rebirth text display
-local function shouldShowTubePlotRebirthText(tubePlotNumber, playerRebirths)
-    local requiredRebirths = getTubePlotRebirthRequirement(tubePlotNumber)
-    -- Only show for NEXT rebirth tier and on first tubeplot that needs higher rebirth
-    return requiredRebirths == (playerRebirths + 1) and (tubePlotNumber == 1 or playerRebirths >= getTubePlotRebirthRequirement(tubePlotNumber - 1))
-end
+-- Configuration now centralized in PlotConfig
 
 -- Create GUI for a plot
 function PlotGUIService:CreatePlotGUI(area, plot, plotNumber)
@@ -342,8 +246,8 @@ end
 -- Update individual plot GUI
 function PlotGUIService:UpdatePlotGUI(guiData, playerMoney, playerRebirths, ownedPlotsSet)
     local plotNumber = guiData.plotNumber
-    local requiredRebirths = getPlotRebirthRequirement(plotNumber)
-    local plotCost = getPlotCost(plotNumber, playerRebirths)
+    local requiredRebirths = PlotConfig.getPlotRebirthRequirement(plotNumber)
+    local plotCost = PlotConfig.getPlotCost(plotNumber, playerRebirths)
     
     local moneyIcon = guiData.moneyIcon
     local rebirthIcon = guiData.rebirthIcon
@@ -356,7 +260,7 @@ function PlotGUIService:UpdatePlotGUI(guiData, playerMoney, playerRebirths, owne
         
     elseif playerRebirths < requiredRebirths then
         -- Show rebirth requirement ONLY for the next rebirth tier (playerRebirths + 1)
-        if requiredRebirths == (playerRebirths + 1) and isMiddlePlotOfRow(plotNumber) then
+        if requiredRebirths == (playerRebirths + 1) and PlotConfig.isMiddlePlotOfRow(plotNumber) then
             -- Show rebirth icon and text
             moneyIcon.Visible = false
             rebirthIcon.Visible = true
@@ -413,8 +317,8 @@ end
 -- Update individual tubeplot GUI
 function PlotGUIService:UpdateTubePlotGUI(guiData, playerMoney, playerRebirths, ownedTubesSet)
     local tubePlotNumber = guiData.tubePlotNumber
-    local requiredRebirths = getTubePlotRebirthRequirement(tubePlotNumber)
-    local tubePlotCost = getTubePlotCost(tubePlotNumber, playerRebirths)
+    local requiredRebirths = PlotConfig.getTubePlotRebirthRequirement(tubePlotNumber)
+    local tubePlotCost = PlotConfig.getTubePlotCost(tubePlotNumber, playerRebirths)
     
     local moneyIcon = guiData.moneyIcon
     local rebirthIcon = guiData.rebirthIcon
@@ -427,7 +331,7 @@ function PlotGUIService:UpdateTubePlotGUI(guiData, playerMoney, playerRebirths, 
         
     elseif playerRebirths < requiredRebirths then
         -- Show rebirth requirement (only on first that needs higher rebirth)
-        if shouldShowTubePlotRebirthText(tubePlotNumber, playerRebirths) then
+        if PlotConfig.shouldShowTubePlotRebirthText(tubePlotNumber, playerRebirths) then
             -- Show rebirth icon and text
             moneyIcon.Visible = false
             rebirthIcon.Visible = true
@@ -509,7 +413,7 @@ function PlotGUIService:ScanAndCreateGUIs()
     if not playerArea then return end
     
     -- Create GUIs for plots
-    for plotNumber = 1, TOTAL_PLOTS do
+    for plotNumber = 1, PlotConfig.TOTAL_PLOTS do
         if plotNumber ~= 6 and plotNumber ~= 7 then -- Skip invalid plots
             local plot = playerArea:FindFirstChild("Buttons") and playerArea.Buttons:FindFirstChild("Plot" .. plotNumber)
             if plot then
@@ -519,7 +423,7 @@ function PlotGUIService:ScanAndCreateGUIs()
     end
     
     -- Create GUIs for tubeplots
-    for tubePlotNumber = 1, TOTAL_TUBEPLOTS do
+    for tubePlotNumber = 1, PlotConfig.TOTAL_TUBEPLOTS do
         local tubePlot = playerArea:FindFirstChild("Buttons") and playerArea.Buttons:FindFirstChild("TubePlot" .. tubePlotNumber)
         if tubePlot then
             self:CreateTubePlotGUI(playerArea, tubePlot, tubePlotNumber)

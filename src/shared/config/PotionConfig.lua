@@ -64,6 +64,20 @@ PotionConfig.Potions = {
         Rarity = PotionConfig.Rarities.UNCOMMON,
         StackLimit = 5, -- Max quantity player can hold
         SortOrder = 3 -- For UI ordering
+    },
+    
+    -- OP Pet Magnet Potion (Pet Magnet effect for 24 hours) - FREE OP ITEM REWARD
+    pet_magnet_op_24h = {
+        PotionId = "pet_magnet_op_24h",
+        Name = "OP Pet Magnet Potion (24h)",
+        Description = "Automatically collects pets and money for 24 hours! (Worth 299 Robux)",
+        Icon = "rbxassetid://133122022215716", -- Use the magnet icon from config
+        BoostType = PotionConfig.BoostTypes.PET_MAGNET,
+        BoostAmount = 1, -- Boolean effect (on/off)
+        Duration = 86400, -- 24 hours in seconds (24 * 60 * 60)
+        Rarity = PotionConfig.Rarities.LEGENDARY,
+        StackLimit = 1, -- Only hold one at a time since it's so powerful
+        SortOrder = 4 -- For UI ordering
     }
 }
 

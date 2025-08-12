@@ -18,6 +18,7 @@ local PlaytimeTrackingService = require(ServerScriptService.services.PlaytimeTra
 local PlaytimeRewardsService = require(ServerScriptService.services.PlaytimeRewardsService)
 local CustomLeaderboardService = require(ServerScriptService.services.CustomLeaderboardService)
 local PotionService = require(ServerScriptService.services.PotionService)
+local FreeOpItemService = require(ServerScriptService.services.FreeOpItemService)
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 DataService:Initialize()
@@ -31,6 +32,7 @@ PlaytimeTrackingService:Initialize()
 PlaytimeRewardsService:Initialize()
 CustomLeaderboardService:Initialize()
 PotionService:Initialize()
+FreeOpItemService:Initialize()
 
 -- Initialize Crazy Chest service
 local CrazyChestService = require(ServerScriptService.services.CrazyChestService)

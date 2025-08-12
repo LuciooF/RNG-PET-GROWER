@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local DataService = require(script.Parent.DataService)
 local PetConfig = require(ReplicatedStorage.config.PetConfig)
 local PetUtils = require(ReplicatedStorage.utils.PetUtils)
+local BoostCalculator = require(ReplicatedStorage.utils.BoostCalculator)
 
 local PetService = {}
 PetService.__index = PetService
@@ -371,8 +372,13 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
     if petsProcessed > 0 then
         -- Processed pets successfully
         
+        -- Apply potion multiplier to money reward
+        local PotionService = require(script.Parent.PotionService)
+        local potionMultiplier = PotionService:GetBoostMultiplier(player, "Money")
+        local finalMoneyToAdd = math.floor(totalMoneyToAdd * potionMultiplier)
+        
         -- Update processing pets and add money reward (DataService handles sync)
-        local success = DataService:UpdateProcessingAndMoney(player, processingPets, totalMoneyToAdd, petsProcessed)
+        local success = DataService:UpdateProcessingAndMoney(player, processingPets, finalMoneyToAdd, petsProcessed)
         -- Processing update completed
         
         -- Update processing counter
@@ -514,52 +520,18 @@ function PetService:ApplyGamepassMultipliers(player, baseValue, rewardType)
     return math.floor(baseValue * multiplier)
 end
 
--- Calculate total boost multiplier from equipped pets AND OP pets
+-- Calculate total boost multiplier from equipped pets AND OP pets (now centralized)
 function PetService:GetEquippedPetBoostMultiplier(player)
     local playerData = DataService:GetPlayerData(player)
     if not playerData then
-        -- No player data for boost calculation
         return 1 -- No boost if no player data
     end
     
-    local totalBoostMultiplier = 1 -- Start with 1 (no boost)
-    local equippedPetCount = #(playerData.EquippedPets or {})
-    local opPetCount = #(playerData.OPPets or {})
+    -- Use centralized boost calculation (equipped pets + OP pets only, no gamepasses/rebirths)
+    local equippedBoost = BoostCalculator.calculateEquippedPetBoost(playerData.EquippedPets)
+    local opPetBoost = BoostCalculator.calculateOPPetBoost(playerData.OPPets)
     
-    -- Calculating boost from equipped and OP pets
-    
-    -- Add boost from each equipped pet (use BaseBoost, not FinalBoost to avoid double-multiplying)
-    for _, equippedPet in pairs(playerData.EquippedPets or {}) do
-        local petBoost = equippedPet.BaseBoost or 1
-        
-        -- Fix for pets with boost values stored as decimals (0.77) instead of multipliers (1.77)
-        -- If boost is less than 1, it's likely stored as a decimal and needs to be converted
-        local boostPercentage
-        if petBoost < 1 then
-            -- Convert decimal to percentage (0.77 becomes 0.77 = 77% boost)
-            boostPercentage = petBoost
-            -- Converting decimal boost to percentage
-        else
-            -- Standard conversion (1.77 becomes 0.77 = 77% boost)
-            boostPercentage = petBoost - 1
-            -- Converting multiplier boost to percentage
-        end
-        
-        totalBoostMultiplier = totalBoostMultiplier + boostPercentage
-    end
-    
-    -- Add boost from OP pets (they're always active)
-    for _, opPet in pairs(playerData.OPPets or {}) do
-        local petBoost = opPet.FinalBoost or opPet.BaseBoost or 1
-        -- Convert boost to multiplier (e.g., 1000 boost = 999 = 99900% boost)
-        local boostPercentage = petBoost - 1 -- 1000 becomes 999 (99900%)
-        totalBoostMultiplier = totalBoostMultiplier + boostPercentage
-        -- Processing OP pet boost
-    end
-    
-    -- Calculated total boost multiplier
-    
-    return totalBoostMultiplier
+    return 1 + equippedBoost + opPetBoost
 end
 
 -- Get processing speed multiplier from gamepasses

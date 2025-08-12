@@ -25,6 +25,7 @@ local PlaytimeRewardsPanel = require(script.Parent.PlaytimeRewardsPanel)
 local LeaderboardPanel = require(script.Parent.LeaderboardPanel)
 local PotionInventoryUI = require(script.Parent.PotionInventoryUI)
 local CrazyChestUI = require(script.Parent.CrazyChestUI)
+local FreeOpItemUI = require(script.Parent.FreeOpItemUI)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local TutorialService = require(script.Parent.Parent.services.TutorialService)
 local RebirthButtonService = require(script.Parent.Parent.services.RebirthButtonService)
@@ -54,6 +55,7 @@ local function App()
     local playtimeRewardsVisible, setPlaytimeRewardsVisible = React.useState(false)
     local leaderboardVisible, setLeaderboardVisible = React.useState(false)
     local potionInventoryVisible, setPotionInventoryVisible = React.useState(false)
+    local freeOpItemVisible, setFreeOpItemVisible = React.useState(false)
     local tutorialData, setTutorialData = React.useState({})
     local crazyChestProps, setCrazyChestProps = React.useState(CrazyChestService:GetUIProps())
     local playerData, setPlayerData = React.useState({
@@ -65,6 +67,10 @@ local function App()
     
     -- Shared session claimed rewards state (resets when app reloads)
     local sharedSessionClaimedRewards, setSharedSessionClaimedRewards = React.useState({})
+    
+    -- Shared Free OP Item claim state (resets when app reloads)
+    local sharedFreeOpLastClaimTime, setSharedFreeOpLastClaimTime = React.useState(0)
+    local sharedFreeOpClaimCount, setSharedFreeOpClaimCount = React.useState(0)
     
     -- Subscribe to data changes
     React.useEffect(function()
@@ -309,9 +315,14 @@ local function App()
             onLeaderboardClick = function()
                 setLeaderboardVisible(function(prev) return not prev end)
             end,
+            onFreeOpItemClick = function()
+                setFreeOpItemVisible(function(prev) return not prev end)
+            end,
             sharedSessionStartTime = sharedSessionStartTime.current,
             sharedSessionClaimedRewards = sharedSessionClaimedRewards,
-            setSharedSessionClaimedRewards = setSharedSessionClaimedRewards
+            setSharedSessionClaimedRewards = setSharedSessionClaimedRewards,
+            sharedFreeOpLastClaimTime = sharedFreeOpLastClaimTime,
+            sharedFreeOpClaimCount = sharedFreeOpClaimCount
         }),
         
         -- UI Components
@@ -407,6 +418,19 @@ local function App()
             onClose = function()
                 setPotionInventoryVisible(false)
             end
+        }) or nil,
+        
+        -- Free OP Item Panel
+        FreeOpItemUI = freeOpItemVisible and React.createElement(FreeOpItemUI, {
+            visible = freeOpItemVisible,
+            onClose = function()
+                setFreeOpItemVisible(false)
+            end,
+            sharedSessionStartTime = sharedSessionStartTime.current,
+            sharedFreeOpLastClaimTime = sharedFreeOpLastClaimTime,
+            setSharedFreeOpLastClaimTime = setSharedFreeOpLastClaimTime,
+            sharedFreeOpClaimCount = sharedFreeOpClaimCount,
+            setSharedFreeOpClaimCount = setSharedFreeOpClaimCount
         }) or nil,
         
         -- OP Pet Purchase Button (always visible on top right)

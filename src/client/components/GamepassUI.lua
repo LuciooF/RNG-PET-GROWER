@@ -12,6 +12,7 @@ local DeveloperProductConfig = require(ReplicatedStorage.config.DeveloperProduct
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 local player = Players.LocalPlayer
 
@@ -315,18 +316,7 @@ local function GamepassUI(props)
                     }),
                     
                     -- Rainbow gradient on squiggle
-                    RainbowGradient = React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
-                            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 165, 0)), -- Orange
-                            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)), -- Yellow
-                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),   -- Green
-                            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),  -- Blue
-                            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(75, 0, 130)), -- Indigo
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 0, 211))    -- Violet
-                        }),
-                        Rotation = 45
-                    })
+                    RainbowGradient = GradientUtils.CreateReactGradient(GradientUtils.RAINBOW_DIAGONAL)
                 }),
                 
                 -- Icon (top center, positioned better)
@@ -364,15 +354,7 @@ local function GamepassUI(props)
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     ZIndex = 112,
                 }, {
-                    TitleGradient = React.createElement("UIGradient", {
-                        Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 20, 147)),
-                            ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 105, 180)),
-                            ColorSequenceKeypoint.new(0.6, Color3.fromRGB(138, 43, 226)),
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))
-                        }),
-                        Rotation = 0
-                    })
+                    TitleGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
                 }),
                 
                 -- Price with Robux icon (prominent display)

@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 
 local DataSyncService = require(script.Parent.DataSyncService)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local BoostCalculator = require(ReplicatedStorage.utils.BoostCalculator)
 
 local PetBoostDisplayService = {}
 PetBoostDisplayService.__index = PetBoostDisplayService
@@ -12,20 +13,31 @@ local player = Players.LocalPlayer
 local boostGui = nil
 
 function PetBoostDisplayService:Initialize()
+    print("PetBoostDisplayService DEBUG: Initialize() called")
     -- Create the boost display GUI
     self:CreateBoostGUI()
+    print("PetBoostDisplayService DEBUG: GUI created")
     
     -- Subscribe to player data changes
+    print("PetBoostDisplayService DEBUG: Setting up DataSyncService subscription")
     DataSyncService:Subscribe(function(newState)
+        print("PetBoostDisplayService DEBUG: DataSyncService callback triggered")
         if newState.player then
-            self:UpdateBoostDisplay(newState.player.EquippedPets, newState.player.OwnedGamepasses)
+            print("PetBoostDisplayService DEBUG: Player data found in newState, calling UpdateBoostDisplay")
+            self:UpdateBoostDisplay(newState.player)
+        else
+            print("PetBoostDisplayService DEBUG: No player data in newState")
         end
     end)
     
     -- Get initial data
+    print("PetBoostDisplayService DEBUG: Getting initial data")
     local initialData = DataSyncService:GetPlayerData()
     if initialData then
-        self:UpdateBoostDisplay(initialData.EquippedPets, initialData.OwnedGamepasses)
+        print("PetBoostDisplayService DEBUG: Initial data found, calling UpdateBoostDisplay")
+        self:UpdateBoostDisplay(initialData)
+    else
+        print("PetBoostDisplayService DEBUG: No initial data found")
     end
 end
 
@@ -40,11 +52,11 @@ function PetBoostDisplayService:CreateBoostGUI()
     boostGui.DisplayOrder = 100 -- High display order
     boostGui.Parent = playerGui
     
-    -- Main frame (bottom-left corner) - increased height for gamepass boost
+    -- Main frame (bottom-left corner) - increased height for gamepass boost + potions
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "BoostFrame"
-    mainFrame.Size = UDim2.new(0, 200, 0, 110)
-    mainFrame.Position = UDim2.new(0, 100, 1, -130) -- Moved right to avoid overlap with boost button
+    mainFrame.Size = UDim2.new(0, 200, 0, 130) -- Increased height for potion line
+    mainFrame.Position = UDim2.new(0, 100, 1, -150) -- Adjusted position for taller frame
     mainFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 255) -- Bright magenta for debugging
     mainFrame.BorderSizePixel = 5
     mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255) -- Cyan border for debugging
@@ -95,6 +107,19 @@ function PetBoostDisplayService:CreateBoostGUI()
     gamepassBoostLabel.TextXAlignment = Enum.TextXAlignment.Left
     gamepassBoostLabel.Parent = mainFrame
     
+    -- Potion boost value label
+    local potionBoostLabel = Instance.new("TextLabel")
+    potionBoostLabel.Name = "PotionBoostLabel"
+    potionBoostLabel.Size = UDim2.new(1, -10, 0, 20)
+    potionBoostLabel.Position = UDim2.new(0, 5, 0, 70)
+    potionBoostLabel.BackgroundTransparency = 1
+    potionBoostLabel.Text = "Potions: 1x"
+    potionBoostLabel.TextColor3 = Color3.fromRGB(138, 43, 226) -- Purple color (matches potion theme)
+    potionBoostLabel.TextScaled = true
+    potionBoostLabel.Font = Enum.Font.FredokaOne
+    potionBoostLabel.TextXAlignment = Enum.TextXAlignment.Left
+    potionBoostLabel.Parent = mainFrame
+    
     -- Pet count label (small text)
     local petCountLabel = Instance.new("TextLabel")
     petCountLabel.Name = "PetCountLabel"
@@ -109,7 +134,7 @@ function PetBoostDisplayService:CreateBoostGUI()
     petCountLabel.Parent = mainFrame
 end
 
-function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses)
+function PetBoostDisplayService:UpdateBoostDisplay(playerData)
     if not boostGui then return end
     
     local boostFrame = boostGui:FindFirstChild("BoostFrame")
@@ -118,50 +143,21 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
     local titleLabel = boostFrame:FindFirstChild("TitleLabel")
     local petBoostLabel = boostFrame:FindFirstChild("PetBoostLabel")
     local gamepassBoostLabel = boostFrame:FindFirstChild("GamepassBoostLabel")
+    local potionBoostLabel = boostFrame:FindFirstChild("PotionBoostLabel")
     local petCountLabel = boostFrame:FindFirstChild("PetCountLabel")
     
-    if not titleLabel or not petBoostLabel or not gamepassBoostLabel or not petCountLabel then return end
+    if not titleLabel or not petBoostLabel or not gamepassBoostLabel or not potionBoostLabel or not petCountLabel then return end
     
-    -- Calculate pet boost percentage
-    local petBoostMultiplier = 1 -- Start with 1 (no boost)
-    local petCount = 0
+    -- Use centralized boost calculation with full player data
+    print("PetBoostDisplayService DEBUG: UpdateBoostDisplay called")
+    print("PetBoostDisplayService DEBUG: ActivePotions present:", playerData and playerData.ActivePotions and #playerData.ActivePotions or "NONE")
     
-    if equippedPets then
-        for _, equippedPet in pairs(equippedPets) do
-            petCount = petCount + 1
-            local petBoost = equippedPet.BaseBoost or 1
-            -- Convert boost to percentage (e.g., 1.1 boost = 0.1 = 10% boost)
-            local boostPercentage = petBoost - 1 -- 1.1 becomes 0.1 (10%)
-            petBoostMultiplier = petBoostMultiplier + boostPercentage
-        end
-    end
-    
-    -- Calculate gamepass boost
-    local gamepassMultiplier = 1
-    local gamepasses = {}
-    
-    -- Convert OwnedGamepasses array to lookup table
-    if ownedGamepasses then
-        for _, gamepassName in pairs(ownedGamepasses) do
-            gamepasses[gamepassName] = true
-        end
-    end
-    
-    -- Stack gamepass multipliers
-    if gamepasses.TwoXMoney then
-        gamepassMultiplier = gamepassMultiplier * 2
-    end
-    
-    if gamepasses.VIP then
-        gamepassMultiplier = gamepassMultiplier * 2
-    end
-    
-    -- Calculate total boost multipliers (additive - more intuitive)
-    local totalMultiplier = petBoostMultiplier + gamepassMultiplier - 1 -- Subtract 1 to avoid double-counting base multiplier
+    local boostBreakdown = BoostCalculator.getBoostBreakdown(playerData)
+    print("PetBoostDisplayService DEBUG: Total boost from breakdown:", boostBreakdown.totalBoost)
     
     -- Update title with total boost (show as multiplier)
-    if totalMultiplier > 1 then
-        titleLabel.Text = string.format("💪 Total Boost: %sx", NumberFormatter.formatBoost(totalMultiplier))
+    if boostBreakdown.totalBoost > 1 then
+        titleLabel.Text = string.format("💪 Total Boost: %sx", NumberFormatter.formatBoost(boostBreakdown.totalBoost))
         titleLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow for total
     else
         titleLabel.Text = "💪 Total Boost: 1x"
@@ -169,8 +165,8 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
     end
     
     -- Update pet boost label (show as multiplier)
-    if petBoostMultiplier > 1 then
-        petBoostLabel.Text = string.format("Pets: %sx", NumberFormatter.formatBoost(petBoostMultiplier))
+    if boostBreakdown.petBoost > 1 then
+        petBoostLabel.Text = string.format("Pets: %sx", NumberFormatter.formatBoost(boostBreakdown.petBoost))
         petBoostLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for positive boost
     else
         petBoostLabel.Text = "Pets: 1x"
@@ -178,9 +174,17 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
     end
     
     -- Update gamepass boost label (show as multiplier)
-    if gamepassMultiplier > 1 then
+    if boostBreakdown.gamepassBoost > 1 then
         local gamepassText = "Gamepasses: "
         local gamepassNames = {}
+        
+        -- Convert array to lookup for display
+        local gamepasses = {}
+        if ownedGamepasses then
+            for _, gamepassName in pairs(ownedGamepasses) do
+                gamepasses[gamepassName] = true
+            end
+        end
         
         if gamepasses.TwoXMoney then
             table.insert(gamepassNames, "2x Money")
@@ -190,7 +194,7 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
             table.insert(gamepassNames, "VIP")
         end
         
-        gamepassText = gamepassText .. string.format("%sx (%s)", NumberFormatter.formatBoost(gamepassMultiplier), table.concat(gamepassNames, " + "))
+        gamepassText = gamepassText .. string.format("%sx (%s)", NumberFormatter.formatBoost(boostBreakdown.gamepassBoost), table.concat(gamepassNames, " + "))
         gamepassBoostLabel.Text = gamepassText
         gamepassBoostLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold for gamepass boost
     else
@@ -198,11 +202,22 @@ function PetBoostDisplayService:UpdateBoostDisplay(equippedPets, ownedGamepasses
         gamepassBoostLabel.TextColor3 = Color3.fromRGB(150, 150, 150) -- Gray for no boost
     end
     
+    -- Update potion boost label (Money potions only)
+    local moneyPotionBoost = boostBreakdown.potionBoosts.Money or 1
+    
+    if moneyPotionBoost > 1 then
+        potionBoostLabel.Text = string.format("Potions: %sx (Money)", NumberFormatter.formatBoost(moneyPotionBoost))
+        potionBoostLabel.TextColor3 = Color3.fromRGB(138, 43, 226) -- Purple for active potions
+    else
+        potionBoostLabel.Text = "Potions: 1x"
+        potionBoostLabel.TextColor3 = Color3.fromRGB(150, 150, 150) -- Gray for no boost
+    end
+    
     -- Update pet count
-    if petCount == 1 then
+    if boostBreakdown.petCount == 1 then
         petCountLabel.Text = "1 pet equipped"
     else
-        petCountLabel.Text = petCount .. " pets equipped"
+        petCountLabel.Text = boostBreakdown.petCount .. " pets equipped"
     end
 end
 

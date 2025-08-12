@@ -9,6 +9,7 @@ local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local PlaytimeRewardsConfig = require(ReplicatedStorage.config.PlaytimeRewardsConfig)
+local FreeOpItemButton = require(script.Parent.FreeOpItemButton)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -245,65 +246,19 @@ local function RightSideBar(props)
     -- Create buttons array in the order we want them to appear
     local buttons = {}
     
-    -- 1. Potion Button
-    buttons[1] = React.createElement("Frame", {
-        Name = "A_PotionButtonContainer",
-        Size = buttonSize,
-        BackgroundTransparency = 1,
-        ZIndex = 50
-    }, {
-        PotionButton = React.createElement("ImageButton", {
-            Name = "PotionButton",
-            Size = UDim2.new(1, 0, 1, 0),
-            Position = UDim2.new(0, 0, 0, 0),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Image = "rbxassetid://104089702525726", -- Diamond potion icon
-            ScaleType = Enum.ScaleType.Fit,
-            ZIndex = 50,
-            [React.Event.Activated] = function()
-                if props.onPotionClick then
-                    props.onPotionClick()
-                end
-            end,
-            [React.Event.MouseEnter] = function(rbx)
-                playHoverSound()
-                spinButton(rbx)
+    -- 1. Free OP Item Button
+    buttons[1] = React.createElement(FreeOpItemButton, {
+        Name = "A_FreeOpItemButton",
+        Size = UDim2.new(0, math.max(buttonPixelSize, playtimeButtonWidth), 0, buttonPixelSize),
+        buttonPixelSize = buttonPixelSize,
+        sharedSessionStartTime = props.sharedSessionStartTime,
+        sharedFreeOpLastClaimTime = props.sharedFreeOpLastClaimTime,
+        sharedFreeOpClaimCount = props.sharedFreeOpClaimCount,
+        onFreeOpItemClick = function()
+            if props.onFreeOpItemClick then
+                props.onFreeOpItemClick()
             end
-        }),
-        
-        -- Potion count badge
-        PotionCountBadge = potionCount > 0 and React.createElement("Frame", {
-            Name = "PotionCountBadge",
-            Size = ScreenUtils.udim2(0, 36, 0, 24),
-            Position = ScreenUtils.udim2(1, -18, 0, -4),
-            AnchorPoint = Vector2.new(0.5, 0),
-            BackgroundColor3 = Color3.fromRGB(138, 43, 226), -- Purple for potions
-            BorderSizePixel = 0,
-            ZIndex = 52
-        }, {
-            UICorner = React.createElement("UICorner", {
-                CornerRadius = ScreenUtils.udim(0, 12)
-            }),
-            UIStroke = React.createElement("UIStroke", {
-                Color = Color3.fromRGB(0, 0, 0),
-                Thickness = 2,
-                Transparency = 0
-            }),
-            CountText = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = potionCountText,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextStrokeTransparency = 0,
-                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-                TextSize = 16,
-                Font = Enum.Font.FredokaOne,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Center,
-                ZIndex = 53
-            })
-        }) or nil
+        end
     })
     
     -- 2. Playtime Rewards Button (original styled design)
@@ -422,9 +377,70 @@ local function RightSideBar(props)
         })
     })
     
-    -- 3. Leaderboard Button
+    -- 3. Potion Button
     buttons[3] = React.createElement("Frame", {
-        Name = "C_LeaderboardButtonContainer",
+        Name = "C_PotionButtonContainer",
+        Size = buttonSize,
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        PotionButton = React.createElement("ImageButton", {
+            Name = "PotionButton",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Image = "rbxassetid://104089702525726", -- Diamond potion icon
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 50,
+            [React.Event.Activated] = function()
+                if props.onPotionClick then
+                    props.onPotionClick()
+                end
+            end,
+            [React.Event.MouseEnter] = function(rbx)
+                playHoverSound()
+                spinButton(rbx)
+            end
+        }),
+        
+        -- Potion count badge
+        PotionCountBadge = potionCount > 0 and React.createElement("Frame", {
+            Name = "PotionCountBadge",
+            Size = ScreenUtils.udim2(0, 36, 0, 24),
+            Position = ScreenUtils.udim2(1, -18, 0, -4),
+            AnchorPoint = Vector2.new(0.5, 0),
+            BackgroundColor3 = Color3.fromRGB(138, 43, 226), -- Purple for potions
+            BorderSizePixel = 0,
+            ZIndex = 52
+        }, {
+            UICorner = React.createElement("UICorner", {
+                CornerRadius = ScreenUtils.udim(0, 12)
+            }),
+            UIStroke = React.createElement("UIStroke", {
+                Color = Color3.fromRGB(0, 0, 0),
+                Thickness = 2,
+                Transparency = 0
+            }),
+            CountText = React.createElement("TextLabel", {
+                Size = ScreenUtils.udim2(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = potionCountText,
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+                TextSize = 16,
+                Font = Enum.Font.FredokaOne,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 53
+            })
+        }) or nil
+    })
+    
+    -- 4. Leaderboard Button
+    buttons[4] = React.createElement("Frame", {
+        Name = "D_LeaderboardButtonContainer",
         Size = buttonSize,
         BackgroundTransparency = 1,
         ZIndex = 50
@@ -463,14 +479,39 @@ local function RightSideBar(props)
     }
     
     -- Add buttons to children in alphabetical order for Name sorting
-    children["A_Potion"] = buttons[1]  -- Potion
+    children["A_FreeOpItem"] = buttons[1]  -- Free OP Item
     children["B_PlaytimeRewards"] = buttons[2]  -- Playtime Rewards
-    children["C_Leaderboard"] = buttons[3]  -- Leaderboard
+    children["C_Potion"] = buttons[3]  -- Potion
+    children["D_Leaderboard"] = buttons[4]  -- Leaderboard
+    
+    -- Calculate the maximum button width including FreeOpItem button
+    local textService = game:GetService("TextService")
+    local freeOpItemText = "Free OP Item!"
+    local freeOpItemTextBounds = textService:GetTextSize(
+        freeOpItemText,
+        ScreenUtils.getTextSize(36),
+        Enum.Font.Cartoon,
+        Vector2.new(1000, 100)
+    )
+    
+    local function getBucketedWidth(width)
+        local bucketSize = ScreenUtils.getProportionalSize(30)
+        return math.ceil(width / bucketSize) * bucketSize
+    end
+    
+    local textPadding = ScreenUtils.getProportionalSize(20)
+    local leftPadding = ScreenUtils.getProportionalSize(15)
+    local rawFreeOpItemWidth = freeOpItemTextBounds.X + textPadding * 2 + leftPadding
+    local freeOpItemButtonWidth = getBucketedWidth(rawFreeOpItemWidth)
+    
+    -- Find the maximum width among all buttons
+    local maxButtonWidth = math.max(buttonPixelSize, playtimeButtonWidth, freeOpItemButtonWidth)
+    local rightPadding = 40 -- Increase right padding to ensure visibility
     
     return React.createElement("Frame", {
         Name = "RightSideBar",
-        Size = ScreenUtils.udim2(0, math.max(buttonPixelSize, playtimeButtonWidth) + 20, 1, 0),
-        Position = ScreenUtils.udim2(1, -math.max(buttonPixelSize, playtimeButtonWidth) - 30, 0, 0), -- Right side with padding
+        Size = ScreenUtils.udim2(0, maxButtonWidth + rightPadding, 1, 0),
+        Position = ScreenUtils.udim2(1, -maxButtonWidth - rightPadding, 0, 0), -- Right side with proper padding
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {

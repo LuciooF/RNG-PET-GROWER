@@ -143,6 +143,8 @@ function ClientPetBallService:CreatePetBall(doorPosition, petData, areaName)
     
     -- Set collision group for pet balls
     petBall.CollisionGroup = "PetBalls"
+    local CollectionService = game:GetService("CollectionService")
+    CollectionService:AddTag(petBall, "PetBall")
     
     -- Store pet data in the ball
     local petDataValue = Instance.new("StringValue")

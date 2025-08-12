@@ -248,6 +248,7 @@ local function SideBar(props)
         })
     })
     
+    
     -- Convert array to React children object
     local children = {
         UIListLayout = React.createElement("UIListLayout", {
