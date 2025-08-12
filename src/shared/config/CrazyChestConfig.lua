@@ -40,13 +40,13 @@ CrazyChestConfig.REWARDS = {
         type = "money"
     },
     {
-        potionId = "pet_magnet_10m",
-        quantity = 1,
-        chance = 10, -- 10% chance - EPIC
-        color = PetConstants.RarityColors[PetConstants.Rarity.EPIC], -- Purple
-        rarity = "EPIC", 
-        name = "Pet Magnet Potion",
-        type = "potion"
+        diamonds = 2500,
+        chance = 10, -- 0.9% chance - MYTHIC (Ultra Rare!)
+        color = PetConstants.RarityColors[PetConstants.Rarity.MYTHIC], -- Gold
+        rarity = "MYTHIC",
+        name = "MYTHIC DIAMONDS",
+        type = "diamonds",
+        special = "glow" -- Special effect indicator
     },
     {
         petName = "Easter TV",
@@ -60,14 +60,15 @@ CrazyChestConfig.REWARDS = {
         type = "pet"
     },
     {
-        diamonds = 25000,
-        chance = 0.9, -- 0.9% chance - MYTHIC (Ultra Rare!)
-        color = PetConstants.RarityColors[PetConstants.Rarity.MYTHIC], -- Gold
-        rarity = "MYTHIC",
-        name = "MYTHIC DIAMONDS",
-        type = "diamonds",
-        special = "glow" -- Special effect indicator
+        potionId = "pet_magnet_10m",
+        quantity = 1,
+        chance = 0.9, -- 10% chance - EPIC
+        color = PetConstants.RarityColors[PetConstants.Rarity.EPIC], -- Purple
+        rarity = "EPIC", 
+        name = "Pet Magnet Potion",
+        type = "potion"
     },
+    
     {
         petName = "Sombrero Chihuahua",
         boost = 40,
