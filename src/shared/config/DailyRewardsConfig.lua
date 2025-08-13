@@ -181,7 +181,7 @@ function DailyRewardsConfig.calculateStreakStatus(lastLoginTime, claimedDays)
     local currentTime = os.time()
     local dayInSeconds = 24 * 60 * 60
     
-    -- If never logged in, start at day 1
+    -- If never logged in, start at day 1 and allow immediate claim
     if not lastLoginTime then
         return {
             currentStreak = 1,

@@ -457,14 +457,14 @@ local function DailyRewardsPanel(props)
                     Position = UDim2.new(0, 0, 0, 0),
                     BackgroundTransparency = 1,
                     Text = buttonText,
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextColor3 = canClaim and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180), -- Grey text for non-clickable
                     TextSize = ScreenUtils.getTextSize(40),
                     Font = Enum.Font.SourceSans,
                     BorderSizePixel = 0,
                     Active = canClaim,
                     ZIndex = 105,
                     -- Thicker black outline on button text
-                    TextStrokeTransparency = 0,
+                    TextStrokeTransparency = canClaim and 0 or 0.3, -- Faded outline for non-clickable
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     [React.Event.Activated] = canClaim and function()
                         handleClaimReward(reward.day)

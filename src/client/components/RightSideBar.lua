@@ -481,7 +481,7 @@ local function RightSideBar(props)
             Position = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 1,
             Image = "rbxassetid://78432604638666", -- Calendar icon
-            ImageColor3 = Color3.fromRGB(255, 100, 255), -- Pink/magenta color for daily rewards
+            ImageColor3 = Color3.fromRGB(255, 215, 0), -- Gold color for daily rewards button
             ScaleType = Enum.ScaleType.Fit,
             SizeConstraint = Enum.SizeConstraint.RelativeYY,
             ZIndex = 50,

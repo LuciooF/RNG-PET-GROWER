@@ -89,11 +89,13 @@ function DailyRewardsService:UpdatePlayerLoginStreak(player)
     
     -- If this is first login or more than 1 day since last login, handle streak
     if not lastLoginTime then
-        -- First time login - start streak at 1
+        -- First time login - start streak at 1 and allow immediate claiming
         profile.Data.DailyRewards.CurrentStreak = 1
         profile.Data.DailyRewards.StreakStartTime = currentTime
         profile.Data.DailyRewards.ClaimedDays = {} -- Reset claimed days
-        print("DailyRewardsService: First login for", player.Name, "- started streak at day 1")
+        -- Set last login time to allow immediate claiming (don't block first day)
+        profile.Data.DailyRewards.LastLoginTime = currentTime - (dayInSeconds + 1) -- Set to >1 day ago so they can claim day 1
+        print("DailyRewardsService: First login for", player.Name, "- started streak at day 1, can claim immediately")
     else
         local timeSinceLastLogin = currentTime - lastLoginTime
         local daysSinceLastLogin = math.floor(timeSinceLastLogin / dayInSeconds)
