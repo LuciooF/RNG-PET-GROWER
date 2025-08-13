@@ -131,6 +131,14 @@ task.spawn(function()
     local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
     PlayerRankGUIService:Initialize()
     
+    -- Initialize welcome camera service (cool intro animation)
+    local WelcomeCameraService = require(script.Parent.services.WelcomeCameraService)
+    WelcomeCameraService:Initialize()
+    
+    -- Start welcome animation after a brief delay
+    task.wait(1) -- Let everything load first
+    WelcomeCameraService:StartWelcomeAnimation()
+    
 end)
 
 -- Create a dedicated ScreenGui for React (fixed mobile controls issue)
