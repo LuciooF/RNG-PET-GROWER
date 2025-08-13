@@ -25,6 +25,14 @@ function DailyRewardsService:SetupRemoteEvents()
     getDailyRewardsStatusRemote.Name = "GetDailyRewardsStatus"
     getDailyRewardsStatusRemote.Parent = ReplicatedStorage
     
+    local debugSetLastLoginYesterdayRemote = Instance.new("RemoteFunction")
+    debugSetLastLoginYesterdayRemote.Name = "DebugSetLastLoginYesterday"
+    debugSetLastLoginYesterdayRemote.Parent = ReplicatedStorage
+    
+    local debugResetDailyRewardsRemote = Instance.new("RemoteFunction")
+    debugResetDailyRewardsRemote.Name = "DebugResetDailyRewards"
+    debugResetDailyRewardsRemote.Parent = ReplicatedStorage
+    
     -- Handle claiming daily rewards
     claimDailyRewardRemote.OnServerInvoke = function(player, dayNumber)
         return self:ClaimDailyReward(player, dayNumber)
@@ -33,6 +41,26 @@ function DailyRewardsService:SetupRemoteEvents()
     -- Handle getting daily rewards status
     getDailyRewardsStatusRemote.OnServerInvoke = function(player)
         return self:GetDailyRewardsStatus(player)
+    end
+    
+    -- Handle debug: set last login to yesterday
+    debugSetLastLoginYesterdayRemote.OnServerInvoke = function(player)
+        local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
+        if not AuthorizationUtils.isAuthorized(player) then
+            AuthorizationUtils.logUnauthorizedAccess(player, "debug set last login yesterday")
+            return false
+        end
+        return self:DebugSetLastLoginYesterday(player)
+    end
+    
+    -- Handle debug: reset daily rewards
+    debugResetDailyRewardsRemote.OnServerInvoke = function(player)
+        local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
+        if not AuthorizationUtils.isAuthorized(player) then
+            AuthorizationUtils.logUnauthorizedAccess(player, "debug reset daily rewards")
+            return false
+        end
+        return self:DebugResetDailyRewards(player)
     end
 end
 
@@ -265,6 +293,60 @@ end
 function DailyRewardsService:HasClaimableRewards(player)
     local streakStatus = self:CalculateStreakStatus(player)
     return streakStatus.canClaim and streakStatus.nextRewardDay <= 10
+end
+
+-- Debug function: Set last login time to 1 day ago to test claiming
+function DailyRewardsService:DebugSetLastLoginYesterday(player)
+    local DataService = require(script.Parent.DataService)
+    local profile = DataService:GetPlayerProfile(player)
+    
+    if not profile then
+        return false
+    end
+    
+    -- Initialize DailyRewards if it doesn't exist
+    if not profile.Data.DailyRewards then
+        profile.Data.DailyRewards = {
+            LastLoginTime = nil,
+            CurrentStreak = 0,
+            ClaimedDays = {},
+            StreakStartTime = nil
+        }
+    end
+    
+    -- Set last login time to exactly 24 hours ago
+    local dayInSeconds = 24 * 60 * 60
+    profile.Data.DailyRewards.LastLoginTime = os.time() - dayInSeconds
+    
+    -- Sync to client
+    DataService:SyncPlayerDataToClient(player)
+    
+    print("DailyRewardsService: DEBUG - Set last login time to 1 day ago for", player.Name)
+    return true
+end
+
+-- Debug function: Reset daily rewards data completely
+function DailyRewardsService:DebugResetDailyRewards(player)
+    local DataService = require(script.Parent.DataService)
+    local profile = DataService:GetPlayerProfile(player)
+    
+    if not profile then
+        return false
+    end
+    
+    -- Reset daily rewards data completely
+    profile.Data.DailyRewards = {
+        LastLoginTime = nil,
+        CurrentStreak = 0,
+        ClaimedDays = {},
+        StreakStartTime = nil
+    }
+    
+    -- Sync to client
+    DataService:SyncPlayerDataToClient(player)
+    
+    print("DailyRewardsService: DEBUG - Reset daily rewards data for", player.Name)
+    return true
 end
 
 return DailyRewardsService

@@ -450,6 +450,12 @@ function DataService:ResetPlayerData(player)
             completedSteps = {},
             active = false
         }
+        profile.Data.DailyRewards = { -- Reset daily rewards data
+            LastLoginTime = nil,
+            CurrentStreak = 0,
+            ClaimedDays = {},
+            StreakStartTime = nil
+        }
         profile.Data.CrazyChest = { -- Reset crazy chest data
             Level = 1,
             Luck = 1,

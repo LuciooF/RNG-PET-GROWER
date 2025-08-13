@@ -93,6 +93,34 @@ local function DebugPanel(props)
         sendDebugCommand("StartTutorial")
     end
     
+    local function setLastLoginYesterday()
+        local remote = ReplicatedStorage:FindFirstChild("DebugSetLastLoginYesterday")
+        if remote then
+            local success, result = pcall(function()
+                return remote:InvokeServer()
+            end)
+            if success and result then
+                print("Debug: Set last login to yesterday - can now claim daily reward!")
+            else
+                warn("Debug: Failed to set last login time")
+            end
+        end
+    end
+    
+    local function resetDailyRewards()
+        local remote = ReplicatedStorage:FindFirstChild("DebugResetDailyRewards")
+        if remote then
+            local success, result = pcall(function()
+                return remote:InvokeServer()
+            end)
+            if success and result then
+                print("Debug: Reset daily rewards data")
+            else
+                warn("Debug: Failed to reset daily rewards")
+            end
+        end
+    end
+    
     local function stopTutorial()
         sendDebugCommand("StopTutorial")
     end
@@ -632,6 +660,25 @@ local function DebugPanel(props)
                         size = ScreenUtils.udim2(1, 0, 0, 45),
                         strokeThickness = 3,
                         onActivated = resetPlayerData
+                    }),
+                    
+                    -- Daily Rewards Debug Section
+                    DailyRewardsHeader = createSectionHeader("🎁 Daily Rewards Debug", Color3.fromRGB(255, 100, 255), 3),
+                    
+                    SetLastLoginYesterdayButton = createButton({
+                        text = "🎁 Set Last Login Yesterday",
+                        color = Color3.fromRGB(255, 150, 255),
+                        layoutOrder = 4,
+                        size = ScreenUtils.udim2(1, 0, 0, 40),
+                        onActivated = setLastLoginYesterday
+                    }),
+                    
+                    ResetDailyRewardsButton = createButton({
+                        text = "🔄 Reset Daily Rewards",
+                        color = Color3.fromRGB(150, 100, 255),
+                        layoutOrder = 5,
+                        size = ScreenUtils.udim2(1, 0, 0, 40),
+                        onActivated = resetDailyRewards
                     }),
                 }) or nil,
                 

@@ -7,7 +7,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 1,
         type = "Pet", -- OP Pet reward
-        petName = "Frosty Cat", -- Pet asset name (must match ReplicatedStorage.Pets)
+        petName = "Easter TV", -- Pet asset name (must match ReplicatedStorage.Pets)
         amount = 1, -- Number of pets to give
         boost = 10, -- Pet boost multiplier (10x)
         value = 1000, -- Pet base value
@@ -18,7 +18,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 2,
         type = "Pet",
-        petName = "Chocolate Dragon",
+        petName = "Easter TV",
         amount = 1,
         boost = 25, -- 25x boost
         value = 2500,
@@ -29,7 +29,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 3,
         type = "Pet",
-        petName = "Phoenix",
+        petName = "Easter TV",
         amount = 1,
         boost = 50, -- 50x boost
         value = 5000,
@@ -40,7 +40,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 4,
         type = "Pet",
-        petName = "Golden Dragon",
+        petName = "Easter TV",
         amount = 1,
         boost = 100, -- 100x boost
         value = 10000,
@@ -51,7 +51,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 5,
         type = "Pet",
-        petName = "Crystal Wolf",
+        petName = "Easter TV",
         amount = 1,
         boost = 200, -- 200x boost
         value = 20000,
@@ -62,7 +62,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 6,
         type = "Pet",
-        petName = "Shadow Panther",
+        petName = "Easter TV",
         amount = 1,
         boost = 400, -- 400x boost
         value = 40000,
@@ -73,7 +73,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 7,
         type = "Pet",
-        petName = "Lightning Tiger",
+        petName = "Easter TV",
         amount = 1,
         boost = 750, -- 750x boost
         value = 75000,
@@ -84,7 +84,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 8,
         type = "Pet",
-        petName = "Cosmic Dragon",
+        petName = "Easter TV",
         amount = 1,
         boost = 1500, -- 1500x boost
         value = 150000,
@@ -95,7 +95,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 9,
         type = "Pet",
-        petName = "Void Phoenix",
+        petName = "Easter TV",
         amount = 1,
         boost = 3000, -- 3000x boost
         value = 300000,
@@ -106,7 +106,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 10,
         type = "Pet",
-        petName = "Omega Beast",
+        petName = "Easter TV",
         amount = 1,
         boost = 5000, -- 5000x boost - ULTIMATE REWARD
         value = 500000,
