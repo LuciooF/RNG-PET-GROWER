@@ -45,28 +45,29 @@ function WelcomeCameraService:GetMapCenter()
     return mapCenter
 end
 
--- Get the player's area position (where camera will end up)
-function WelcomeCameraService:GetPlayerAreaPosition()
+-- Get the player's actual position (fallback if no character)
+function WelcomeCameraService:GetPlayerPosition()
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        -- Fallback to spawn location or default position
-        return Vector3.new(0, 30, 0)
-    end
-    
-    local playerPosition = player.Character.HumanoidRootPart.Position
-    
-    -- Position camera above and slightly back from player for a good angle
-    local cameraOffset = Vector3.new(-10, END_HEIGHT_OFFSET, 10) -- Slightly back and to the side, high above
-    return playerPosition + cameraOffset
-end
-
--- Get where the camera should look at (player's actual position)
-function WelcomeCameraService:GetPlayerLookTarget()
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        -- Fallback 
-        return Vector3.new(0, 0, 0)
+        -- Fallback to default spawn area - adjust these coordinates for your map
+        return Vector3.new(200, -70, 120) -- Typical player area coordinates
     end
     
     return player.Character.HumanoidRootPart.Position
+end
+
+-- Get the player area center (where most player plots/areas are)
+function WelcomeCameraService:GetPlayerAreaCenter()
+    local playerPos = self:GetPlayerPosition()
+    -- Return a general area around where players spawn/play
+    return Vector3.new(playerPos.X, playerPos.Y, playerPos.Z)
+end
+
+-- Get final camera position (above and back from player for good angle)
+function WelcomeCameraService:GetFinalCameraPosition()
+    local playerPos = self:GetPlayerPosition()
+    -- Position camera above and slightly back from player for a good angle
+    local cameraOffset = Vector3.new(-15, END_HEIGHT_OFFSET, 15) -- Back, up, and to the side
+    return playerPos + cameraOffset
 end
 
 -- Calculate a good camera CFrame looking at a target
@@ -122,22 +123,25 @@ function WelcomeCameraService:StartWelcomeAnimation()
     
     -- Calculate start and end positions
     local mapCenter = self:GetMapCenter()
-    local playerArea = self:GetPlayerAreaPosition()
-    local playerLookTarget = self:GetPlayerLookTarget()
+    local playerAreaCenter = self:GetPlayerAreaCenter()
+    local playerPosition = self:GetPlayerPosition()
+    local finalCameraPosition = self:GetFinalCameraPosition()
     
     print("WelcomeCameraService: Map center:", mapCenter)
-    print("WelcomeCameraService: Player area:", playerArea)
-    print("WelcomeCameraService: Player look target:", playerLookTarget)
+    print("WelcomeCameraService: Player area center:", playerAreaCenter)
+    print("WelcomeCameraService: Player position:", playerPosition)
+    print("WelcomeCameraService: Final camera position:", finalCameraPosition)
     
-    local startPosition = mapCenter + Vector3.new(0, START_HEIGHT_OFFSET, 0) -- Directly above map center
-    local endPosition = playerArea
+    -- Start from high above map center, looking towards the player area
+    local startPosition = mapCenter + Vector3.new(0, START_HEIGHT_OFFSET, 0)
+    local endPosition = finalCameraPosition
     
     print("WelcomeCameraService: Start position:", startPosition)
     print("WelcomeCameraService: End position:", endPosition)
     
     -- Calculate start and end CFrames (looking at targets)
-    local startCFrame = self:CalculateCameraLookAt(startPosition, mapCenter) -- Look down at map center
-    local endCFrame = self:CalculateCameraLookAt(endPosition, playerLookTarget) -- Look down at player
+    local startCFrame = self:CalculateCameraLookAt(startPosition, playerAreaCenter) -- Look towards player area from center
+    local endCFrame = self:CalculateCameraLookAt(endPosition, playerPosition) -- Look at player from final position
     
     -- Set initial camera position
     camera.CFrame = startCFrame
@@ -179,7 +183,7 @@ function WelcomeCameraService:StartWelcomeAnimation()
         
         -- Interpolate position and look target
         local currentPosition = startPosition:lerp(endPosition, progress)
-        local currentLookTarget = mapCenter:lerp(playerLookTarget, progress)
+        local currentLookTarget = playerAreaCenter:lerp(playerPosition, progress)
         
         -- Update camera CFrame based on interpolated values
         local currentCFrame = self:CalculateCameraLookAt(currentPosition, currentLookTarget)

@@ -36,6 +36,11 @@ GlobalChatService:Initialize()
 local PetProcessingSoundService = require(script.Parent.services.PetProcessingSoundService)
 PetProcessingSoundService:Initialize()
 
+-- Initialize welcome camera service early (doesn't need player data to start)
+local WelcomeCameraService = require(script.Parent.services.WelcomeCameraService)
+WelcomeCameraService:Initialize()
+WelcomeCameraService:StartWelcomeAnimation()
+
 -- Wait for server to process player, then initialize data-dependent services
 task.spawn(function()
     -- Small delay to ensure server has started processing this player
@@ -130,13 +135,6 @@ task.spawn(function()
     -- Initialize player rank GUI service (shows rank above players' heads)
     local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
     PlayerRankGUIService:Initialize()
-    
-    -- Initialize welcome camera service (cool intro animation)
-    local WelcomeCameraService = require(script.Parent.services.WelcomeCameraService)
-    WelcomeCameraService:Initialize()
-    
-    -- Start welcome animation immediately - don't wait
-    WelcomeCameraService:StartWelcomeAnimation()
     
 end)
 
