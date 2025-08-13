@@ -77,6 +77,9 @@ local function RightSideBar(props)
         Potions = {}
     })
     
+    -- State for notification badges
+    local claimableDailyCount, setClaimableDailyCount = React.useState(0)
+    
     -- Session-based playtime timer using shared start time
     local sessionStartTime = props.sharedSessionStartTime or tick()
     local currentSessionTime, setCurrentSessionTime = React.useState(0)
@@ -167,6 +170,47 @@ local function RightSideBar(props)
         end
     end, {})
     
+    -- Effect to check daily rewards claimable count
+    React.useEffect(function()
+        local function updateDailyRewardsCount()
+            local getDailyRewardsStatusRemote = ReplicatedStorage:FindFirstChild("GetDailyRewardsStatus")
+            if getDailyRewardsStatusRemote then
+                task.spawn(function()
+                    local success, result = pcall(function()
+                        return getDailyRewardsStatusRemote:InvokeServer()
+                    end)
+                    
+                    if success and result and result.rewardStatuses then
+                        local count = 0
+                        for _, status in ipairs(result.rewardStatuses) do
+                            if status.status == "available" then
+                                count = count + 1
+                            end
+                        end
+                        setClaimableDailyCount(count)
+                    end
+                end)
+            end
+        end
+        
+        -- Update immediately
+        updateDailyRewardsCount()
+        
+        -- Update every 30 seconds to keep it fresh
+        local timerConnection = task.spawn(function()
+            while true do
+                task.wait(30)
+                updateDailyRewardsCount()
+            end
+        end)
+        
+        return function()
+            if timerConnection then
+                task.cancel(timerConnection)
+            end
+        end
+    end, {})
+    
     -- Calculate potion count
     local potionCount = 0
     for _, quantity in pairs(playerData.Potions or {}) do
@@ -180,14 +224,15 @@ local function RightSideBar(props)
     local canClaim = false
     local sharedClaimedRewards = props.sharedSessionClaimedRewards or {}
     
-    -- First pass: check for any claimable rewards
+    -- First pass: count all claimable rewards
+    local claimablePlaytimeCount = 0
     for _, reward in ipairs(allRewards) do
         local hasPlaytime = currentSessionTime >= reward.timeMinutes
         local alreadyClaimed = sharedClaimedRewards[reward.timeMinutes] or false
         
         if hasPlaytime and not alreadyClaimed then
-            canClaim = true
-            break -- Found a claimable reward, stop checking
+            claimablePlaytimeCount = claimablePlaytimeCount + 1
+            canClaim = true -- Keep this for existing logic compatibility
         end
     end
     
@@ -356,8 +401,8 @@ local function RightSideBar(props)
                 })
             }),
             
-            -- Red notification badge when rewards are claimable
-            canClaim and React.createElement("Frame", {
+            -- Red notification badge when rewards are claimable (with count)
+            claimablePlaytimeCount > 0 and React.createElement("Frame", {
                 Name = "NotificationBadge",
                 Size = UDim2.new(0, ScreenUtils.getProportionalSize(26), 0, ScreenUtils.getProportionalSize(26)), -- Bigger
                 Position = UDim2.new(1, -ScreenUtils.getProportionalSize(20), 0, ScreenUtils.getProportionalSize(3)), -- More left, slightly higher
@@ -373,6 +418,18 @@ local function RightSideBar(props)
                 BadgeStroke = React.createElement("UIStroke", {
                     Color = Color3.fromRGB(0, 0, 0), -- Black outline
                     Thickness = ScreenUtils.getProportionalSize(2)
+                }),
+                -- Count text
+                BadgeText = React.createElement("TextLabel", {
+                    Size = UDim2.new(1, 0, 1, 0),
+                    BackgroundTransparency = 1,
+                    Text = tostring(claimablePlaytimeCount),
+                    TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
+                    TextSize = ScreenUtils.getTextSize(18),
+                    Font = Enum.Font.FredokaOne,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    ZIndex = 55
                 })
             }) or nil
         })
@@ -481,7 +538,7 @@ local function RightSideBar(props)
             Position = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 1,
             Image = "rbxassetid://78432604638666", -- Calendar icon
-            ImageColor3 = Color3.fromRGB(255, 215, 0), -- Gold color for daily rewards button
+            ImageColor3 = Color3.fromRGB(255, 255, 255), -- No tint for daily rewards button
             ScaleType = Enum.ScaleType.Fit,
             SizeConstraint = Enum.SizeConstraint.RelativeYY,
             ZIndex = 50,
@@ -494,7 +551,33 @@ local function RightSideBar(props)
                 playHoverSound()
                 spinButton(rbx)
             end
-        })
+        }),
+        
+        -- Notification badge for claimable daily rewards
+        claimableDailyCount > 0 and React.createElement("Frame", {
+            Name = "DailyNotificationBadge",
+            Size = UDim2.new(0, ScreenUtils.getProportionalSize(24), 0, ScreenUtils.getProportionalSize(24)),
+            Position = UDim2.new(1, -ScreenUtils.getProportionalSize(8), 0, ScreenUtils.getProportionalSize(8)),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundColor3 = Color3.fromRGB(255, 50, 50), -- Red notification badge
+            BorderSizePixel = 0,
+            ZIndex = 53
+        }, {
+            BadgeCorner = React.createElement("UICorner", {
+                CornerRadius = UDim.new(0.5, 0) -- Circular badge
+            }),
+            BadgeText = React.createElement("TextLabel", {
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = tostring(claimableDailyCount),
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
+                TextSize = ScreenUtils.getTextSize(18),
+                Font = Enum.Font.FredokaOne,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 54
+            })
+        }) or nil
     })
     
     -- Convert array to React children object

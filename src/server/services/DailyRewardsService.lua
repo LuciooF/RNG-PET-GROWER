@@ -33,6 +33,10 @@ function DailyRewardsService:SetupRemoteEvents()
     debugResetDailyRewardsRemote.Name = "DebugResetDailyRewards"
     debugResetDailyRewardsRemote.Parent = ReplicatedStorage
     
+    local debugIncrementStreakRemote = Instance.new("RemoteFunction")
+    debugIncrementStreakRemote.Name = "DebugIncrementStreak"
+    debugIncrementStreakRemote.Parent = ReplicatedStorage
+    
     -- Handle claiming daily rewards
     claimDailyRewardRemote.OnServerInvoke = function(player, dayNumber)
         return self:ClaimDailyReward(player, dayNumber)
@@ -61,6 +65,16 @@ function DailyRewardsService:SetupRemoteEvents()
             return false
         end
         return self:DebugResetDailyRewards(player)
+    end
+    
+    -- Handle debug: increment streak
+    debugIncrementStreakRemote.OnServerInvoke = function(player)
+        local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
+        if not AuthorizationUtils.isAuthorized(player) then
+            AuthorizationUtils.logUnauthorizedAccess(player, "debug increment streak")
+            return false
+        end
+        return self:DebugIncrementStreak(player)
     end
 end
 
@@ -93,9 +107,6 @@ function DailyRewardsService:UpdatePlayerLoginStreak(player)
         profile.Data.DailyRewards.CurrentStreak = 1
         profile.Data.DailyRewards.StreakStartTime = currentTime
         profile.Data.DailyRewards.ClaimedDays = {} -- Reset claimed days
-        -- Set last login time to allow immediate claiming (don't block first day)
-        profile.Data.DailyRewards.LastLoginTime = currentTime - (dayInSeconds + 1) -- Set to >1 day ago so they can claim day 1
-        print("DailyRewardsService: First login for", player.Name, "- started streak at day 1, can claim immediately")
     else
         local timeSinceLastLogin = currentTime - lastLoginTime
         local daysSinceLastLogin = math.floor(timeSinceLastLogin / dayInSeconds)
@@ -105,18 +116,15 @@ function DailyRewardsService:UpdatePlayerLoginStreak(player)
             profile.Data.DailyRewards.CurrentStreak = 1
             profile.Data.DailyRewards.StreakStartTime = currentTime
             profile.Data.DailyRewards.ClaimedDays = {} -- Reset claimed days
-            print("DailyRewardsService: Streak broken for", player.Name, "- reset to day 1")
         elseif daysSinceLastLogin == 1 then
             -- Exactly 1 day - can potentially continue streak (if they claim today)
             -- Don't increment streak yet - wait for them to claim
-            print("DailyRewardsService: Can continue streak for", player.Name, "- currently at day", profile.Data.DailyRewards.CurrentStreak)
         else
             -- Same day - no change needed
-            print("DailyRewardsService: Same day login for", player.Name, "- streak unchanged at day", profile.Data.DailyRewards.CurrentStreak)
         end
     end
     
-    -- Update last login time
+    -- Update last login time to current time for all users
     profile.Data.DailyRewards.LastLoginTime = currentTime
     
     -- Sync to client
@@ -217,10 +225,11 @@ function DailyRewardsService:ClaimDailyReward(player, dayNumber)
     -- Update current streak to the claimed day
     profile.Data.DailyRewards.CurrentStreak = dayNumber
     
+    -- CRITICAL: Update last login time to NOW to prevent claiming multiple rewards
+    profile.Data.DailyRewards.LastLoginTime = os.time()
+    
     -- Sync to client
     DataService:SyncPlayerDataToClient(player)
-    
-    print("DailyRewardsService: Player", player.Name, "claimed day", dayNumber, "reward:", reward.petName, "with", reward.boost, "x boost")
     
     return {
         success = true, 
@@ -323,7 +332,6 @@ function DailyRewardsService:DebugSetLastLoginYesterday(player)
     -- Sync to client
     DataService:SyncPlayerDataToClient(player)
     
-    print("DailyRewardsService: DEBUG - Set last login time to 1 day ago for", player.Name)
     return true
 end
 
@@ -347,7 +355,55 @@ function DailyRewardsService:DebugResetDailyRewards(player)
     -- Sync to client
     DataService:SyncPlayerDataToClient(player)
     
-    print("DailyRewardsService: DEBUG - Reset daily rewards data for", player.Name)
+    return true
+end
+
+-- Debug function: Simulate moving forward one day (allows claiming next reward)
+function DailyRewardsService:DebugIncrementStreak(player)
+    local DataService = require(script.Parent.DataService)
+    local profile = DataService:GetPlayerProfile(player)
+    
+    if not profile then
+        return false
+    end
+    
+    -- Initialize DailyRewards if it doesn't exist
+    if not profile.Data.DailyRewards then
+        profile.Data.DailyRewards = {
+            LastLoginTime = os.time(),
+            CurrentStreak = 0,
+            ClaimedDays = {},
+            StreakStartTime = nil
+        }
+    end
+    
+    -- Get current status
+    local currentTime = os.time()
+    local dayInSeconds = 24 * 60 * 60
+    local lastLoginTime = profile.Data.DailyRewards.LastLoginTime or currentTime
+    
+    -- Calculate what day we're on
+    local maxClaimedDay = 0
+    for day, _ in pairs(profile.Data.DailyRewards.ClaimedDays or {}) do
+        maxClaimedDay = math.max(maxClaimedDay, day)
+    end
+    
+    -- If player has already claimed today's reward, we need to "move forward" in time
+    local timeSinceLastLogin = currentTime - lastLoginTime
+    local daysSinceLastLogin = math.floor(timeSinceLastLogin / dayInSeconds)
+    
+    if daysSinceLastLogin == 0 and maxClaimedDay > 0 then
+        -- Player already claimed today, so simulate moving to tomorrow
+        -- Set last login to exactly 24 hours ago so they can claim ONE more reward
+        profile.Data.DailyRewards.LastLoginTime = currentTime - dayInSeconds
+        -- Time travel simulated
+    else
+        -- Player hasn't claimed today yet, just let them claim current day
+    end
+    
+    -- Sync to client
+    DataService:SyncPlayerDataToClient(player)
+    
     return true
 end
 

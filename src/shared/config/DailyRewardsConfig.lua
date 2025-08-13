@@ -7,7 +7,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 1,
         type = "Pet", -- OP Pet reward
-        petName = "Easter TV", -- Pet asset name (must match ReplicatedStorage.Pets)
+        petName = "Ruby Spider 2.0", -- Pet asset name (must match ReplicatedStorage.Pets)
         amount = 1, -- Number of pets to give
         boost = 10, -- Pet boost multiplier (10x)
         value = 1000, -- Pet base value
@@ -18,7 +18,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 2,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Glacier",
         amount = 1,
         boost = 25, -- 25x boost
         value = 2500,
@@ -29,7 +29,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 3,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Mystery Cat",
         amount = 1,
         boost = 50, -- 50x boost
         value = 5000,
@@ -40,7 +40,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 4,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Neptunian Hunter",
         amount = 1,
         boost = 100, -- 100x boost
         value = 10000,
@@ -51,7 +51,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 5,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Ice Cream Dominus",
         amount = 1,
         boost = 200, -- 200x boost
         value = 20000,
@@ -62,7 +62,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 6,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Puzzle Cube",
         amount = 1,
         boost = 400, -- 400x boost
         value = 40000,
@@ -73,7 +73,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 7,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Crystal Lord",
         amount = 1,
         boost = 750, -- 750x boost
         value = 75000,
@@ -84,7 +84,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 8,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Toucan",
         amount = 1,
         boost = 1500, -- 1500x boost
         value = 150000,
@@ -95,7 +95,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 9,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Sapphire Dragon",
         amount = 1,
         boost = 3000, -- 3000x boost
         value = 300000,
@@ -106,7 +106,7 @@ DailyRewardsConfig.rewards = {
     {
         day = 10,
         type = "Pet",
-        petName = "Easter TV",
+        petName = "Waffle Cone",
         amount = 1,
         boost = 5000, -- 5000x boost - ULTIMATE REWARD
         value = 500000,
@@ -194,42 +194,50 @@ function DailyRewardsConfig.calculateStreakStatus(lastLoginTime, claimedDays)
     local timeSinceLastLogin = currentTime - lastLoginTime
     local daysSinceLastLogin = math.floor(timeSinceLastLogin / dayInSeconds)
     
-    -- If more than 1 day since last login, streak is broken
-    if daysSinceLastLogin > 1 then
-        return {
-            currentStreak = 1, -- Reset to day 1
-            canClaim = true,
-            streakBroken = true,
-            nextRewardDay = 1
-        }
-    end
-    
-    -- If same day, can't claim again
-    if daysSinceLastLogin == 0 then
-        -- Calculate current streak from claimed days
-        local maxClaimedDay = 0
-        for day, _ in pairs(claimedDays or {}) do
-            maxClaimedDay = math.max(maxClaimedDay, day)
-        end
-        
-        return {
-            currentStreak = maxClaimedDay,
-            canClaim = false, -- Already claimed today
-            streakBroken = false,
-            nextRewardDay = math.min(maxClaimedDay + 1, 10)
-        }
-    end
-    
-    -- If exactly 1 day since last login, can continue streak
+    -- Check if this is a first-time user (no claimed days yet)
     local maxClaimedDay = 0
     for day, _ in pairs(claimedDays or {}) do
         maxClaimedDay = math.max(maxClaimedDay, day)
     end
+    local isFirstTimeUser = (maxClaimedDay == 0)
     
+    -- If more than 1 day since last login
+    if daysSinceLastLogin > 1 then
+        -- If it's a first-time user, don't show streak as broken
+        return {
+            currentStreak = 1, -- Start/Reset to day 1
+            canClaim = true,
+            streakBroken = not isFirstTimeUser, -- Don't show as broken for first-time users
+            nextRewardDay = 1
+        }
+    end
+    
+    -- If same day, check if first-time user or already claimed
+    if daysSinceLastLogin == 0 then        
+        -- First-time users can claim day 1 on the same day they join
+        if isFirstTimeUser then
+            return {
+                currentStreak = 1,
+                canClaim = true,
+                streakBroken = false,
+                nextRewardDay = 1
+            }
+        else
+            -- Existing users can't claim again on the same day
+            return {
+                currentStreak = math.max(maxClaimedDay, 1), -- Ensure minimum streak of 1
+                canClaim = false, -- Already claimed today
+                streakBroken = false,
+                nextRewardDay = math.min(maxClaimedDay + 1, 10)
+            }
+        end
+    end
+    
+    -- If exactly 1 day since last login, can continue streak
     local nextDay = math.min(maxClaimedDay + 1, 10)
     
     return {
-        currentStreak = nextDay,
+        currentStreak = math.max(nextDay, 1), -- Ensure minimum streak of 1
         canClaim = true,
         streakBroken = false,
         nextRewardDay = nextDay

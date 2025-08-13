@@ -93,16 +93,14 @@ local function DebugPanel(props)
         sendDebugCommand("StartTutorial")
     end
     
-    local function setLastLoginYesterday()
-        local remote = ReplicatedStorage:FindFirstChild("DebugSetLastLoginYesterday")
+    local function incrementStreak()
+        local remote = ReplicatedStorage:FindFirstChild("DebugIncrementStreak")
         if remote then
             local success, result = pcall(function()
                 return remote:InvokeServer()
             end)
-            if success and result then
-                print("Debug: Set last login to yesterday - can now claim daily reward!")
-            else
-                warn("Debug: Failed to set last login time")
+            if not success then
+                warn("Debug: Failed to increment streak")
             end
         end
     end
@@ -113,9 +111,7 @@ local function DebugPanel(props)
             local success, result = pcall(function()
                 return remote:InvokeServer()
             end)
-            if success and result then
-                print("Debug: Reset daily rewards data")
-            else
+            if not success then
                 warn("Debug: Failed to reset daily rewards")
             end
         end
@@ -665,12 +661,12 @@ local function DebugPanel(props)
                     -- Daily Rewards Debug Section
                     DailyRewardsHeader = createSectionHeader("🎁 Daily Rewards Debug", Color3.fromRGB(255, 100, 255), 3),
                     
-                    SetLastLoginYesterdayButton = createButton({
-                        text = "🎁 Set Last Login Yesterday",
+                    IncrementStreakButton = createButton({
+                        text = "🎁 Add +1 to Streak",
                         color = Color3.fromRGB(255, 150, 255),
                         layoutOrder = 4,
                         size = ScreenUtils.udim2(1, 0, 0, 40),
-                        onActivated = setLastLoginYesterday
+                        onActivated = incrementStreak
                     }),
                     
                     ResetDailyRewardsButton = createButton({

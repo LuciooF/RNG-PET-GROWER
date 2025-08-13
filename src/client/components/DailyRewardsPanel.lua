@@ -34,6 +34,7 @@ local function DailyRewardsPanel(props)
     -- Daily rewards status state
     local dailyStatus, setDailyStatus = React.useState(nil)
     local isLoading, setIsLoading = React.useState(true)
+    local timeUntilNextReward, setTimeUntilNextReward = React.useState("")
     
     -- Animation references for cleanup
     local activeAnimations = React.useRef({})
@@ -91,7 +92,6 @@ local function DailyRewardsPanel(props)
                     
                     if success and result then
                         setDailyStatus(result)
-                        print("DailyRewardsPanel: Loaded status:", game:GetService("HttpService"):JSONEncode(result))
                     else
                         warn("DailyRewardsPanel: Failed to load daily rewards status:", result)
                         setDailyStatus({
@@ -111,6 +111,40 @@ local function DailyRewardsPanel(props)
             end
         end
     end, {props.isVisible})
+    
+    -- Timer effect to update countdown until next reward
+    React.useEffect(function()
+        if not props.isVisible or not dailyStatus or dailyStatus.canClaim then
+            return
+        end
+        
+        local function updateTimer()
+            -- Calculate time until next day (midnight)
+            local currentTime = os.time()
+            local secondsInDay = 24 * 60 * 60
+            local secondsSinceMidnight = currentTime % secondsInDay
+            local secondsUntilMidnight = secondsInDay - secondsSinceMidnight
+            
+            local hours = math.floor(secondsUntilMidnight / 3600)
+            local minutes = math.floor((secondsUntilMidnight % 3600) / 60)
+            local seconds = secondsUntilMidnight % 60
+            
+            local timeText = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+            setTimeUntilNextReward(timeText)
+        end
+        
+        -- Update immediately and then every second
+        updateTimer()
+        local heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            updateTimer()
+        end)
+        
+        return function()
+            if heartbeatConnection then
+                heartbeatConnection:Disconnect()
+            end
+        end
+    end, {props.isVisible, dailyStatus})
     
     if not props.isVisible then
         return nil
@@ -218,8 +252,6 @@ local function DailyRewardsPanel(props)
                         setDailyStatus(statusResult)
                     end
                 end
-                
-                print("DailyRewardsPanel: Successfully claimed day", dayNumber, "reward")
             else
                 warn("DailyRewardsPanel: Failed to claim reward:", result and result.message or "Unknown error")
             end
@@ -298,16 +330,24 @@ local function DailyRewardsPanel(props)
                     Padding = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(10))
                 }),
                 
-                -- Pet Model viewport
-                React.createElement("ViewportFrame", {
-                    Name = "PetModel",
+                -- Pet Model viewport with black overlay for locked rewards
+                React.createElement("Frame", {
+                    Name = "PetModelContainer",
                     Size = UDim2.new(0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1), 0, ScreenUtils.getProportionalSize(120) * (canClaim and rewardShakeScale or 1)),
                     Position = UDim2.new(0.5, 0, 0, 0),
                     AnchorPoint = Vector2.new(0.5, 0),
                     BackgroundTransparency = 1,
                     LayoutOrder = 1,
                     ZIndex = 103,
-                    Rotation = canClaim and rewardShakeRotation or 0,
+                    Rotation = canClaim and rewardShakeRotation or 0
+                }, {
+                    -- ViewportFrame for the pet model
+                    PetModel = React.createElement("ViewportFrame", {
+                        Name = "PetModel",
+                        Size = UDim2.new(1, 0, 1, 0),
+                        Position = UDim2.new(0, 0, 0, 0),
+                        BackgroundTransparency = 1,
+                        ZIndex = 103,
                     -- Load pet model when viewport is created
                     [React.Event.AncestryChanged] = function(rbx)
                         if rbx.Parent then
@@ -350,6 +390,28 @@ local function DailyRewardsPanel(props)
                                                 part.CanCollide = false
                                                 part.Anchored = true
                                                 part.Massless = true
+                                                
+                                                -- Black out the model for locked rewards
+                                                if isLocked then
+                                                    part.Color = Color3.fromRGB(0, 0, 0) -- Pure black
+                                                    part.Material = Enum.Material.Neon -- Make it solid black
+                                                end
+                                            elseif isLocked then
+                                                -- Black out faces, decals, textures, etc.
+                                                if part:IsA("Decal") or part:IsA("Texture") then
+                                                    part.Color3 = Color3.fromRGB(0, 0, 0) -- Black tint
+                                                    part.Transparency = 0.9 -- Nearly invisible
+                                                elseif part:IsA("SurfaceGui") then
+                                                    part.Enabled = false -- Hide surface GUIs
+                                                elseif part:IsA("BillboardGui") or part:IsA("SurfaceGui") then
+                                                    part.Enabled = false -- Hide any GUI elements
+                                                elseif part:IsA("Fire") or part:IsA("Smoke") or part:IsA("Sparkles") then
+                                                    part.Enabled = false -- Hide particle effects
+                                                elseif part:IsA("PointLight") or part:IsA("SpotLight") or part:IsA("SurfaceLight") then
+                                                    part.Enabled = false -- Turn off lights
+                                                elseif part:IsA("Sound") then
+                                                    part.Volume = 0 -- Mute sounds
+                                                end
                                             end
                                         end
                                         
@@ -397,14 +459,15 @@ local function DailyRewardsPanel(props)
                             end)
                         end
                     end
+                })
                 }),
                 
-                -- Pet info text
+                -- Pet info text (show ??? for locked rewards)
                 Title = React.createElement("TextLabel", {
                     Name = "Title",
                     Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(70)),
                     BackgroundTransparency = 1,
-                    Text = NumberFormatter.format(reward.boost) .. "x Boost\n" .. reward.petName,
+                    Text = NumberFormatter.format(reward.boost) .. "x Boost\n" .. (isLocked and "???" or reward.petName),
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.getTextSize(32),
                     Font = Enum.Font.FredokaOne,
@@ -418,6 +481,20 @@ local function DailyRewardsPanel(props)
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                 }, {
+                    -- Rainbow gradient for locked rewards (like "OP" text)
+                    isLocked and React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),    -- Red
+                            ColorSequenceKeypoint.new(0.14, Color3.fromRGB(255, 127, 0)),  -- Orange
+                            ColorSequenceKeypoint.new(0.28, Color3.fromRGB(255, 255, 0)),  -- Yellow
+                            ColorSequenceKeypoint.new(0.42, Color3.fromRGB(0, 255, 0)),    -- Green
+                            ColorSequenceKeypoint.new(0.57, Color3.fromRGB(0, 0, 255)),    -- Blue
+                            ColorSequenceKeypoint.new(0.71, Color3.fromRGB(75, 0, 130)),   -- Indigo
+                            ColorSequenceKeypoint.new(0.85, Color3.fromRGB(148, 0, 211)),  -- Violet
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))     -- Back to Red
+                        }),
+                        Rotation = 45 -- Static angle for consistency
+                    }) or nil,
                     -- Thicker black outline for text
                     TextStroke = React.createElement("UIStroke", {
                         Color = Color3.fromRGB(0, 0, 0),
@@ -743,7 +820,8 @@ local function DailyRewardsPanel(props)
             AnchorPoint = Vector2.new(0.5, 0),
             BackgroundTransparency = 1,
             Text = (dailyStatus.streakBroken and "Your streak was broken! Start fresh with Day 1." or 
-                   (dailyStatus.canClaim and "You can claim your daily reward!" or "Come back tomorrow for your next reward!")),
+                   (dailyStatus.canClaim and "You can claim your daily reward!" or 
+                    ("Come back in " .. timeUntilNextReward .. " for your next reward!"))),
             TextColor3 = dailyStatus.streakBroken and Color3.fromRGB(255, 80, 120) or 
                         (dailyStatus.canClaim and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(100, 180, 220)),
             TextSize = ScreenUtils.getTextSize(60),
