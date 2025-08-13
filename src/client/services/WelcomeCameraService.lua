@@ -77,7 +77,7 @@ function WelcomeCameraService:GetPlayerLevel1Part()
     
     print("WelcomeCameraService: Searching for Level1 parts near player at", playerPos)
     
-    -- Look for the player's specific area (areas are typically numbered)
+    -- Look for the player's specific area (areas are named PlayerArea1, PlayerArea2, etc.)
     for _, area in pairs(playerAreas:GetChildren()) do
         if area:IsA("Model") then
             print("WelcomeCameraService: Checking area", area.Name)
@@ -90,6 +90,14 @@ function WelcomeCameraService:GetPlayerLevel1Part()
                     closestLevel1 = level1Part
                     closestDistance = distance
                 end
+            else
+                print("WelcomeCameraService: No Level1 found in", area.Name)
+                -- Let's also check what children this area has
+                local children = {}
+                for _, child in pairs(area:GetChildren()) do
+                    table.insert(children, child.Name .. "(" .. child.ClassName .. ")")
+                end
+                print("WelcomeCameraService: Area", area.Name, "contains:", table.concat(children, ", "))
             end
         end
     end
