@@ -107,6 +107,25 @@ function PetCollectionService:CollectPetBall(petBall, connection)
         ClientPetBallService:OnPetBallCollected(areaName)
     end
     
+    -- Check inventory limit client-side before sending to server
+    local store = require(ReplicatedStorage.store)
+    local playerData = store:getState().playerData
+    local MAX_PET_INVENTORY = 1000
+    
+    if playerData and playerData.Pets and #playerData.Pets >= MAX_PET_INVENTORY then
+        -- Inventory is full - don't send server request, just show client error
+        print("PetCollectionService: Inventory full (" .. #playerData.Pets .. "/" .. MAX_PET_INVENTORY .. "), not collecting pet")
+        
+        -- Show error message to player (you can replace this with a proper UI notification)
+        local StarterGui = game:GetService("StarterGui")
+        StarterGui:SetCore("ChatMakeSystemMessage", {
+            Text = "🎒 Pet inventory full! (" .. MAX_PET_INVENTORY .. " pets max) Send some pets to heaven to make space.";
+            Color = Color3.fromRGB(255, 100, 100);
+        })
+        
+        return -- Don't send server request
+    end
+    
     -- Play collection sound
     local PetballCollectionSoundService = require(script.Parent.PetballCollectionSoundService)
     PetballCollectionSoundService:PlayCollectionSound()
