@@ -149,42 +149,36 @@ local function DailyRewardsPanel(props)
     -- Get all rewards and calculate states
     local allRewards = DailyRewardsConfig.getAllRewards()
     
-    -- Create smooth gradient progression for card outlines (rainbow effect)
+    -- Create smooth gradient progression for card outlines (pink-purple-teal theme)
     local function getGradientColor(cardIndex, totalCards)
         local progress = (cardIndex - 1) / math.max(totalCards - 1, 1) -- 0 to 1
-        local cycle = progress * 4 -- 0 to 4 for 5 color transitions
+        local cycle = progress * 3 -- 0 to 3 for 4 color transitions
         
         local r, g, b
         if cycle < 1 then
-            -- Green to Blue (0-1)
+            -- Pink to Purple (0-1)
             local t = cycle
-            r = math.floor(85 * (1 - t) + 54 * t)
-            g = math.floor(255 * (1 - t) + 162 * t) 
-            b = math.floor(85 * (1 - t) + 235 * t)
+            r = math.floor(255 * (1 - t) + 180 * t)
+            g = math.floor(100 * (1 - t) + 50 * t) 
+            b = math.floor(255 * (1 - t) + 255 * t)
         elseif cycle < 2 then
-            -- Blue to Yellow (1-2)
+            -- Purple to Teal (1-2)
             local t = cycle - 1
-            r = math.floor(54 * (1 - t) + 255 * t)
-            g = math.floor(162 * (1 - t) + 235 * t)
-            b = math.floor(235 * (1 - t) + 85 * t)
+            r = math.floor(180 * (1 - t) + 50 * t)
+            g = math.floor(50 * (1 - t) + 200 * t)
+            b = math.floor(255 * (1 - t) + 200 * t)
         elseif cycle < 3 then
-            -- Yellow to Red (2-3)
+            -- Teal to Cyan (2-3)
             local t = cycle - 2
-            r = math.floor(255 * (1 - t) + 255 * t)
-            g = math.floor(235 * (1 - t) + 85 * t)
-            b = math.floor(85 * (1 - t) + 85 * t)
-        elseif cycle < 4 then
-            -- Red to Purple (3-4)
-            local t = cycle - 3
-            r = math.floor(255 * (1 - t) + 153 * t)
-            g = math.floor(85 * (1 - t) + 102 * t)
-            b = math.floor(85 * (1 - t) + 255 * t)
+            r = math.floor(50 * (1 - t) + 0 * t)
+            g = math.floor(200 * (1 - t) + 255 * t)
+            b = math.floor(200 * (1 - t) + 255 * t)
         else
-            -- Purple back to Green (4+)
-            local t = cycle - 4
-            r = math.floor(153 * (1 - t) + 85 * t)
-            g = math.floor(102 * (1 - t) + 255 * t)
-            b = math.floor(255 * (1 - t) + 85 * t)
+            -- Cyan back to Pink (3+)
+            local t = cycle - 3
+            r = math.floor(0 * (1 - t) + 255 * t)
+            g = math.floor(255 * (1 - t) + 100 * t)
+            b = math.floor(255 * (1 - t) + 255 * t)
         end
         
         return Color3.fromRGB(r, g, b)
@@ -255,17 +249,17 @@ local function DailyRewardsPanel(props)
         local buttonColor
         
         if isClaimed then
-            cardBackgroundColor = Color3.fromRGB(255, 250, 205) -- Light gold background for claimed
+            cardBackgroundColor = Color3.fromRGB(240, 220, 255) -- Light purple background for claimed
             buttonText = "CLAIMED"
-            buttonColor = Color3.fromRGB(255, 215, 0) -- Gold button for claimed
+            buttonColor = Color3.fromRGB(180, 100, 255) -- Purple button for claimed
         elseif canClaim then
             cardBackgroundColor = Color3.fromRGB(255, 255, 255) -- White background
             buttonText = "CLAIM"
-            buttonColor = Color3.fromRGB(50, 180, 50)
+            buttonColor = Color3.fromRGB(255, 100, 180) -- Pink button for claimable
         else
             cardBackgroundColor = Color3.fromRGB(255, 255, 255) -- White background
             buttonText = "DAY " .. reward.day
-            buttonColor = Color3.fromRGB(160, 160, 160)
+            buttonColor = Color3.fromRGB(120, 160, 180) -- Teal-gray for locked
         end
         
         local cardChildren = {
@@ -446,9 +440,12 @@ local function DailyRewardsPanel(props)
                 -- Gradient overlay for shiny effect
                 ButtonGradient = React.createElement("UIGradient", {
                     Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, canClaim and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(120, 120, 120)),
-                        ColorSequenceKeypoint.new(0.5, canClaim and Color3.fromRGB(60, 140, 65) or Color3.fromRGB(80, 80, 80)),
-                        ColorSequenceKeypoint.new(1, canClaim and Color3.fromRGB(45, 105, 50) or Color3.fromRGB(50, 50, 50))
+                        ColorSequenceKeypoint.new(0, isClaimed and Color3.fromRGB(200, 120, 255) or 
+                                                     (canClaim and Color3.fromRGB(255, 120, 200) or Color3.fromRGB(140, 180, 200))),
+                        ColorSequenceKeypoint.new(0.5, isClaimed and Color3.fromRGB(160, 80, 220) or 
+                                                      (canClaim and Color3.fromRGB(220, 80, 160) or Color3.fromRGB(100, 140, 160))),
+                        ColorSequenceKeypoint.new(1, isClaimed and Color3.fromRGB(120, 40, 180) or 
+                                                     (canClaim and Color3.fromRGB(180, 40, 120) or Color3.fromRGB(60, 100, 120)))
                     }),
                     Rotation = 0
                 }),
@@ -513,7 +510,7 @@ local function DailyRewardsPanel(props)
                     Size = UDim2.new(0.8, 0, 0.3, 0),
                     Position = UDim2.new(0.5, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(0.5, 0.5),
-                    BackgroundColor3 = Color3.fromRGB(255, 215, 0),
+                    BackgroundColor3 = Color3.fromRGB(180, 100, 255), -- Purple badge
                     Text = "CLAIMED",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.getTextSize(24),
@@ -584,7 +581,7 @@ local function DailyRewardsPanel(props)
             Size = ScreenUtils.udim2(0.6, 0, 0.6, 0),
             Position = ScreenUtils.udim2(0.5, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = Color3.fromRGB(248, 248, 248),
+            BackgroundColor3 = Color3.fromRGB(245, 240, 255), -- Light purple background
             BorderSizePixel = 0,
             ZIndex = 100
         }, {
@@ -747,8 +744,8 @@ local function DailyRewardsPanel(props)
             BackgroundTransparency = 1,
             Text = (dailyStatus.streakBroken and "Your streak was broken! Start fresh with Day 1." or 
                    (dailyStatus.canClaim and "You can claim your daily reward!" or "Come back tomorrow for your next reward!")),
-            TextColor3 = dailyStatus.streakBroken and Color3.fromRGB(255, 100, 100) or 
-                        (dailyStatus.canClaim and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(100, 150, 255)),
+            TextColor3 = dailyStatus.streakBroken and Color3.fromRGB(255, 80, 120) or 
+                        (dailyStatus.canClaim and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(100, 180, 220)),
             TextSize = ScreenUtils.getTextSize(60),
             Font = Enum.Font.Cartoon,
             TextXAlignment = Enum.TextXAlignment.Center,
