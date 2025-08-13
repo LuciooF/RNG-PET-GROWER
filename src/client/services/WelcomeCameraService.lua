@@ -11,7 +11,7 @@ local player = Players.LocalPlayer
 -- Animation settings
 local ANIMATION_DURATION = 4 -- seconds for the full animation
 local START_HEIGHT_OFFSET = 80 -- How high above the map center to start
-local END_HEIGHT_OFFSET = 25 -- How high above player area to end
+local END_HEIGHT_OFFSET = 5 -- How high above player (torso level)
 local EASE_STYLE = Enum.EasingStyle.Quart
 local EASE_DIRECTION = Enum.EasingDirection.Out
 
@@ -103,24 +103,24 @@ function WelcomeCameraService:GetPlayerLevel1Part()
     return closestLevel1
 end
 
--- Get final camera position (positioned to show player with Level1 in background)
+-- Get final camera position (behind player at torso level, looking towards Level1)
 function WelcomeCameraService:GetFinalCameraPosition()
     local playerPos = self:GetPlayerPosition()
     local level1Part = self:GetPlayerLevel1Part()
     
     if level1Part then
-        -- Position camera so Level1 is behind the player in the shot
+        -- Position camera behind the player, at torso level, so we see player's back facing Level1
         local level1Pos = level1Part.Position
         
-        -- Calculate horizontal direction from Level1 to player (ignore Y differences)
-        local level1ToPlayer = Vector3.new(playerPos.X - level1Pos.X, 0, playerPos.Z - level1Pos.Z).Unit
+        -- Calculate horizontal direction from player to Level1 (where player faces)
+        local playerToLevel1 = Vector3.new(level1Pos.X - playerPos.X, 0, level1Pos.Z - playerPos.Z).Unit
         
-        -- Position camera further in that direction, elevated, and slightly to the side
-        local distanceBehindPlayer = 25
-        local cameraPosition = playerPos + (level1ToPlayer * distanceBehindPlayer) + Vector3.new(3, END_HEIGHT_OFFSET, 0)
+        -- Position camera opposite direction (behind player), at torso level
+        local distanceBehindPlayer = 12
+        local cameraPosition = playerPos + (-playerToLevel1 * distanceBehindPlayer) + Vector3.new(0, END_HEIGHT_OFFSET, 0)
         
-        print("WelcomeCameraService: Level1 to Player direction:", level1ToPlayer)
-        print("WelcomeCameraService: Camera positioned at:", cameraPosition)
+        print("WelcomeCameraService: Player to Level1 direction:", playerToLevel1)
+        print("WelcomeCameraService: Camera positioned behind player at:", cameraPosition)
         
         return cameraPosition
     else
@@ -208,7 +208,16 @@ function WelcomeCameraService:StartWelcomeAnimation()
     
     -- Calculate start and end CFrames (looking at targets)
     local startCFrame = self:CalculateCameraLookAt(startPosition, playerAreaCenter) -- Look towards player area from center
-    local endCFrame = self:CalculateCameraLookAt(endPosition, playerPosition) -- Look at player from final position
+    
+    -- For end frame, look towards Level1 (same direction as player) not at player
+    local endTarget = playerPosition -- Default fallback
+    if level1Part then
+        endTarget = level1Part.Position -- Look towards Level1
+        print("WelcomeCameraService: Camera will look towards Level1 at:", endTarget)
+    else
+        print("WelcomeCameraService: Camera will look at player (fallback)")
+    end
+    local endCFrame = self:CalculateCameraLookAt(endPosition, endTarget)
     
     -- Set initial camera position
     camera.CFrame = startCFrame
@@ -250,7 +259,7 @@ function WelcomeCameraService:StartWelcomeAnimation()
         
         -- Interpolate position and look target
         local currentPosition = startPosition:lerp(endPosition, progress)
-        local currentLookTarget = playerAreaCenter:lerp(playerPosition, progress)
+        local currentLookTarget = playerAreaCenter:lerp(endTarget, progress)
         
         -- Update camera CFrame based on interpolated values
         local currentCFrame = self:CalculateCameraLookAt(currentPosition, currentLookTarget)
