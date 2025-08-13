@@ -66,24 +66,41 @@ end
 function WelcomeCameraService:GetPlayerLevel1Part()
     -- Try to find the player's area and Level1 part
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then return nil end
+    if not playerAreas then 
+        print("WelcomeCameraService: PlayerAreas folder not found")
+        return nil 
+    end
+    
+    local playerPos = self:GetPlayerPosition()
+    local closestLevel1 = nil
+    local closestDistance = math.huge
+    
+    print("WelcomeCameraService: Searching for Level1 parts near player at", playerPos)
     
     -- Look for the player's specific area (areas are typically numbered)
     for _, area in pairs(playerAreas:GetChildren()) do
-        if area:IsA("Model") and area.Name:match("^%d+$") then -- Area is numbered
+        if area:IsA("Model") then
+            print("WelcomeCameraService: Checking area", area.Name)
             local level1Part = area:FindFirstChild("Level1", true)
             if level1Part and level1Part:IsA("BasePart") then
-                -- Check if this might be the player's area by proximity to player
-                local playerPos = self:GetPlayerPosition()
                 local distance = (level1Part.Position - playerPos).Magnitude
-                if distance < 100 then -- Within reasonable distance
-                    return level1Part
+                print("WelcomeCameraService: Found Level1 at", level1Part.Position, "distance:", distance)
+                
+                if distance < closestDistance and distance < 150 then -- Within reasonable distance
+                    closestLevel1 = level1Part
+                    closestDistance = distance
                 end
             end
         end
     end
     
-    return nil
+    if closestLevel1 then
+        print("WelcomeCameraService: Using closest Level1 at distance", closestDistance)
+    else
+        print("WelcomeCameraService: No suitable Level1 part found")
+    end
+    
+    return closestLevel1
 end
 
 -- Get final camera position (positioned to show player with Level1 in background)
@@ -92,15 +109,23 @@ function WelcomeCameraService:GetFinalCameraPosition()
     local level1Part = self:GetPlayerLevel1Part()
     
     if level1Part then
-        -- Position camera so Level1 is behind the player
+        -- Position camera so Level1 is behind the player in the shot
         local level1Pos = level1Part.Position
-        local playerToLevel1 = (level1Pos - playerPos).Unit
         
-        -- Position camera opposite to Level1 direction, elevated and slightly to the side
-        local cameraOffset = -playerToLevel1 * 20 + Vector3.new(5, END_HEIGHT_OFFSET, 0)
-        return playerPos + cameraOffset
+        -- Calculate horizontal direction from Level1 to player (ignore Y differences)
+        local level1ToPlayer = Vector3.new(playerPos.X - level1Pos.X, 0, playerPos.Z - level1Pos.Z).Unit
+        
+        -- Position camera further in that direction, elevated, and slightly to the side
+        local distanceBehindPlayer = 25
+        local cameraPosition = playerPos + (level1ToPlayer * distanceBehindPlayer) + Vector3.new(3, END_HEIGHT_OFFSET, 0)
+        
+        print("WelcomeCameraService: Level1 to Player direction:", level1ToPlayer)
+        print("WelcomeCameraService: Camera positioned at:", cameraPosition)
+        
+        return cameraPosition
     else
         -- Fallback to default positioning if Level1 not found
+        print("WelcomeCameraService: Using fallback camera position")
         local cameraOffset = Vector3.new(-15, END_HEIGHT_OFFSET, 15)
         return playerPos + cameraOffset
     end
