@@ -12,6 +12,7 @@ local player = Players.LocalPlayer
 local ANIMATION_DURATION = 4 -- seconds for the full animation
 local START_HEIGHT_OFFSET = 80 -- How high above the map center to start
 local END_HEIGHT_OFFSET = 5 -- How high above player (torso level)
+local CAMERA_FOV = 90 -- Field of view in degrees (default is usually 70)
 local EASE_STYLE = Enum.EasingStyle.Quart
 local EASE_DIRECTION = Enum.EasingDirection.Out
 
@@ -19,8 +20,116 @@ local EASE_DIRECTION = Enum.EasingDirection.Out
 local animationInProgress = false
 local originalCameraType = nil
 local originalCFrame = nil
+local originalFOV = nil
+local welcomeTextGui = nil
 
 function WelcomeCameraService:Initialize()
+end
+
+-- Create welcome text overlay
+function WelcomeCameraService:CreateWelcomeText()
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local player = Players.LocalPlayer
+    local playerGui = player:WaitForChild("PlayerGui")
+    
+    -- Create ScreenGui
+    welcomeTextGui = Instance.new("ScreenGui")
+    welcomeTextGui.Name = "WelcomeTextGui"
+    welcomeTextGui.ResetOnSpawn = false
+    welcomeTextGui.IgnoreGuiInset = true
+    welcomeTextGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    welcomeTextGui.DisplayOrder = 100 -- Above normal UI but below loading screen
+    welcomeTextGui.Parent = playerGui
+    
+    -- Main text
+    local welcomeText = Instance.new("TextLabel")
+    welcomeText.Name = "WelcomeText"
+    welcomeText.Size = UDim2.new(0, 800, 0, 100)
+    welcomeText.Position = UDim2.new(0.5, -400, 0.3, -50)
+    welcomeText.BackgroundTransparency = 1
+    welcomeText.Text = "Welcome to your Pet Tycoon!"
+    welcomeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    welcomeText.TextSize = 56
+    welcomeText.Font = Enum.Font.FredokaOne
+    welcomeText.TextXAlignment = Enum.TextXAlignment.Center
+    welcomeText.TextYAlignment = Enum.TextYAlignment.Center
+    welcomeText.TextStrokeTransparency = 0
+    welcomeText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    welcomeText.TextTransparency = 1 -- Start invisible
+    welcomeText.Parent = welcomeTextGui
+    
+    -- Subtitle text
+    local subtitleText = Instance.new("TextLabel")
+    subtitleText.Name = "SubtitleText"
+    subtitleText.Size = UDim2.new(0, 600, 0, 40)
+    subtitleText.Position = UDim2.new(0.5, -300, 0.3, 60)
+    subtitleText.BackgroundTransparency = 1
+    subtitleText.Text = "Start collecting and growing your pet collection!"
+    subtitleText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    subtitleText.TextSize = 24
+    subtitleText.Font = Enum.Font.Gotham
+    subtitleText.TextXAlignment = Enum.TextXAlignment.Center
+    subtitleText.TextYAlignment = Enum.TextYAlignment.Center
+    subtitleText.TextStrokeTransparency = 0.5
+    subtitleText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    subtitleText.TextTransparency = 1 -- Start invisible
+    subtitleText.Parent = welcomeTextGui
+    
+    return welcomeText, subtitleText
+end
+
+-- Show welcome text with animation
+function WelcomeCameraService:ShowWelcomeText()
+    if not welcomeTextGui then return end
+    
+    local TweenService = game:GetService("TweenService")
+    local welcomeText = welcomeTextGui:FindFirstChild("WelcomeText")
+    local subtitleText = welcomeTextGui:FindFirstChild("SubtitleText")
+    
+    if welcomeText and subtitleText then
+        -- Fade in main text
+        local fadeInInfo = TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local welcomeTween = TweenService:Create(welcomeText, fadeInInfo, {
+            TextTransparency = 0,
+            TextStrokeTransparency = 0
+        })
+        
+        -- Fade in subtitle slightly delayed
+        local subtitleTween = TweenService:Create(subtitleText, fadeInInfo, {
+            TextTransparency = 0,
+            TextStrokeTransparency = 0.5
+        })
+        
+        welcomeTween:Play()
+        task.wait(0.3) -- Slight delay for subtitle
+        subtitleTween:Play()
+        
+        -- Keep text visible for most of the animation
+        task.wait(2.0)
+        
+        -- Fade out towards end of animation
+        local fadeOutInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local fadeOutWelcome = TweenService:Create(welcomeText, fadeOutInfo, {
+            TextTransparency = 1,
+            TextStrokeTransparency = 1
+        })
+        local fadeOutSubtitle = TweenService:Create(subtitleText, fadeOutInfo, {
+            TextTransparency = 1,
+            TextStrokeTransparency = 1
+        })
+        
+        fadeOutWelcome:Play()
+        fadeOutSubtitle:Play()
+    end
+end
+
+-- Clean up welcome text
+function WelcomeCameraService:CleanupWelcomeText()
+    if welcomeTextGui then
+        welcomeTextGui:Destroy()
+        welcomeTextGui = nil
+    end
 end
 
 -- Get the center point of the map (you may need to adjust these coordinates)
@@ -179,6 +288,43 @@ function WelcomeCameraService:CalculateCameraLookAt(position, target)
     return CFrame.lookAt(position, target)
 end
 
+-- Hide the player character
+function WelcomeCameraService:HidePlayer()
+    if player.Character then
+        for _, part in pairs(player.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+            elseif part:IsA("Accessory") then
+                local handle = part:FindFirstChild("Handle")
+                if handle then
+                    handle.Transparency = 1
+                end
+            end
+        end
+    end
+end
+
+-- Show the player character
+function WelcomeCameraService:ShowPlayer()
+    if player.Character then
+        for _, part in pairs(player.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                -- Restore default transparency (most parts are 0, some like HumanoidRootPart are 1)
+                if part.Name == "HumanoidRootPart" then
+                    part.Transparency = 1
+                else
+                    part.Transparency = 0
+                end
+            elseif part:IsA("Accessory") then
+                local handle = part:FindFirstChild("Handle")
+                if handle then
+                    handle.Transparency = 0
+                end
+            end
+        end
+    end
+end
+
 -- Start the welcome animation
 function WelcomeCameraService:StartWelcomeAnimation()
     if animationInProgress then
@@ -208,9 +354,21 @@ function WelcomeCameraService:StartWelcomeAnimation()
     -- Store original camera settings
     originalCameraType = camera.CameraType
     originalCFrame = camera.CFrame
+    originalFOV = camera.FieldOfView
     
-    -- Set camera to scriptable mode
+    -- Show the player now that animation is starting
+    self:ShowPlayer()
+    
+    -- Set camera to scriptable mode with higher FOV
     camera.CameraType = Enum.CameraType.Scriptable
+    camera.FieldOfView = CAMERA_FOV
+    
+    -- Create and show welcome text
+    self:CreateWelcomeText()
+    task.spawn(function()
+        task.wait(0.5) -- Brief delay before showing text
+        self:ShowWelcomeText()
+    end)
     
     -- Calculate start and end positions
     local mapCenter = self:GetMapCenter()
@@ -307,13 +465,20 @@ end
 function WelcomeCameraService:FinishWelcomeAnimation()
     local camera = Workspace.CurrentCamera
     if camera and originalCameraType then
-        -- Restore original camera type (usually Follow)
+        -- Restore original camera settings
         camera.CameraType = originalCameraType
+        if originalFOV then
+            camera.FieldOfView = originalFOV
+        end
     end
+    
+    -- Clean up welcome text
+    self:CleanupWelcomeText()
     
     animationInProgress = false
     originalCameraType = nil
     originalCFrame = nil
+    originalFOV = nil
 end
 
 -- Check if animation is currently running

@@ -8,6 +8,30 @@ local Players = game:GetService("Players")
 local React = require(ReplicatedStorage.Packages.react)
 local ReactRoblox = require(ReplicatedStorage.Packages["react-roblox"])
 
+-- Initialize loading screen FIRST to cover any spawn flickering
+local LoadingService = require(script.Parent.services.LoadingService)
+LoadingService:Initialize()
+LoadingService:SetProgress(0.05, "Feeding the pets...")
+
+-- Hide player immediately on character spawn
+local player = Players.LocalPlayer
+player.CharacterAdded:Connect(function()
+    task.wait(0.05) -- Very brief delay to ensure character parts exist
+    -- Hide player during loading
+    if player.Character then
+        for _, part in pairs(player.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+            elseif part:IsA("Accessory") then
+                local handle = part:FindFirstChild("Handle")
+                if handle then
+                    handle.Transparency = 1
+                end
+            end
+        end
+    end
+end)
+
 -- Initialize pet collection service (doesn't depend on player data)
 local PetCollectionService = require(script.Parent.services.PetCollectionService)
 PetCollectionService:Initialize()
@@ -36,19 +60,17 @@ GlobalChatService:Initialize()
 local PetProcessingSoundService = require(script.Parent.services.PetProcessingSoundService)
 PetProcessingSoundService:Initialize()
 
--- Initialize loading screen first
-local LoadingService = require(script.Parent.services.LoadingService)
-LoadingService:Initialize()
-LoadingService:SetProgress(0.1, "Setting up world...")
+LoadingService:SetProgress(0.1, "Rigging crazy chest results...")
 
 -- Initialize welcome camera service early (doesn't need player data to start)
 local WelcomeCameraService = require(script.Parent.services.WelcomeCameraService)
 WelcomeCameraService:Initialize()
-LoadingService:SetProgress(0.2, "Preparing camera system...")
+
+LoadingService:SetProgress(0.2, "Polishing pet balls...")
 
 -- Wait for server to process player, then initialize data-dependent services
 task.spawn(function()
-    LoadingService:SetProgress(0.3, "Waiting for world setup...")
+    LoadingService:SetProgress(0.3, "Calculating pet spawn rates...")
     
     -- Small delay to ensure server has started processing this player
     local attempts = 0
@@ -56,10 +78,10 @@ task.spawn(function()
         task.wait(0.1)
         attempts = attempts + 1
         -- Update progress during wait
-        LoadingService:SetProgress(0.3 + (attempts / 50) * 0.2, "Connecting to server...")
+        LoadingService:SetProgress(0.3 + (attempts / 50) * 0.2, "Bribing the server hamsters...")
     end
     
-    LoadingService:SetProgress(0.5, "Setting up player area...")
+    LoadingService:SetProgress(0.5, "Setting up your personal pet empire...")
     
     -- Initialize crazy chest service immediately after PlayerAreas exist (doesn't need player data)
     local CrazyChestService = require(script.Parent.services.CrazyChestService)
@@ -73,7 +95,7 @@ task.spawn(function()
     local TutorialService = require(script.Parent.services.TutorialService)
     TutorialService:Initialize()
     
-    LoadingService:SetProgress(0.6, "Loading player data...")
+    LoadingService:SetProgress(0.6, "Counting your diamonds...")
     
     -- Wait for initial data to be available in Rodux store (server will sync automatically)
     local store = require(game.ReplicatedStorage.store)
@@ -149,12 +171,12 @@ task.spawn(function()
     local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
     PlayerRankGUIService:Initialize()
     
-    LoadingService:SetProgress(0.9, "Finalizing setup...")
+    LoadingService:SetProgress(0.9, "Training your pets to obey...")
     
     -- Brief pause before starting camera animation
     task.wait(0.5)
     
-    LoadingService:SetProgress(1.0, "Welcome!")
+    LoadingService:SetProgress(1.0, "Ready to collect some pets!")
     task.wait(0.3) -- Brief pause to show completion
     
     -- Hide loading screen and start camera animation

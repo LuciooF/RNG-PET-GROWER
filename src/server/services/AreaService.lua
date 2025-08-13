@@ -358,8 +358,8 @@ function AreaService:SetupPlayerAssignment()
         
         -- Handle both initial spawn and respawning - always teleport to assigned area
         player.CharacterAdded:Connect(function(character)
-            -- Wait a moment for character to fully load
-            task.wait(0.1)
+            -- Wait for character to fully load and areas to be set up
+            task.wait(1.0) -- Increased delay to allow area setup
             
             -- Get assigned area and teleport immediately
             local areaNumber = self:GetPlayerAssignedArea(player)
@@ -463,13 +463,43 @@ function AreaService:TeleportPlayerToArea(player, areaNumber)
         -- Teleport to SpawnPoint position (slightly above to prevent clipping)
         local spawnPosition = spawnPoint.Position + Vector3.new(0, 3, 0)
         
-        -- Find Level1 part to face towards
+        -- Find Level1 part to face towards (with retry for setup timing)
         local level1Part = area:FindFirstChild("Level1", true)
-        if level1Part and level1Part:IsA("BasePart") then
-            -- Make player face towards their Level1 part (horizontal only, no tilting)
-            local targetPosition = level1Part.Position
-            local direction = Vector3.new(targetPosition.X - spawnPosition.X, 0, targetPosition.Z - spawnPosition.Z).Unit
-            humanoidRootPart.CFrame = CFrame.new(spawnPosition, spawnPosition + direction)
+        if not level1Part then
+            -- Retry after a brief delay in case area is still setting up
+            task.wait(0.5)
+            level1Part = area:FindFirstChild("Level1", true)
+        end
+        
+        if level1Part then
+            -- Level1 might be a Model, so get position appropriately
+            local targetPosition = nil
+            if level1Part:IsA("Model") then
+                if level1Part.PrimaryPart then
+                    targetPosition = level1Part.PrimaryPart.Position
+                else
+                    -- Find any part in the model to get position
+                    for _, child in pairs(level1Part:GetChildren()) do
+                        if child:IsA("BasePart") then
+                            targetPosition = child.Position
+                            break
+                        end
+                    end
+                end
+            elseif level1Part:IsA("BasePart") then
+                targetPosition = level1Part.Position
+            end
+            
+            if targetPosition then
+                -- Make player face towards their Level1 part (horizontal only, no tilting)
+                local direction = Vector3.new(targetPosition.X - spawnPosition.X, 0, targetPosition.Z - spawnPosition.Z).Unit
+                humanoidRootPart.CFrame = CFrame.new(spawnPosition, spawnPosition + direction)
+            else
+                -- Fallback if can't get position from Level1
+                local areaCenter = areaData.position
+                local direction = Vector3.new(areaCenter.X - spawnPosition.X, 0, areaCenter.Z - spawnPosition.Z).Unit
+                humanoidRootPart.CFrame = CFrame.new(spawnPosition, spawnPosition + direction)
+            end
         else
             -- Fallback to area center if Level1 not found
             local areaCenter = areaData.position
