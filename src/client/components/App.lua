@@ -22,6 +22,7 @@ local BoostPanel = require(script.Parent.BoostPanel)
 local TutorialUI = require(script.Parent.TutorialUI)
 local OPPetButton = require(script.Parent.OPPetButton)
 local PlaytimeRewardsPanel = require(script.Parent.PlaytimeRewardsPanel)
+local DailyRewardsPanel = require(script.Parent.DailyRewardsPanel)
 local LeaderboardPanel = require(script.Parent.LeaderboardPanel)
 local PotionInventoryUI = require(script.Parent.PotionInventoryUI)
 local CrazyChestUI = require(script.Parent.CrazyChestUI)
@@ -53,6 +54,7 @@ local function App()
     local boostPanelVisible, setBoostPanelVisible = React.useState(false)
     local tutorialVisible, setTutorialVisible = React.useState(false)
     local playtimeRewardsVisible, setPlaytimeRewardsVisible = React.useState(false)
+    local dailyRewardsVisible, setDailyRewardsVisible = React.useState(false)
     local leaderboardVisible, setLeaderboardVisible = React.useState(false)
     local potionInventoryVisible, setPotionInventoryVisible = React.useState(false)
     local freeOpItemVisible, setFreeOpItemVisible = React.useState(false)
@@ -312,6 +314,9 @@ local function App()
             onPlaytimeRewardsClick = function()
                 setPlaytimeRewardsVisible(function(prev) return not prev end)
             end,
+            onDailyRewardsClick = function()
+                setDailyRewardsVisible(function(prev) return not prev end)
+            end,
             onLeaderboardClick = function()
                 setLeaderboardVisible(function(prev) return not prev end)
             end,
@@ -402,6 +407,14 @@ local function App()
             sharedSessionStartTime = sharedSessionStartTime.current,
             sharedSessionClaimedRewards = sharedSessionClaimedRewards,
             setSharedSessionClaimedRewards = setSharedSessionClaimedRewards
+        }) or nil,
+        
+        -- Daily Rewards Panel
+        DailyRewardsPanel = dailyRewardsVisible and React.createElement(DailyRewardsPanel, {
+            isVisible = dailyRewardsVisible,
+            onClose = function()
+                setDailyRewardsVisible(false)
+            end
         }) or nil,
         
         -- Leaderboard Panel

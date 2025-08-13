@@ -43,6 +43,12 @@ local PROFILE_TEMPLATE = {
     },
     PlaytimeMinutes = 0, -- Total playtime in minutes
     ClaimedPlaytimeRewards = {}, -- Array of claimed playtime reward times (e.g., {5, 10, 15})
+    DailyRewards = { -- Daily login reward system
+        LastLoginTime = nil, -- Timestamp of last login (os.time())
+        CurrentStreak = 0, -- Current consecutive login streak (0-10)
+        ClaimedDays = {}, -- Dictionary of claimed days: {[1] = true, [2] = true, ...}
+        StreakStartTime = nil -- When the current streak started
+    },
     CrazyChest = { -- Crazy chest reward system
         Level = 1, -- Chest level (starts at 1)
         Luck = 1, -- Luck multiplier (starts at 1)
@@ -100,6 +106,10 @@ function DataService:LoadPlayerProfile(player)
             
             -- Send initial data to client Rodux store
             self:SyncPlayerDataToClient(player)
+            
+            -- Update daily login streak
+            local DailyRewardsService = require(script.Parent.DailyRewardsService)
+            DailyRewardsService:UpdatePlayerLoginStreak(player)
             
             -- Trigger initial data sync callback if set
             if self.OnPlayerDataLoaded then

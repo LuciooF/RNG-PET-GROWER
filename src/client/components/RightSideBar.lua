@@ -9,6 +9,7 @@ local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local PlaytimeRewardsConfig = require(ReplicatedStorage.config.PlaytimeRewardsConfig)
+local DailyRewardsConfig = require(ReplicatedStorage.config.DailyRewardsConfig)
 local FreeOpItemButton = require(script.Parent.FreeOpItemButton)
 
 -- Sound configuration
@@ -467,6 +468,35 @@ local function RightSideBar(props)
         })
     })
     
+    -- 5. Daily Rewards Button
+    buttons[5] = React.createElement("Frame", {
+        Name = "E_DailyRewardsButtonContainer",
+        Size = buttonSize,
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        DailyRewardsButton = React.createElement("ImageButton", {
+            Name = "DailyRewardsButton",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            Image = IconAssets.getIcon("UI", "CALENDAR") or "rbxassetid://6031075938", -- Calendar icon
+            ImageColor3 = Color3.fromRGB(255, 100, 255), -- Pink/magenta color for daily rewards
+            ScaleType = Enum.ScaleType.Fit,
+            SizeConstraint = Enum.SizeConstraint.RelativeYY,
+            ZIndex = 50,
+            [React.Event.Activated] = function()
+                if props.onDailyRewardsClick then
+                    props.onDailyRewardsClick()
+                end
+            end,
+            [React.Event.MouseEnter] = function(rbx)
+                playHoverSound()
+                spinButton(rbx)
+            end
+        })
+    })
+    
     -- Convert array to React children object
     local children = {
         UIListLayout = React.createElement("UIListLayout", {
@@ -523,6 +553,21 @@ local function RightSideBar(props)
             SortOrder = Enum.SortOrder.Name
         }),
         PlaytimeRewardsButton = buttons[2]
+    })
+    
+    -- Row4: Daily Rewards Button (centered)
+    children["Row4_DailyRewards"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        Layout = React.createElement("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.Name
+        }),
+        DailyRewardsButton = buttons[5]
     })
     
     -- Calculate the maximum button width including FreeOpItem button
