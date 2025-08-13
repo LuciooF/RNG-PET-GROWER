@@ -461,11 +461,36 @@ function AreaService:TeleportPlayerToArea(player, areaNumber)
     local spawnPoint = area:FindFirstChild("SpawnPoint", true)
     if spawnPoint and spawnPoint:IsA("SpawnLocation") then
         -- Teleport to SpawnPoint position (slightly above to prevent clipping)
-        humanoidRootPart.CFrame = CFrame.new(spawnPoint.Position + Vector3.new(0, 3, 0))
+        local spawnPosition = spawnPoint.Position + Vector3.new(0, 3, 0)
+        
+        -- Find Level1 part to face towards
+        local level1Part = area:FindFirstChild("Level1", true)
+        if level1Part and level1Part:IsA("BasePart") then
+            -- Make player face towards their Level1 part
+            local lookDirection = (level1Part.Position - spawnPosition).Unit
+            humanoidRootPart.CFrame = CFrame.lookAt(spawnPosition, spawnPosition + lookDirection)
+        else
+            -- Fallback to area center if Level1 not found
+            local areaCenter = areaData.position
+            local lookDirection = (areaCenter - spawnPosition).Unit
+            humanoidRootPart.CFrame = CFrame.lookAt(spawnPosition, spawnPosition + lookDirection)
+            warn(string.format("AreaService: Level1 part not found for %s in area %d, using area center", player.Name, areaNumber))
+        end
     else
         -- Fallback to area position if no SpawnPoint found
-        local areaPosition = areaData.position
-        humanoidRootPart.CFrame = CFrame.new(areaPosition + Vector3.new(0, 10, 0))
+        local areaPosition = areaData.position + Vector3.new(0, 10, 0)
+        
+        -- Try to find Level1 part even without SpawnPoint
+        local level1Part = area:FindFirstChild("Level1", true)
+        if level1Part and level1Part:IsA("BasePart") then
+            local lookDirection = (level1Part.Position - areaPosition).Unit
+            humanoidRootPart.CFrame = CFrame.lookAt(areaPosition, areaPosition + lookDirection)
+        else
+            -- Face towards the center of the map as final fallback
+            local mapCenter = Vector3.new(0, areaPosition.Y, 0)
+            local lookDirection = (mapCenter - areaPosition).Unit
+            humanoidRootPart.CFrame = CFrame.lookAt(areaPosition, areaPosition + lookDirection)
+        end
         warn(string.format("AreaService: Used fallback position for %s in area %d", player.Name, areaNumber))
     end
 end

@@ -62,12 +62,48 @@ function WelcomeCameraService:GetPlayerAreaCenter()
     return Vector3.new(playerPos.X, playerPos.Y, playerPos.Z)
 end
 
--- Get final camera position (above and back from player for good angle)
+-- Find the player's Level1 part
+function WelcomeCameraService:GetPlayerLevel1Part()
+    -- Try to find the player's area and Level1 part
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then return nil end
+    
+    -- Look for the player's specific area (areas are typically numbered)
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area:IsA("Model") and area.Name:match("^%d+$") then -- Area is numbered
+            local level1Part = area:FindFirstChild("Level1", true)
+            if level1Part and level1Part:IsA("BasePart") then
+                -- Check if this might be the player's area by proximity to player
+                local playerPos = self:GetPlayerPosition()
+                local distance = (level1Part.Position - playerPos).Magnitude
+                if distance < 100 then -- Within reasonable distance
+                    return level1Part
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- Get final camera position (positioned to show player with Level1 in background)
 function WelcomeCameraService:GetFinalCameraPosition()
     local playerPos = self:GetPlayerPosition()
-    -- Position camera above and slightly back from player for a good angle
-    local cameraOffset = Vector3.new(-15, END_HEIGHT_OFFSET, 15) -- Back, up, and to the side
-    return playerPos + cameraOffset
+    local level1Part = self:GetPlayerLevel1Part()
+    
+    if level1Part then
+        -- Position camera so Level1 is behind the player
+        local level1Pos = level1Part.Position
+        local playerToLevel1 = (level1Pos - playerPos).Unit
+        
+        -- Position camera opposite to Level1 direction, elevated and slightly to the side
+        local cameraOffset = -playerToLevel1 * 20 + Vector3.new(5, END_HEIGHT_OFFSET, 0)
+        return playerPos + cameraOffset
+    else
+        -- Fallback to default positioning if Level1 not found
+        local cameraOffset = Vector3.new(-15, END_HEIGHT_OFFSET, 15)
+        return playerPos + cameraOffset
+    end
 end
 
 -- Calculate a good camera CFrame looking at a target
@@ -125,11 +161,17 @@ function WelcomeCameraService:StartWelcomeAnimation()
     local mapCenter = self:GetMapCenter()
     local playerAreaCenter = self:GetPlayerAreaCenter()
     local playerPosition = self:GetPlayerPosition()
+    local level1Part = self:GetPlayerLevel1Part()
     local finalCameraPosition = self:GetFinalCameraPosition()
     
     print("WelcomeCameraService: Map center:", mapCenter)
     print("WelcomeCameraService: Player area center:", playerAreaCenter)
     print("WelcomeCameraService: Player position:", playerPosition)
+    if level1Part then
+        print("WelcomeCameraService: Level1 part found at:", level1Part.Position)
+    else
+        print("WelcomeCameraService: Level1 part not found, using fallback")
+    end
     print("WelcomeCameraService: Final camera position:", finalCameraPosition)
     
     -- Start from high above map center, looking towards the player area
