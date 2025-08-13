@@ -415,6 +415,8 @@ local function LeaderboardPanel(props)
                 Font = Enum.Font.FredokaOne, -- Same font as rank numbers
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Center,
+                TextScaled = true, -- Auto-resize text to fit container
+                TextWrapped = true, -- Allow text wrapping if needed
                 TextStrokeTransparency = 1,
                 TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                 ZIndex = 53
@@ -448,6 +450,7 @@ local function LeaderboardPanel(props)
                     Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Right,
                     TextYAlignment = Enum.TextYAlignment.Center,
+                    TextScaled = true, -- Auto-resize text to fit container
                     TextStrokeTransparency = 1,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
                     LayoutOrder = 1, -- First in layout

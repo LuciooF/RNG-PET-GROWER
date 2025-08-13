@@ -311,7 +311,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     local popupFrame = Instance.new("Frame")
     popupFrame.Name = "PopupFrame"
     popupFrame.Size = UDim2.new(0, 0, 0, 0) -- Start at size 0 for expanding animation
-    popupFrame.Position = UDim2.new(0.5, 0, 0.85, 0) -- Bottom-middle of screen
+    popupFrame.Position = UDim2.new(0.5, 0, 0.75, 0) -- Bottom-middle with padding from screen edge (same as rewards)
     popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     popupFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Dark background
     popupFrame.BackgroundTransparency = 0.1
@@ -353,8 +353,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Pet viewport (left side) - 1.5x bigger
     local petViewport = Instance.new("ViewportFrame")
     petViewport.Name = "PetViewport"
-    petViewport.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(270), 0, ScreenUtils.getProportionalSize(270))
-    petViewport.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(23), 0, ScreenUtils.getProportionalSize(45))
+    petViewport.Size = ScreenUtils.udim2(0, 270, 0, 270)
+    petViewport.Position = ScreenUtils.udim2(0, 23, 0, 45)
     petViewport.BackgroundTransparency = 1
     petViewport.ZIndex = 1001
     petViewport.Parent = popupFrame
@@ -369,12 +369,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- "New Pet Discovered!" title (top center) - 1.5x bigger
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = ScreenUtils.udim2(1, -ScreenUtils.getProportionalSize(54), 0, ScreenUtils.getProportionalSize(54))
-    titleLabel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(27), 0, ScreenUtils.getProportionalSize(14))
+    titleLabel.Size = ScreenUtils.udim2(1, -54, 0, 54)
+    titleLabel.Position = ScreenUtils.udim2(0, 27, 0, 14)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = discovery.variation and "🌟 NEW VARIATION DISCOVERED! 🌟" or "🎉 NEW PET DISCOVERED! 🎉"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.35 -- Scaled down by 10%
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.2 -- Consistent sizing
     titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -385,8 +385,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Info panel (right side of viewport) - 1.5x bigger
     local infoPanel = Instance.new("Frame")
     infoPanel.Name = "InfoPanel"
-    infoPanel.Size = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(324), 0, ScreenUtils.getProportionalSize(243))
-    infoPanel.Position = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(315), 0, ScreenUtils.getProportionalSize(68))
+    infoPanel.Size = ScreenUtils.udim2(0, 324, 0, 243)
+    infoPanel.Position = ScreenUtils.udim2(0, 315, 0, 68)
     infoPanel.BackgroundTransparency = 1
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
@@ -394,12 +394,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Pet name - 1.5x bigger
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "PetName"
-    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(68))
+    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, 68)
     nameLabel.Position = ScreenUtils.udim2(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = actualPetName
     nameLabel.TextColor3 = rarityColor
-    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.17 -- Scaled down by 10%
+    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() -- Standard header size
     nameLabel.Font = Enum.Font.FredokaOne
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
@@ -407,24 +407,24 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     nameLabel.ZIndex = 1002
     nameLabel.Parent = infoPanel
     
-    -- Variation (if applicable) - 1.5x bigger
-    local yOffset = ScreenUtils.getProportionalSize(75)
+    -- Variation (if applicable)
+    local yOffset = 75
     if discovery.variation then
         local variationLabel = Instance.new("TextLabel")
         variationLabel.Name = "Variation"
-        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(41))
+        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, 41)
         variationLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
         variationLabel.BackgroundTransparency = 1
         variationLabel.Text = discovery.variation .. " Variation"
         variationLabel.TextColor3 = variationColor
-        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.35 -- Scaled down by 10%
+        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() -- Standard large size
         variationLabel.Font = Enum.Font.FredokaOne
         variationLabel.TextXAlignment = Enum.TextXAlignment.Center
         variationLabel.TextStrokeTransparency = 0
         variationLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         variationLabel.ZIndex = 1002
         variationLabel.Parent = infoPanel
-        yOffset = yOffset + ScreenUtils.getProportionalSize(50)
+        yOffset = yOffset + 50
     end
     
     -- Combined rarity info (pet rarity × variation rarity)
@@ -443,12 +443,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- "Rarity:" label in grey - 1.5x bigger
     local rarityPrefixLabel = Instance.new("TextLabel")
     rarityPrefixLabel.Name = "RarityPrefix"
-    rarityPrefixLabel.Size = ScreenUtils.udim2(0.4, 0, 0, ScreenUtils.getProportionalSize(38))
+    rarityPrefixLabel.Size = ScreenUtils.udim2(0.4, 0, 0, 38)
     rarityPrefixLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     rarityPrefixLabel.BackgroundTransparency = 1
     rarityPrefixLabel.Text = "Rarity:"
     rarityPrefixLabel.TextColor3 = Color3.fromRGB(150, 150, 150) -- Grey color
-    rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
+    rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() -- Standard medium size
     rarityPrefixLabel.Font = Enum.Font.Gotham
     rarityPrefixLabel.TextXAlignment = Enum.TextXAlignment.Right
     rarityPrefixLabel.TextStrokeTransparency = 0
@@ -459,29 +459,29 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Actual rarity value in rarity color - 1.5x bigger
     local rarityValueLabel = Instance.new("TextLabel")
     rarityValueLabel.Name = "RarityValue"
-    rarityValueLabel.Size = ScreenUtils.udim2(0.6, 0, 0, ScreenUtils.getProportionalSize(38))
-    rarityValueLabel.Position = ScreenUtils.udim2(0.4, ScreenUtils.getProportionalSize(8), 0, yOffset)
+    rarityValueLabel.Size = ScreenUtils.udim2(0.6, 0, 0, 38)
+    rarityValueLabel.Position = ScreenUtils.udim2(0.4, 8, 0, yOffset)
     rarityValueLabel.BackgroundTransparency = 1
     rarityValueLabel.Text = petConfig.Rarity
     rarityValueLabel.TextColor3 = rarityColor -- Bright rarity color
-    rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
+    rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() -- Standard medium size
     rarityValueLabel.Font = Enum.Font.FredokaOne
     rarityValueLabel.TextXAlignment = Enum.TextXAlignment.Left
     rarityValueLabel.TextStrokeTransparency = 0
     rarityValueLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     rarityValueLabel.ZIndex = 1002
     rarityValueLabel.Parent = infoPanel
-    yOffset = yOffset + ScreenUtils.getProportionalSize(45)
+    yOffset = yOffset + 45
     
     -- Chance info with bigger text and rainbow colors - 1.5x bigger
     local chanceLabel = Instance.new("TextLabel")
     chanceLabel.Name = "Chance"
-    chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(53)) -- 1.5x taller for bigger text
+    chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, 53) -- 1.5x taller for bigger text
     chanceLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     chanceLabel.BackgroundTransparency = 1
     chanceLabel.Text = "1 in " .. NumberFormatter.format(rarityChance)
     chanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White base for rainbow gradient
-    chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.5 -- 1.5x bigger text size
+    chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.2 -- Slightly bigger for emphasis
     chanceLabel.Font = Enum.Font.FredokaOne -- Bold font
     chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
     chanceLabel.TextStrokeTransparency = 0
@@ -507,12 +507,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     -- Congratulations message - 1.5x bigger
     local congratsLabel = Instance.new("TextLabel")
     congratsLabel.Name = "Congrats"
-    congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(60))
+    congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, 60)
     congratsLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "Check your Pet Index!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
-    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5 -- 1.5x bigger text
+    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2 -- Slightly bigger
     congratsLabel.Font = Enum.Font.FredokaOne
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0
@@ -521,7 +521,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.Parent = infoPanel
     
     -- AMAZING POP OUT ANIMATION - Every element animates individually!
-    local finalSize = ScreenUtils.udim2(0, ScreenUtils.getProportionalSize(675), 0, ScreenUtils.getProportionalSize(351)) -- Scaled down by 10%
+    local finalSize = ScreenUtils.udim2(0, 675, 0, 351) -- Scaled down by 10% - udim2 already handles proportional sizing
     
     -- Set all elements to start invisible/small for pop-out effect
     local elementsToAnimate = {

@@ -690,7 +690,10 @@ local function AnimationCard(props)
             Position = ScreenUtils.udim2(0.25, 0, 0.15, 0), -- Centered with 25% margin
             BackgroundTransparency = 1,
             Image = reward.type == "money" and "rbxassetid://80960000119108" or 
-                   (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468"),
+                   (reward.type == "potion" and (function()
+                       local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+                       return potionConfig and potionConfig.Icon or "rbxassetid://118134400760699"
+                   end)() or "rbxassetid://135421873302468"),
             ImageColor3 = Color3.fromRGB(255, 255, 255),
             ScaleType = Enum.ScaleType.Fit, -- Maintain aspect ratio
             ZIndex = 1012,
@@ -1488,7 +1491,10 @@ function CrazyChestUI.new(props)
                                     icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)) -- Match RewardCard: 66px
                                     icon.BackgroundTransparency = 1
                                     icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or 
-                                                (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468")
+                                                (reward.type == "potion" and (function()
+                                                    local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+                                                    return potionConfig and potionConfig.Icon or "rbxassetid://118134400760699"
+                                                end)() or "rbxassetid://135421873302468")
                                     icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                                     icon.ZIndex = 1005
                                     icon.Parent = contentContainer
@@ -1829,7 +1835,10 @@ function CrazyChestUI.new(props)
                                     icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(66), 0, ScreenUtils.getProportionalSize(66)) -- Match RewardCard: 66px
                                     icon.BackgroundTransparency = 1
                                     icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or 
-                                                (reward.type == "potion" and "rbxassetid://118134400760699" or "rbxassetid://135421873302468")
+                                                (reward.type == "potion" and (function()
+                                                    local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+                                                    return potionConfig and potionConfig.Icon or "rbxassetid://118134400760699"
+                                                end)() or "rbxassetid://135421873302468")
                                     icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                                     icon.ZIndex = 1005
                                     icon.Parent = contentContainer

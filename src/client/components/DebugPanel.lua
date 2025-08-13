@@ -110,6 +110,38 @@ local function DebugPanel(props)
         sendDebugCommand("GivePotion", "pet_magnet_10m", 3)
     end
     
+    -- UI Testing functions (client-side only)
+    local function triggerPetDiscovery()
+        -- Directly create and show the pet discovery popup for testing
+        local PetDiscoveryService = require(game.Players.LocalPlayer.PlayerScripts.services.PetDiscoveryService)
+        
+        -- Create a simple test discovery
+        local testDiscovery = {
+            name = "Gecko", -- Use base pet name without variation
+            variation = "Bronze",
+            data = {
+                variations = { Bronze = true }
+            },
+            timestamp = tick()
+        }
+        
+        -- Call the popup directly
+        PetDiscoveryService:ShowDiscoveryPopup(testDiscovery)
+    end
+    
+    local function triggerRewardPopup()
+        -- Actually give 1000 money using server command
+        sendDebugCommand("AddMoney", 1000)
+        
+        -- Also show the reward popup immediately
+        local RewardsService = require(game.Players.LocalPlayer.PlayerScripts.services.RewardsService)
+        RewardsService:ShowRewardPopup({
+            type = "money",
+            amount = 1000,
+            source = "Debug Test"
+        })
+    end
+    
     -- Helper function to create a styled button
     local function createButton(props)
         return React.createElement("TextButton", {
@@ -327,6 +359,7 @@ local function DebugPanel(props)
                 PotionsTab = createTabButton("potions", "🧪 Potions", 3),
                 DataTab = createTabButton("data", "⚠️ Data", 4),
                 UtilsTab = createTabButton("utils", "🔧 Utils", 5),
+                UITestTab = createTabButton("uitest", "🎨 UI Test", 6),
             }),
         
             -- Scrollable content area
@@ -620,6 +653,39 @@ local function DebugPanel(props)
                         layoutOrder = 3,
                         size = ScreenUtils.udim2(1, 0, 0, 35),
                         onActivated = stopTutorial
+                    }),
+                }) or nil,
+                
+                -- UI Testing Tab Content
+                UITestContent = selectedTab == "uitest" and React.createElement(React.Fragment, nil, {
+                    UITestHeader = createSectionHeader("🎨 UI Testing Controls", Color3.fromRGB(255, 100, 255), 1),
+                    
+                    PetDiscoveryButton = createButton({
+                        text = "🦎 Trigger Pet Discovery (Bronze Gecko)",
+                        color = Color3.fromRGB(0, 255, 255),
+                        layoutOrder = 2,
+                        size = ScreenUtils.udim2(1, 0, 0, 40),
+                        onActivated = triggerPetDiscovery
+                    }),
+                    
+                    RewardPopupButton = createButton({
+                        text = "💰 Trigger Reward Popup (1000 Money)",
+                        color = Color3.fromRGB(100, 255, 100),
+                        layoutOrder = 3,
+                        size = ScreenUtils.udim2(1, 0, 0, 40),
+                        onActivated = triggerRewardPopup
+                    }),
+                    
+                    UITestNote = React.createElement("TextLabel", {
+                        Size = ScreenUtils.udim2(1, 0, 0, 60),
+                        BackgroundTransparency = 1,
+                        Text = "⚠️ These buttons trigger UI popups only.\nNo actual rewards are given.",
+                        TextColor3 = Color3.fromRGB(255, 200, 100),
+                        TextSize = ScreenUtils.TEXT_SIZES.SMALL(),
+                        Font = Enum.Font.SourceSans,
+                        TextWrapped = true,
+                        TextXAlignment = Enum.TextXAlignment.Center,
+                        LayoutOrder = 4,
                     }),
                 }) or nil,
             })

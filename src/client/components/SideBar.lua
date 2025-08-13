@@ -66,8 +66,8 @@ local function SideBar(props)
     -- Responsive button setup (10% smaller)
     local screenSize = ScreenUtils.getScreenSize()
     local screenHeight = screenSize.Y
-    local buttonPixelSize = screenHeight * 0.063 -- 6.3% of screen height for buttons (10% smaller)
-    local spacingPixelSize = screenHeight * 0.036 -- 3.6% of screen height for spacing (10% smaller)
+    local buttonPixelSize = screenHeight * 0.07 -- 7% of screen height for buttons
+    local spacingPixelSize = screenHeight * 0.04 -- 4% of screen height for spacing
     local buttonSize = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize)
     
     -- Create buttons array in the EXACT order we want them to appear
@@ -314,18 +314,21 @@ local function SideBar(props)
         })
     end
     
+    -- Calculate proper width for 2 buttons side by side plus spacing
+    local sidebarWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 + 100 -- Width for 2 buttons + safe padding
+    
     return React.createElement("Frame", {
         Name = "SideBar",
-        Size = ScreenUtils.udim2(0, buttonPixelSize * 2 + spacingPixelSize + 30, 1, 0), -- Wide enough for 2 buttons + spacing + padding
-        Position = ScreenUtils.udim2(0, 15, 0, 0), -- More padding from left edge
+        Size = ScreenUtils.udim2(0, sidebarWidth, 1, 0), -- Exact width to contain buttons
+        Position = ScreenUtils.udim2(0, 0, 0, 0), -- Start at left edge of screen
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
         ButtonContainer = React.createElement("Frame", {
             Name = "ButtonContainer",
-            Size = UDim2.new(1, 0, 0, 0),
+            Size = UDim2.new(1, -100, 0, 0), -- 50px padding each side
             AutomaticSize = Enum.AutomaticSize.Y,
-            Position = UDim2.new(0, 0, 0.5, 0),
+            Position = UDim2.new(0, 50, 0.5, 0), -- 50px padding from left edge (mobile safe area)
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundTransparency = 1,
             ZIndex = 50

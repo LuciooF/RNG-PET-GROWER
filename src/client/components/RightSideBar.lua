@@ -229,18 +229,18 @@ local function RightSideBar(props)
     local leftPadding = ScreenUtils.getProportionalSize(20) -- Slightly more left padding
     local rawButtonWidth = textBounds.X + textPadding * 2 + leftPadding
     local playtimeButtonWidth = getBucketedWidth(rawButtonWidth) -- Bucketed width to prevent flickering
-    local playtimeButtonHeight = ScreenUtils.getProportionalSize(81) -- 10% smaller (90 * 0.9)
-    local iconSize = ScreenUtils.getProportionalSize(93) -- 10% smaller (103 * 0.9)
+    local playtimeButtonHeight = ScreenUtils.getProportionalSize(90) -- Original size
+    local iconSize = ScreenUtils.getProportionalSize(103) -- Original size (82.5 * 1.25)
     local iconOffset = iconSize / 2 -- Half the icon width for half-in/half-out effect
     local borderThickness = ScreenUtils.getProportionalSize(4) -- Keep border thickness same
-    local cornerRadius = ScreenUtils.getProportionalSize(25) -- 10% smaller (28 * 0.9)
-    local innerCornerRadius = ScreenUtils.getProportionalSize(22) -- 10% smaller (24 * 0.9)
+    local cornerRadius = ScreenUtils.getProportionalSize(28) -- Original size
+    local innerCornerRadius = ScreenUtils.getProportionalSize(24) -- Original size
     
     -- Standard button setup for other buttons (10% smaller to match left sidebar)
     local screenSize = ScreenUtils.getScreenSize()
     local screenHeight = screenSize.Y
-    local buttonPixelSize = screenHeight * 0.063 -- 6.3% of screen height for buttons (10% smaller)
-    local spacingPixelSize = screenHeight * 0.036 -- 3.6% of screen height for spacing (10% smaller)
+    local buttonPixelSize = screenHeight * 0.07 -- 7% of screen height for buttons
+    local spacingPixelSize = screenHeight * 0.04 -- 4% of screen height for spacing
     local buttonSize = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize)
     
     -- Create buttons array in the order we want them to appear
@@ -549,21 +549,21 @@ local function RightSideBar(props)
     local maxSingleButtonWidth = math.max(buttonPixelSize, playtimeButtonWidth, freeOpItemButtonWidth)
     local doubleButtonWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 -- Width of row with 2 buttons
     local maxRowWidth = math.max(maxSingleButtonWidth, doubleButtonWidth)
-    local rightPadding = 50 -- Increased padding from right edge to prevent cutoff
+    local totalSidebarWidth = maxRowWidth + 200 -- Even higher padding for right side
     
     return React.createElement("Frame", {
         Name = "RightSideBar",
-        Size = ScreenUtils.udim2(0, maxRowWidth + rightPadding, 1, 0),
-        Position = ScreenUtils.udim2(1, -maxRowWidth - rightPadding, 0, 0), -- Right side with proper padding
+        Size = ScreenUtils.udim2(0, totalSidebarWidth, 1, 0),
+        Position = ScreenUtils.udim2(1, -totalSidebarWidth, 0, 0), -- Position from right edge
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
         ButtonContainer = React.createElement("Frame", {
             Name = "ButtonContainer",
-            Size = UDim2.new(1, 0, 0, 0),
+            Size = UDim2.new(1, -200, 0, 0), -- 100px padding each side
             AutomaticSize = Enum.AutomaticSize.Y,
-            Position = UDim2.new(0, 0, 0.5, 0),
-            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(1, -100, 0.5, 0), -- 100px padding from right edge (mobile safe area)
+            AnchorPoint = Vector2.new(1, 0.5), -- Anchor from right
             BackgroundTransparency = 1,
             ZIndex = 50
         }, children)
