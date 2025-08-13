@@ -21,7 +21,6 @@ local originalCameraType = nil
 local originalCFrame = nil
 
 function WelcomeCameraService:Initialize()
-    print("WelcomeCameraService: Initializing...")
 end
 
 -- Get the center point of the map (you may need to adjust these coordinates)
@@ -67,45 +66,66 @@ function WelcomeCameraService:GetPlayerLevel1Part()
     -- Try to find the player's area and Level1 part
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then 
-        print("WelcomeCameraService: PlayerAreas folder not found")
         return nil 
     end
     
     local playerPos = self:GetPlayerPosition()
-    local closestLevel1 = nil
-    local closestDistance = math.huge
     
-    print("WelcomeCameraService: Searching for Level1 parts near player at", playerPos)
-    
-    -- Look for the player's specific area (areas are named PlayerArea1, PlayerArea2, etc.)
+    -- First try: Find area that contains the player (by checking if player is inside area bounds)
     for _, area in pairs(playerAreas:GetChildren()) do
         if area:IsA("Model") then
-            print("WelcomeCameraService: Checking area", area.Name)
-            local level1Part = area:FindFirstChild("Level1", true)
-            if level1Part and level1Part:IsA("BasePart") then
-                local distance = (level1Part.Position - playerPos).Magnitude
-                print("WelcomeCameraService: Found Level1 at", level1Part.Position, "distance:", distance)
-                
-                if distance < closestDistance and distance < 150 then -- Within reasonable distance
-                    closestLevel1 = level1Part
-                    closestDistance = distance
+            -- Check if player is within this area's bounds
+            local areaCFrame, areaSize = area:GetBoundingBox()
+            local areaPosition = areaCFrame.Position
+            local distanceToAreaCenter = (areaPosition - playerPos).Magnitude
+            
+            if distanceToAreaCenter < 100 then -- Player is within this area
+                local level1Part = area:FindFirstChild("Level1", true)
+                if level1Part then
+                    return level1Part
                 end
-            else
-                print("WelcomeCameraService: No Level1 found in", area.Name)
-                -- Let's also check what children this area has
-                local children = {}
-                for _, child in pairs(area:GetChildren()) do
-                    table.insert(children, child.Name .. "(" .. child.ClassName .. ")")
-                end
-                print("WelcomeCameraService: Area", area.Name, "contains:", table.concat(children, ", "))
             end
         end
     end
     
-    if closestLevel1 then
-        print("WelcomeCameraService: Using closest Level1 at distance", closestDistance)
-    else
-        print("WelcomeCameraService: No suitable Level1 part found")
+    -- Fallback: Find closest Level1 if we couldn't determine player's area
+    local closestLevel1 = nil
+    local closestDistance = math.huge
+    
+    -- Look for the player's specific area (areas are named PlayerArea1, PlayerArea2, etc.)
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area:IsA("Model") then
+            local level1Part = area:FindFirstChild("Level1", true)
+            if level1Part then
+                -- Level1 is a Model, so we need to get its position from a part inside it
+                local level1Position = nil
+                if level1Part:IsA("Model") then
+                    -- Get the primary part or any part from the model
+                    if level1Part.PrimaryPart then
+                        level1Position = level1Part.PrimaryPart.Position
+                    else
+                        -- Find any part in the model to get position
+                        for _, child in pairs(level1Part:GetChildren()) do
+                            if child:IsA("BasePart") then
+                                level1Position = child.Position
+                                break
+                            end
+                        end
+                    end
+                elseif level1Part:IsA("BasePart") then
+                    level1Position = level1Part.Position
+                end
+                
+                if level1Position then
+                    local distance = (level1Position - playerPos).Magnitude
+                    
+                    if distance < closestDistance and distance < 500 then -- Increased distance threshold
+                        closestLevel1 = level1Part
+                        closestDistance = distance
+                    end
+                end
+            end
+        end
     end
     
     return closestLevel1
@@ -118,25 +138,37 @@ function WelcomeCameraService:GetFinalCameraPosition()
     
     if level1Part then
         -- Position camera behind the player, at torso level, so we see player's back facing Level1
-        local level1Pos = level1Part.Position
+        local level1Pos = nil
+        if level1Part:IsA("Model") then
+            -- Get position from the model
+            if level1Part.PrimaryPart then
+                level1Pos = level1Part.PrimaryPart.Position
+            else
+                -- Find any part in the model to get position
+                for _, child in pairs(level1Part:GetChildren()) do
+                    if child:IsA("BasePart") then
+                        level1Pos = child.Position
+                        break
+                    end
+                end
+            end
+        elseif level1Part:IsA("BasePart") then
+            level1Pos = level1Part.Position
+        end
         
-        -- Calculate horizontal direction from player to Level1 (where player faces)
-        local playerToLevel1 = Vector3.new(level1Pos.X - playerPos.X, 0, level1Pos.Z - playerPos.Z).Unit
-        
-        -- Position camera directly behind player (opposite to where they're facing), at torso level
-        local distanceBehindPlayer = 12
-        local cameraPosition = playerPos + (-playerToLevel1 * distanceBehindPlayer) + Vector3.new(0, END_HEIGHT_OFFSET, 0)
-        
-        print("WelcomeCameraService: Player position:", playerPos)
-        print("WelcomeCameraService: Level1 position:", level1Pos)
-        print("WelcomeCameraService: Player to Level1 direction:", playerToLevel1)
-        print("WelcomeCameraService: Camera offset direction:", -playerToLevel1)
-        print("WelcomeCameraService: Camera positioned behind player at:", cameraPosition)
-        
-        return cameraPosition
+        if level1Pos then
+            -- Calculate horizontal direction from player to Level1 (where player faces)
+            local playerToLevel1 = Vector3.new(level1Pos.X - playerPos.X, 0, level1Pos.Z - playerPos.Z).Unit
+            
+            -- Position camera directly behind player (opposite to where they're facing), at torso level
+            local distanceBehindPlayer = 12
+            local cameraPosition = playerPos + (-playerToLevel1 * distanceBehindPlayer) + Vector3.new(0, END_HEIGHT_OFFSET, 0)
+            
+            
+            return cameraPosition
+        end
     else
         -- Fallback to default positioning if Level1 not found
-        print("WelcomeCameraService: Using fallback camera position")
         local cameraOffset = Vector3.new(-15, END_HEIGHT_OFFSET, 15)
         return playerPos + cameraOffset
     end
@@ -149,10 +181,7 @@ end
 
 -- Start the welcome animation
 function WelcomeCameraService:StartWelcomeAnimation()
-    print("WelcomeCameraService: StartWelcomeAnimation called")
-    
     if animationInProgress then
-        print("WelcomeCameraService: Animation already in progress")
         return
     end
     
@@ -162,25 +191,16 @@ function WelcomeCameraService:StartWelcomeAnimation()
         return
     end
     
-    print("WelcomeCameraService: Camera found, checking character...")
-    
     -- Wait for player character to load (with timeout)
     local maxWait = 10 -- Maximum 10 seconds to wait for character
     local startTime = tick()
     
     while (not player.Character or not player.Character:FindFirstChild("HumanoidRootPart")) and (tick() - startTime) < maxWait do
-        if not player.Character then
-            print("WelcomeCameraService: No character, waiting...")
-        else
-            print("WelcomeCameraService: Character exists but no HumanoidRootPart, waiting...")
-        end
         task.wait(0.1)
     end
     
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
         warn("WelcomeCameraService: Character/HumanoidRootPart not ready after 10 seconds, starting animation anyway")
-    else
-        print("WelcomeCameraService: Character ready, starting animation...")
     end
     
     animationInProgress = true
@@ -190,7 +210,6 @@ function WelcomeCameraService:StartWelcomeAnimation()
     originalCFrame = camera.CFrame
     
     -- Set camera to scriptable mode
-    print("WelcomeCameraService: Setting camera to scriptable mode")
     camera.CameraType = Enum.CameraType.Scriptable
     
     -- Calculate start and end positions
@@ -200,22 +219,9 @@ function WelcomeCameraService:StartWelcomeAnimation()
     local level1Part = self:GetPlayerLevel1Part()
     local finalCameraPosition = self:GetFinalCameraPosition()
     
-    print("WelcomeCameraService: Map center:", mapCenter)
-    print("WelcomeCameraService: Player area center:", playerAreaCenter)
-    print("WelcomeCameraService: Player position:", playerPosition)
-    if level1Part then
-        print("WelcomeCameraService: Level1 part found at:", level1Part.Position)
-    else
-        print("WelcomeCameraService: Level1 part not found, using fallback")
-    end
-    print("WelcomeCameraService: Final camera position:", finalCameraPosition)
-    
     -- Start from high above map center, looking towards the player area
     local startPosition = mapCenter + Vector3.new(0, START_HEIGHT_OFFSET, 0)
     local endPosition = finalCameraPosition
-    
-    print("WelcomeCameraService: Start position:", startPosition)
-    print("WelcomeCameraService: End position:", endPosition)
     
     -- Calculate start and end CFrames (looking at targets)
     local startCFrame = self:CalculateCameraLookAt(startPosition, playerAreaCenter) -- Look towards player area from center
@@ -223,19 +229,26 @@ function WelcomeCameraService:StartWelcomeAnimation()
     -- For end frame, look towards Level1 (same direction as player) not at player
     local endTarget = playerPosition -- Default fallback
     if level1Part then
-        endTarget = level1Part.Position -- Look towards Level1
-        print("WelcomeCameraService: Camera will look towards Level1 at:", endTarget)
-        print("WelcomeCameraService: Start look target (player area center):", playerAreaCenter)
-        print("WelcomeCameraService: End look target (Level1):", endTarget)
-    else
-        print("WelcomeCameraService: Camera will look at player (fallback)")
+        -- Get Level1 position from Model
+        if level1Part:IsA("Model") then
+            if level1Part.PrimaryPart then
+                endTarget = level1Part.PrimaryPart.Position
+            else
+                for _, child in pairs(level1Part:GetChildren()) do
+                    if child:IsA("BasePart") then
+                        endTarget = child.Position
+                        break
+                    end
+                end
+            end
+        elseif level1Part:IsA("BasePart") then
+            endTarget = level1Part.Position
+        end
     end
     local endCFrame = self:CalculateCameraLookAt(endPosition, endTarget)
     
     -- Set initial camera position
     camera.CFrame = startCFrame
-    
-    print("WelcomeCameraService: Starting animation from", startPosition, "to", endPosition)
     
     -- Create the tween animation using a NumberValue for progress
     local tweenInfo = TweenInfo.new(
@@ -292,8 +305,6 @@ end
 
 -- Finish the animation and restore normal camera
 function WelcomeCameraService:FinishWelcomeAnimation()
-    print("WelcomeCameraService: Animation complete, restoring camera")
-    
     local camera = Workspace.CurrentCamera
     if camera and originalCameraType then
         -- Restore original camera type (usually Follow)

@@ -36,19 +36,30 @@ GlobalChatService:Initialize()
 local PetProcessingSoundService = require(script.Parent.services.PetProcessingSoundService)
 PetProcessingSoundService:Initialize()
 
+-- Initialize loading screen first
+local LoadingService = require(script.Parent.services.LoadingService)
+LoadingService:Initialize()
+LoadingService:SetProgress(0.1, "Setting up world...")
+
 -- Initialize welcome camera service early (doesn't need player data to start)
 local WelcomeCameraService = require(script.Parent.services.WelcomeCameraService)
 WelcomeCameraService:Initialize()
-WelcomeCameraService:StartWelcomeAnimation()
+LoadingService:SetProgress(0.2, "Preparing camera system...")
 
 -- Wait for server to process player, then initialize data-dependent services
 task.spawn(function()
+    LoadingService:SetProgress(0.3, "Waiting for world setup...")
+    
     -- Small delay to ensure server has started processing this player
     local attempts = 0
     while not game.Workspace:FindFirstChild("PlayerAreas") and attempts < 50 do
         task.wait(0.1)
         attempts = attempts + 1
+        -- Update progress during wait
+        LoadingService:SetProgress(0.3 + (attempts / 50) * 0.2, "Connecting to server...")
     end
+    
+    LoadingService:SetProgress(0.5, "Setting up player area...")
     
     -- Initialize crazy chest service immediately after PlayerAreas exist (doesn't need player data)
     local CrazyChestService = require(script.Parent.services.CrazyChestService)
@@ -61,6 +72,8 @@ task.spawn(function()
     -- Initialize tutorial service immediately after PlayerAreas exist (doesn't need player data for pathfinding)
     local TutorialService = require(script.Parent.services.TutorialService)
     TutorialService:Initialize()
+    
+    LoadingService:SetProgress(0.6, "Loading player data...")
     
     -- Wait for initial data to be available in Rodux store (server will sync automatically)
     local store = require(game.ReplicatedStorage.store)
@@ -135,6 +148,19 @@ task.spawn(function()
     -- Initialize player rank GUI service (shows rank above players' heads)
     local PlayerRankGUIService = require(script.Parent.services.PlayerRankGUIService)
     PlayerRankGUIService:Initialize()
+    
+    LoadingService:SetProgress(0.9, "Finalizing setup...")
+    
+    -- Brief pause before starting camera animation
+    task.wait(0.5)
+    
+    LoadingService:SetProgress(1.0, "Welcome!")
+    task.wait(0.3) -- Brief pause to show completion
+    
+    -- Hide loading screen and start camera animation
+    LoadingService:Hide()
+    task.wait(0.2) -- Small delay for loading screen to fade
+    WelcomeCameraService:StartWelcomeAnimation()
     
 end)
 
