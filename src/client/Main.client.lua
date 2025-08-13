@@ -135,8 +135,7 @@ task.spawn(function()
     local WelcomeCameraService = require(script.Parent.services.WelcomeCameraService)
     WelcomeCameraService:Initialize()
     
-    -- Start welcome animation after a brief delay
-    task.wait(1) -- Let everything load first
+    -- Start welcome animation immediately - don't wait
     WelcomeCameraService:StartWelcomeAnimation()
     
 end)
