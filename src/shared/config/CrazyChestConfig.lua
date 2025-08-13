@@ -17,7 +17,7 @@ end
 CrazyChestConfig.REWARDS = {
     {
         money = 5000,
-        chance = 40, -- 40% chance - COMMON
+        chance = 60, -- 60% chance - COMMON (increased from 40%)
         color = PetConstants.RarityColors[PetConstants.Rarity.COMMON], -- Gray
         rarity = "COMMON",
         name = "Small Money",
@@ -26,7 +26,7 @@ CrazyChestConfig.REWARDS = {
     {
         potionId = "money_2x_10m",
         quantity = 1,
-        chance = 25, -- 25% chance - UNCOMMON  
+        chance = 20, -- 20% chance - UNCOMMON (reduced from 25%)
         color = PetConstants.RarityColors[PetConstants.Rarity.UNCOMMON], -- Green
         rarity = "UNCOMMON",
         name = "2x Money Potion",
@@ -34,7 +34,7 @@ CrazyChestConfig.REWARDS = {
     },
     {
         money = 20000,
-        chance = 15, -- 15% chance - RARE
+        chance = 10, -- 10% chance - RARE (reduced from 15%)
         color = PetConstants.RarityColors[PetConstants.Rarity.RARE], -- Blue
         rarity = "RARE",
         name = "Big Money",
@@ -43,7 +43,7 @@ CrazyChestConfig.REWARDS = {
     {
         potionId = "diamonds_2x_10m",
         quantity = 1,
-        chance = 10, -- 10% chance - MYTHIC (Ultra Rare!)
+        chance = 5, -- 5% chance - MYTHIC (reduced from 10% - much rarer!)
         color = PetConstants.RarityColors[PetConstants.Rarity.MYTHIC], -- Gold
         rarity = "MYTHIC",
         name = "2x Diamond Potion",
@@ -55,7 +55,7 @@ CrazyChestConfig.REWARDS = {
         boost = 15,
         value = 1000,
         amount = 1,
-        chance = 4, -- 4% chance - LEGENDARY
+        chance = 3, -- 3% chance - LEGENDARY (reduced from 4%)
         color = PetConstants.RarityColors[PetConstants.Rarity.LEGENDARY], -- Orange
         rarity = "LEGENDARY",
         name = "15X Easter TV",
@@ -64,7 +64,7 @@ CrazyChestConfig.REWARDS = {
     {
         potionId = "pet_magnet_10m",
         quantity = 1,
-        chance = 0.9, -- 10% chance - EPIC
+        chance = 1.9, -- 1.9% chance - EPIC (increased from 0.9% to balance)
         color = PetConstants.RarityColors[PetConstants.Rarity.EPIC], -- Purple
         rarity = "EPIC", 
         name = "Pet Magnet Potion",

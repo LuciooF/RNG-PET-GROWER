@@ -53,6 +53,36 @@ local function formatPotionRewardText(reward, multiplier)
     return quantity .. " - " .. duration .. "\n" .. name .. "!"
 end
 
+-- Helper function to format potion reward text for preview cards (uses next level)
+local function formatPotionPreviewText(reward, nextChestLevel)
+    if not reward or reward.type ~= "potion" then
+        return "Potion!"
+    end
+    
+    local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+    if not potionConfig then
+        return NumberFormatter.format(reward.quantity) .. "\nPotion!"
+    end
+    
+    -- Calculate potion bonus for the NEXT chest level
+    local potionBonus = math.floor(nextChestLevel / 10) -- +1 every 10 levels
+    local finalQuantity = reward.quantity + potionBonus
+    
+    -- Format based on potion type
+    if reward.potionId == "money_2x_10m" then
+        return finalQuantity .. "x\n2x Money!"
+    elseif reward.potionId == "diamonds_2x_10m" then
+        return finalQuantity .. "x\n2x Diamonds!"
+    elseif reward.potionId == "pet_magnet_10m" then
+        return finalQuantity .. "x\nPet Magnet!"
+    end
+    
+    local duration = PotionConfig.FormatDuration and PotionConfig.FormatDuration(potionConfig.Duration) or "10m"
+    local name = potionConfig.BoostType == "Pet Magnet" and "Pet Magnet" or potionConfig.BoostType
+    
+    return finalQuantity .. " - " .. duration .. "\n" .. name .. "!"
+end
+
 -- Create clean purchase modal component
 local function createCleanPurchaseModal(props)
     local upgradeType = props.upgradeType -- "level" or "luck"
@@ -1522,7 +1552,7 @@ function CrazyChestUI.new(props)
                                     local nextLevelAmount = math.floor(reward.money * nextLevelMultiplier)
                                     rewardText.Text = NumberFormatter.format(nextLevelAmount) .. "\nMoney!"
                                 elseif reward.type == "potion" then
-                                    rewardText.Text = formatPotionRewardText(reward, nextLevelMultiplier)
+                                    rewardText.Text = formatPotionPreviewText(reward, nextLevel)
                                 else -- diamonds
                                     local nextLevelAmount = math.floor(reward.diamonds * nextLevelMultiplier)
                                     rewardText.Text = NumberFormatter.format(nextLevelAmount) .. "\nDiamonds!"

@@ -6,9 +6,43 @@ local SoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 
 local CrazyChestConfig = require(ReplicatedStorage.config.CrazyChestConfig)
+local PotionConfig = require(ReplicatedStorage.config.PotionConfig)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
+
+-- Helper function to format potion reward text for winning card
+-- Note: The server already applies the chest level bonus to reward.quantity
+local function formatPotionRewardText(reward, multiplier)
+    if not reward or reward.type ~= "potion" then
+        return "Potion!"
+    end
+    
+    local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+    if not potionConfig then
+        return NumberFormatter.format(math.floor(reward.quantity * multiplier)) .. "\nPotion!"
+    end
+    
+    -- The server already added the chest level bonus to reward.quantity
+    -- So we just use reward.quantity directly
+    local finalQuantity = reward.quantity
+    
+    -- Format based on potion type
+    if reward.potionId == "money_2x_10m" then
+        return finalQuantity .. "x\n2x Money!"
+    elseif reward.potionId == "diamonds_2x_10m" then
+        return finalQuantity .. "x\n2x Diamonds!"
+    elseif reward.potionId == "pet_magnet_10m" then
+        return finalQuantity .. "x\nPet Magnet!"
+    end
+    
+    local duration = PotionConfig.FormatDuration and PotionConfig.FormatDuration(potionConfig.Duration) or "10m"
+    local name = potionConfig.BoostType == "Pet Magnet" and "Pet Magnet" or potionConfig.BoostType
+    local quantity = NumberFormatter.format(math.floor(reward.quantity * multiplier))
+    
+    return quantity .. " - " .. duration .. "\n" .. name .. "!"
+end
 
 -- Pre-create hover sound for instant playback
 local hoverSound = Instance.new("Sound")
@@ -33,20 +67,22 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
     
     self.isAnimating = true
     
-    -- Print reward info
-    if reward.type == "money" then
-        -- Starting money reward animation
-    else
-        -- Starting diamonds reward animation
-    end
+    print("=== CRAZY CHEST ANIMATION START ===")
+    print("Roll:", roll)
+    print("Reward type:", reward.type)
+    print("Reward data:", game:GetService("HttpService"):JSONEncode(reward))
+    print("===============================")
     
     -- Find the existing reward strip in the UI
     local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
     local rewardStrip = nil
     
+    print("CrazyChestAnimationService: Searching for RewardStrip...")
+    
     -- Search for the RewardStrip in any ScreenGui
     for _, gui in pairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") then
+            print("  - Checking ScreenGui:", gui.Name)
             local function findRewardStrip(parent)
                 for _, child in pairs(parent:GetChildren()) do
                     if child.Name == "RewardStrip" and child:IsA("ScrollingFrame") then
@@ -60,7 +96,8 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
             
             rewardStrip = findRewardStrip(gui)
             if rewardStrip then
-                -- Found reward strip for animation
+                print("  - Found RewardStrip in:", gui.Name)
+                print("  - RewardStrip children count:", #rewardStrip:GetChildren())
                 break
             end
         end
@@ -74,7 +111,16 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
     
     -- Replace the card at the winning position with the actual reward
     local winningCard = rewardStrip:FindFirstChild("RewardItem" .. WINNING_POSITION)
+    print("CrazyChestAnimationService: Starting winning card update")
+    print("  - Reward type:", reward.type)
+    print("  - Reward details:", reward.type == "money" and ("money=" .. tostring(reward.money)) or 
+                                 reward.type == "diamonds" and ("diamonds=" .. tostring(reward.diamonds)) or
+                                 reward.type == "potion" and ("potionId=" .. tostring(reward.potionId) .. ", quantity=" .. tostring(reward.quantity)) or
+                                 reward.type == "pet" and ("petName=" .. tostring(reward.petName) .. ", boost=" .. tostring(reward.boost)) or "unknown")
+    
     if winningCard then
+        print("CrazyChestAnimationService: Found winning card at position", WINNING_POSITION)
+        
         -- Import NumberFormatter for consistent formatting
         local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
         
@@ -165,18 +211,29 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
             end
         end
         
-        -- Update the icon - handle pets vs currency properly
+        -- Update the icon - handle pets, potions, and currency properly
+        print("CrazyChestAnimationService: Updating icon for type:", reward.type)
+        
+        -- Log what's currently in the winning card
+        local existingIcon = winningCard:FindFirstChild("CurrencyIcon")
+        local existingViewport = winningCard:FindFirstChild("PetModel") 
+        print("  - Existing CurrencyIcon:", existingIcon and "found" or "not found")
+        print("  - Existing PetModel:", existingViewport and "found" or "not found")
+        
         if reward.type == "pet" then
+            print("CrazyChestAnimationService: Setting up pet viewport")
             -- Remove currency icon if it exists
             local currencyIcon = winningCard:FindFirstChild("CurrencyIcon")
             if currencyIcon then
                 currencyIcon:Destroy()
+                print("  - Removed existing CurrencyIcon")
             end
             
             -- Create or update pet viewport
             local existingViewport = winningCard:FindFirstChild("PetModel")
             if existingViewport then
                 existingViewport:Destroy()
+                print("  - Removed existing PetModel")
             end
             
             -- Create new ViewportFrame for pet (same as in UI creation)
@@ -265,26 +322,84 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
                     end
                 end
             end)
-        else
-            -- Handle currency icons
-            local icon = winningCard:FindFirstChild("CurrencyIcon")
-            if icon and icon:IsA("ImageLabel") then
-                icon.Image = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468"
+        elseif reward.type == "potion" then
+            -- Handle potion icons
+            print("CrazyChestAnimationService: Updating winning card for potion:", reward.potionId, "quantity:", reward.quantity)
+            
+            -- Remove pet viewport if it exists (switching from pet to potion)
+            local existingViewport = winningCard:FindFirstChild("PetModel")
+            if existingViewport then
+                existingViewport:Destroy()
             end
+            
+            -- Find or create currency icon for potion
+            local currencyIcon = winningCard:FindFirstChild("CurrencyIcon")
+            if not currencyIcon then
+                print("CrazyChestAnimationService: CurrencyIcon not found, creating new one")
+                local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+                currencyIcon = Instance.new("ImageLabel")
+                currencyIcon.Name = "CurrencyIcon"
+                currencyIcon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60))
+                currencyIcon.Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(15))
+                currencyIcon.BackgroundTransparency = 1
+                currencyIcon.ScaleType = Enum.ScaleType.Fit
+                currencyIcon.ZIndex = 1025
+                currencyIcon.Parent = winningCard
+            end
+            
+            -- Get potion icon from config
+            local potionConfig = PotionConfig and PotionConfig.GetPotion and PotionConfig.GetPotion(reward.potionId)
+            local potionIcon = potionConfig and potionConfig.Icon or "rbxassetid://118134400760699"
+            currencyIcon.Image = potionIcon
+            print("CrazyChestAnimationService: Set potion icon to:", potionIcon)
+        else
+            -- Handle currency icons (money/diamonds)
+            print("CrazyChestAnimationService: Setting up currency icon for type:", reward.type)
             
             -- Remove pet viewport if it exists (switching from pet to currency)
             local existingViewport = winningCard:FindFirstChild("PetModel")
             if existingViewport then
                 existingViewport:Destroy()
+                print("  - Removed existing PetModel")
+            end
+            
+            -- Find or create currency icon
+            local icon = winningCard:FindFirstChild("CurrencyIcon")
+            if not icon then
+                print("CrazyChestAnimationService: CurrencyIcon not found, creating new one for", reward.type)
+                local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+                icon = Instance.new("ImageLabel")
+                icon.Name = "CurrencyIcon"
+                icon.Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(60))
+                icon.Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(15))
+                icon.BackgroundTransparency = 1
+                icon.ScaleType = Enum.ScaleType.Fit
+                icon.ZIndex = 1025
+                icon.Parent = winningCard
+                print("  - Created new CurrencyIcon")
+            else
+                print("  - Using existing CurrencyIcon")
+            end
+            
+            if icon and icon:IsA("ImageLabel") then
+                local imageId = reward.type == "money" and "rbxassetid://80960000119108" or "rbxassetid://135421873302468"
+                icon.Image = imageId
+                print("  - Set icon image to:", imageId, "for type:", reward.type)
+            else
+                print("  - ERROR: Icon is not an ImageLabel or is nil!")
             end
         end
         
         -- Update the text with proper formatting to match other cards (two-line format with \n)
         local text = winningCard:FindFirstChild("RewardText")
+        print("CrazyChestAnimationService: Updating text - RewardText found:", text and "yes" or "no")
+        
         if text and text:IsA("TextLabel") then
             -- Format text with proper multipliers for all rewards including ultra-rare chest
             if reward.special == "black_market_rainbow_text" then
-                text.Text = NumberFormatter.format(reward.boost) .. "\nBoost!"
+                local textContent = NumberFormatter.format(reward.boost) .. "\nBoost!"
+                text.Text = textContent
+                print("  - Set ultra-rare text:", textContent)
                 
                 -- Add rainbow gradient to text for ultra-rare chest
                 local existingTextGradient = text:FindFirstChild("UIGradient")
@@ -304,10 +419,15 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
                 })
                 textRainbowGradient.Parent = text
             else
-                text.Text = reward.type == "pet" and (NumberFormatter.format(reward.boost) .. "\nBoost!") or 
-                           (reward.type == "money" and (NumberFormatter.format(reward.money) .. "\nMoney!") or 
-                           (NumberFormatter.format(reward.diamonds) .. "\nDiamonds!"))
+                local textContent = reward.type == "pet" and (NumberFormatter.format(reward.boost) .. "\nBoost!") or 
+                                   (reward.type == "money" and (NumberFormatter.format(reward.money) .. "\nMoney!") or 
+                                   (reward.type == "potion" and formatPotionRewardText(reward, 1)) or
+                                   (NumberFormatter.format(reward.diamonds) .. "\nDiamonds!"))
+                text.Text = textContent
+                print("  - Set reward text:", textContent)
             end
+        else
+            print("CrazyChestAnimationService: ERROR - RewardText not found or not a TextLabel!")
         end
         
         -- Update chance label formatting if it exists
@@ -323,6 +443,9 @@ function CrazyChestAnimationService:StartCaseOpeningAnimation(roll, reward)
         end
         
         -- Updated winning card with reward formatting
+        print("CrazyChestAnimationService: Finished updating winning card")
+    else
+        print("CrazyChestAnimationService: ERROR - Could not find winning card at position", WINNING_POSITION)
     end
     
     -- Calculate where to scroll to (center the winning card with random offset)
@@ -429,7 +552,12 @@ function CrazyChestAnimationService:CompleteAnimation(rewardStrip, winningCard, 
         youWonText.Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(40))
         youWonText.Position = UDim2.new(0, 0, 0, ScreenUtils.getProportionalSize(5))
         youWonText.BackgroundTransparency = 1
-        youWonText.Text = "YOU WON: " .. (reward.type == "money" and ("💰 " .. (reward.money or 0)) or ("💎 " .. (reward.diamonds or 0)))
+        local youWonContent = "YOU WON: " .. (reward.type == "money" and ("💰 " .. NumberFormatter.format(reward.money or 0)) or 
+                                               (reward.type == "potion" and ("🧪 " .. formatPotionRewardText(reward, 1):gsub("\n", " ")) or 
+                                               (reward.type == "pet" and ("🐾 " .. NumberFormatter.format(reward.boost) .. " Boost") or 
+                                               ("💎 " .. NumberFormatter.format(reward.diamonds or 0)))))
+        youWonText.Text = youWonContent
+        print("CrazyChestAnimationService: Set YOU WON text:", youWonContent)
         youWonText.TextColor3 = Color3.fromRGB(255, 215, 0)
         youWonText.TextSize = ScreenUtils.TEXT_SIZES.LARGE()
         youWonText.Font = Enum.Font.FredokaOne

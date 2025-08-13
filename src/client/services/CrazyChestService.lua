@@ -347,7 +347,8 @@ end
 function CrazyChestService:UpgradeChest()
     local playerData = DataSyncService:GetPlayerData()
     local chestLevel = playerData and playerData.CrazyChest and playerData.CrazyChest.Level or 1
-    local upgradeCost = chestLevel * 100
+    local CrazyChestPricing = require(ReplicatedStorage.config.CrazyChestPricing)
+    local upgradeCost = CrazyChestPricing.GetChestUpgradeCost(chestLevel)
     
     -- Check if player has enough diamonds (no sound notification)
     if not playerData or not playerData.Resources or playerData.Resources.Diamonds < upgradeCost then
@@ -589,8 +590,10 @@ function CrazyChestService:GetUIProps()
     local playerData = DataSyncService:GetPlayerData()
     local chestLevel = playerData and playerData.CrazyChest and playerData.CrazyChest.Level or 1
     local chestLuck = playerData and playerData.CrazyChest and playerData.CrazyChest.Luck or 1
-    local upgradeCost = chestLevel * 100 -- Same calculation as server
-    local luckUpgradeCost = chestLuck * 500 -- Same calculation as server
+    -- Use centralized pricing calculations
+    local CrazyChestPricing = require(ReplicatedStorage.config.CrazyChestPricing)
+    local upgradeCost = CrazyChestPricing.GetChestUpgradeCost(chestLevel)
+    local luckUpgradeCost = CrazyChestPricing.GetLuckUpgradeCost(chestLuck)
     
     return {
         visible = isChestUIOpen,

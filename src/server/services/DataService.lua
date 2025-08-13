@@ -752,35 +752,17 @@ function DataService:GetChestLevel(player)
     return profile.Data.CrazyChest.Level or 1
 end
 
--- Get crazy chest upgrade cost
+-- Get crazy chest upgrade cost (using centralized pricing)
 function DataService:GetChestUpgradeCost(player)
     local profile = Profiles[player]
     if not profile then
-        return 500 -- Default cost for level 1
+        local CrazyChestPricing = require(game.ReplicatedStorage.config.CrazyChestPricing)
+        return CrazyChestPricing.GetChestUpgradeCost(1)
     end
     
     local currentLevel = profile.Data.CrazyChest.Level or 1
-    
-    -- Progressive scaling: starts gentle, gets steeper at higher levels
-    -- Levels 1-5: ~500, 1000, 1750, 2750, 4000
-    -- Levels 6-10: ~5500, 7500, 10000, 13000, 17000
-    -- Levels 11+: Exponential growth
-    
-    if currentLevel <= 5 then
-        -- Early levels: 500, 1000, 1750, 2750, 4000
-        local costs = {500, 1000, 1750, 2750, 4000}
-        return costs[currentLevel] or 4000
-    elseif currentLevel <= 10 then
-        -- Mid levels: more aggressive scaling
-        local baseCost = 4000
-        local levelOffset = currentLevel - 5
-        return math.floor(baseCost + (levelOffset * levelOffset * 500) + (levelOffset * 1000))
-    else
-        -- High levels: exponential scaling
-        local baseCost = 17000
-        local levelOffset = currentLevel - 10
-        return math.floor(baseCost * (1.4 ^ levelOffset))
-    end
+    local CrazyChestPricing = require(game.ReplicatedStorage.config.CrazyChestPricing)
+    return CrazyChestPricing.GetChestUpgradeCost(currentLevel)
 end
 
 -- Upgrade crazy chest luck with diamond cost
@@ -795,24 +777,10 @@ function DataService:UpgradeCrazyChestLuck(player)
         profile.Data.CrazyChest.Luck = 1
     end
     
-    -- Get current luck level
+    -- Get current luck level and calculate upgrade cost using centralized pricing
     local currentLuck = profile.Data.CrazyChest.Luck
-    -- Progressive luck cost scaling: more expensive than chest levels
-    local upgradeCost
-    if currentLuck <= 3 then
-        -- Early luck levels: 750, 1500, 2500
-        upgradeCost = currentLuck * 750
-    elseif currentLuck <= 7 then
-        -- Mid luck levels: steeper increase
-        local baseCost = 2500
-        local levelOffset = currentLuck - 3
-        upgradeCost = math.floor(baseCost + (levelOffset * levelOffset * 750) + (levelOffset * 1500))
-    else
-        -- High luck levels: exponential
-        local baseCost = 15000
-        local levelOffset = currentLuck - 7
-        upgradeCost = math.floor(baseCost * (1.5 ^ levelOffset))
-    end
+    local CrazyChestPricing = require(game.ReplicatedStorage.config.CrazyChestPricing)
+    local upgradeCost = CrazyChestPricing.GetLuckUpgradeCost(currentLuck)
     
     -- Check if player has enough diamonds
     if not profile.Data.Resources.Diamonds or profile.Data.Resources.Diamonds < upgradeCost then
@@ -889,11 +857,12 @@ function DataService:GetChestLuckMultiplier(player)
     return profile.Data.CrazyChest.Luck
 end
 
--- Get crazy chest luck upgrade cost
+-- Get crazy chest luck upgrade cost (using centralized pricing)
 function DataService:GetChestLuckUpgradeCost(player)
     local profile = Profiles[player]
     if not profile then
-        return 500 -- Default cost for level 1
+        local CrazyChestPricing = require(game.ReplicatedStorage.config.CrazyChestPricing)
+        return CrazyChestPricing.GetLuckUpgradeCost(1)
     end
     
     -- Initialize luck if it doesn't exist
@@ -902,7 +871,8 @@ function DataService:GetChestLuckUpgradeCost(player)
     end
     
     local currentLuck = profile.Data.CrazyChest.Luck
-    return currentLuck * 500 -- Cost increases by 500 diamonds per luck level
+    local CrazyChestPricing = require(game.ReplicatedStorage.config.CrazyChestPricing)
+    return CrazyChestPricing.GetLuckUpgradeCost(currentLuck)
 end
 
 return DataService
