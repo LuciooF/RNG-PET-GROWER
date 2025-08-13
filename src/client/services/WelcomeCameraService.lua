@@ -115,11 +115,14 @@ function WelcomeCameraService:GetFinalCameraPosition()
         -- Calculate horizontal direction from player to Level1 (where player faces)
         local playerToLevel1 = Vector3.new(level1Pos.X - playerPos.X, 0, level1Pos.Z - playerPos.Z).Unit
         
-        -- Position camera opposite direction (behind player), at torso level
+        -- Position camera directly behind player (opposite to where they're facing), at torso level
         local distanceBehindPlayer = 12
         local cameraPosition = playerPos + (-playerToLevel1 * distanceBehindPlayer) + Vector3.new(0, END_HEIGHT_OFFSET, 0)
         
+        print("WelcomeCameraService: Player position:", playerPos)
+        print("WelcomeCameraService: Level1 position:", level1Pos)
         print("WelcomeCameraService: Player to Level1 direction:", playerToLevel1)
+        print("WelcomeCameraService: Camera offset direction:", -playerToLevel1)
         print("WelcomeCameraService: Camera positioned behind player at:", cameraPosition)
         
         return cameraPosition
@@ -214,6 +217,8 @@ function WelcomeCameraService:StartWelcomeAnimation()
     if level1Part then
         endTarget = level1Part.Position -- Look towards Level1
         print("WelcomeCameraService: Camera will look towards Level1 at:", endTarget)
+        print("WelcomeCameraService: Start look target (player area center):", playerAreaCenter)
+        print("WelcomeCameraService: End look target (Level1):", endTarget)
     else
         print("WelcomeCameraService: Camera will look at player (fallback)")
     end
