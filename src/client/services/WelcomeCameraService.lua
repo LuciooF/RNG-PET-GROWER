@@ -136,7 +136,7 @@ function WelcomeCameraService:StartWelcomeAnimation()
     
     print("WelcomeCameraService: Starting animation from", startPosition, "to", endPosition)
     
-    -- Create the tween animation
+    -- Create the tween animation using a NumberValue for progress
     local tweenInfo = TweenInfo.new(
         ANIMATION_DURATION,
         EASE_STYLE,
@@ -146,18 +146,15 @@ function WelcomeCameraService:StartWelcomeAnimation()
         0 -- Delay
     )
     
-    -- Create a part to tween (since we can't tween CFrame directly)
-    local tweenTarget = {
-        Position = startPosition,
-        LookAt = mapCenter
-    }
+    -- Create a NumberValue to tween from 0 to 1
+    local progressValue = Instance.new("NumberValue")
+    progressValue.Value = 0
     
     local tween = TweenService:Create(
-        tweenTarget,
+        progressValue,
         tweenInfo,
         {
-            Position = endPosition,
-            LookAt = endTarget
+            Value = 1
         }
     )
     
@@ -169,8 +166,15 @@ function WelcomeCameraService:StartWelcomeAnimation()
             return
         end
         
-        -- Update camera CFrame based on tween progress
-        local currentCFrame = self:CalculateCameraLookAt(tweenTarget.Position, tweenTarget.LookAt)
+        -- Get current progress (0 to 1)
+        local progress = progressValue.Value
+        
+        -- Interpolate position and look target
+        local currentPosition = startPosition:lerp(endPosition, progress)
+        local currentLookTarget = mapCenter:lerp(endTarget, progress)
+        
+        -- Update camera CFrame based on interpolated values
+        local currentCFrame = self:CalculateCameraLookAt(currentPosition, currentLookTarget)
         camera.CFrame = currentCFrame
     end)
     
@@ -180,6 +184,7 @@ function WelcomeCameraService:StartWelcomeAnimation()
     -- When animation completes
     tween.Completed:Connect(function()
         connection:Disconnect()
+        progressValue:Destroy()
         self:FinishWelcomeAnimation()
     end)
 end
