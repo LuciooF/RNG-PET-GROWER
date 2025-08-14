@@ -462,12 +462,12 @@ local function DailyRewardsPanel(props)
                 })
                 }),
                 
-                -- Pet info text (show ??? for locked rewards)
-                Title = React.createElement("TextLabel", {
-                    Name = "Title",
-                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(70)),
+                -- Boost text (always white with black outline)
+                BoostText = React.createElement("TextLabel", {
+                    Name = "BoostText",
+                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(35)),
                     BackgroundTransparency = 1,
-                    Text = NumberFormatter.format(reward.boost) .. "x Boost\n" .. (isLocked and "???" or reward.petName),
+                    Text = NumberFormatter.format(reward.boost) .. "x Boost",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = ScreenUtils.getTextSize(32),
                     Font = Enum.Font.FredokaOne,
@@ -481,7 +481,34 @@ local function DailyRewardsPanel(props)
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                 }, {
-                    -- Rainbow gradient for locked rewards (like "OP" text)
+                    -- Thicker black outline for boost text
+                    BoostTextStroke = React.createElement("UIStroke", {
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Thickness = ScreenUtils.getProportionalSize(2),
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+                    })
+                }),
+                
+                -- Pet name text (rainbow gradient for ??? only)
+                PetNameText = React.createElement("TextLabel", {
+                    Name = "PetNameText",
+                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(35)),
+                    BackgroundTransparency = 1,
+                    Text = isLocked and "???" or reward.petName,
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = ScreenUtils.getTextSize(30),
+                    Font = Enum.Font.FredokaOne,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextYAlignment = Enum.TextYAlignment.Center,
+                    TextScaled = false,
+                    TextWrapped = false,
+                    LayoutOrder = 3,
+                    ZIndex = 103,
+                    -- Black outline on text
+                    TextStrokeTransparency = 0,
+                    TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                }, {
+                    -- Rainbow gradient for locked rewards (??? text only)
                     isLocked and React.createElement("UIGradient", {
                         Color = ColorSequence.new({
                             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),    -- Red
@@ -495,8 +522,8 @@ local function DailyRewardsPanel(props)
                         }),
                         Rotation = 45 -- Static angle for consistency
                     }) or nil,
-                    -- Thicker black outline for text
-                    TextStroke = React.createElement("UIStroke", {
+                    -- Thicker black outline for pet name text
+                    PetNameTextStroke = React.createElement("UIStroke", {
                         Color = Color3.fromRGB(0, 0, 0),
                         Thickness = ScreenUtils.getProportionalSize(2),
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
@@ -788,8 +815,8 @@ local function DailyRewardsPanel(props)
                 ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150),
                 ScrollingDirection = Enum.ScrollingDirection.Y,
                 ScrollingEnabled = true,
-                -- Calculate canvas size for 10 rewards in 2 rows (5 per row)
-                CanvasSize = UDim2.new(0, 0, 0, 2 * (cardSize + cardPadding) + (2 * contentPadding) + 200),
+                -- Calculate canvas size for 10 rewards in 2 rows (5 per row) with extra bottom padding
+                CanvasSize = UDim2.new(0, 0, 0, 2 * (cardSize + cardPadding) + (2 * contentPadding) + 400),
                 ZIndex = 101
             }, {
                 ContentPadding = React.createElement("UIPadding", {
