@@ -6,6 +6,7 @@ local React = require(ReplicatedStorage.Packages.react)
 
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local TimeFormatter = require(ReplicatedStorage.utils.TimeFormatter)
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 
@@ -60,6 +61,10 @@ local function getCurrentPlayerValue(leaderboardType)
         return playerData.Resources.Diamonds or 0
     elseif leaderboardType == "Rebirths" then
         return playerData.Resources.Rebirths or 0
+    elseif leaderboardType == "TimePlayed" then
+        -- Convert minutes to seconds to match server format
+        local playtimeMinutes = playerData.PlaytimeMinutes or 0
+        return math.floor(playtimeMinutes * 60)
     end
     
     return 0
@@ -136,7 +141,8 @@ local TABS = {
 local LEADERBOARD_TYPES = {
     DIAMONDS = "Diamonds",
     MONEY = "Money", 
-    REBIRTHS = "Rebirths"
+    REBIRTHS = "Rebirths",
+    TIME_PLAYED = "TimePlayed"
 }
 
 local function LeaderboardPanel(props)
@@ -309,6 +315,8 @@ local function LeaderboardPanel(props)
             return IconAssets.getIcon("CURRENCY", "DIAMONDS")
         elseif leaderboardType == "Rebirths" then
             return IconAssets.getIcon("UI", "REBIRTH")
+        elseif leaderboardType == "TimePlayed" then
+            return "rbxassetid://6031075938" -- Clock icon
         end
         return ""
     end
@@ -317,6 +325,8 @@ local function LeaderboardPanel(props)
     local function formatValue(value, leaderboardType)
         if leaderboardType == "Rebirths" then
             return tostring(value)
+        elseif leaderboardType == "TimePlayed" then
+            return TimeFormatter.formatForLeaderboard(value)
         else
             return NumberFormatter.format(value)
         end
@@ -719,11 +729,11 @@ local function LeaderboardPanel(props)
                 } or {})
             }),
             
-            -- Type selector (Money, Diamonds, Rebirths)
+            -- Type selector (Money, Diamonds, Rebirths, TimePlayed)
             TypeContainer = React.createElement("Frame", {
                 Name = "TypeContainer",
-                Size = UDim2.new(0, ScreenUtils.getProportionalSize(600), 0, ScreenUtils.getProportionalSize(60)),
-                Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(300), 0, ScreenUtils.getProportionalSize(200)),
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(700), 0, ScreenUtils.getProportionalSize(60)),
+                Position = UDim2.new(0.5, -ScreenUtils.getProportionalSize(350), 0, ScreenUtils.getProportionalSize(200)),
                 BackgroundColor3 = Color3.fromRGB(255, 255, 255),
                 BorderSizePixel = 0,
                 ZIndex = 52
@@ -740,7 +750,7 @@ local function LeaderboardPanel(props)
                 -- Diamonds type (first position)
                 DiamondsType = React.createElement("TextButton", {
                     Name = "DiamondsType",
-                    Size = UDim2.new(0.33, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
+                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
                     Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.DIAMONDS and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.DIAMONDS and 0 or 1,
@@ -768,8 +778,8 @@ local function LeaderboardPanel(props)
                 -- Money type (second position)
                 MoneyType = React.createElement("TextButton", {
                     Name = "MoneyType",
-                    Size = UDim2.new(0.33, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
-                    Position = UDim2.new(0.33, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
+                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.25, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.MONEY and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.MONEY and 0 or 1,
                     BorderSizePixel = 0,
@@ -796,8 +806,8 @@ local function LeaderboardPanel(props)
                 -- Rebirths type (third position)
                 RebirthsType = React.createElement("TextButton", {
                     Name = "RebirthsType",
-                    Size = UDim2.new(0.33, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
-                    Position = UDim2.new(0.67, -ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
+                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.5, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.REBIRTHS and Color3.fromRGB(57, 255, 20) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.REBIRTHS and 0 or 1,
                     BorderSizePixel = 0,
@@ -817,6 +827,34 @@ local function LeaderboardPanel(props)
                     end
                 }, selectedType == LEADERBOARD_TYPES.REBIRTHS and {
                     RebirthsCorner = React.createElement("UICorner", {
+                        CornerRadius = UDim.new(0, ScreenUtils.getProportionalSize(25))
+                    })
+                } or {}),
+                
+                -- Time Played type (fourth position)
+                TimePlayedType = React.createElement("TextButton", {
+                    Name = "TimePlayedType",
+                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.75, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
+                    BackgroundColor3 = selectedType == LEADERBOARD_TYPES.TIME_PLAYED and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(0, 0, 0, 0),
+                    BackgroundTransparency = selectedType == LEADERBOARD_TYPES.TIME_PLAYED and 0 or 1,
+                    BorderSizePixel = 0,
+                    Text = "Time Played",
+                    TextColor3 = selectedType == LEADERBOARD_TYPES.TIME_PLAYED and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(0, 0, 0),
+                    TextSize = ScreenUtils.getTextSize(20), -- Slightly smaller for longer text
+                    Font = Enum.Font.Gotham,
+                    ZIndex = 53,
+                    [React.Event.Activated] = function()
+                        playClickSound()
+                        setSelectedType(LEADERBOARD_TYPES.TIME_PLAYED)
+                    end,
+                    [React.Event.MouseEnter] = function()
+                        if selectedType ~= LEADERBOARD_TYPES.TIME_PLAYED then
+                            playHoverSound()
+                        end
+                    end
+                }, selectedType == LEADERBOARD_TYPES.TIME_PLAYED and {
+                    TimePlayedCorner = React.createElement("UICorner", {
                         CornerRadius = UDim.new(0, ScreenUtils.getProportionalSize(25))
                     })
                 } or {})

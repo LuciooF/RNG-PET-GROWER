@@ -90,6 +90,10 @@ function PlaytimeTrackingService:UpdatePlayerSession(player)
             session.totalMinutes = profile.Data.PlaytimeMinutes
             session.lastUpdateTime = currentTime
             
+            -- Notify CustomLeaderboardService about playtime change
+            local CustomLeaderboardService = require(script.Parent.CustomLeaderboardService)
+            CustomLeaderboardService:NotifyPlayerDataChanged(player)
+            
             -- Sync to client (DataService auto-syncs)
             DataService:SyncPlayerDataToClient(player)
         end

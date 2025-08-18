@@ -10,6 +10,7 @@ local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local ViewportModelUtils = require(ReplicatedStorage.utils.ViewportModelUtils)
 local RewardsService = require(script.Parent.Parent.services.RewardsService)
 local AnimationService = require(script.Parent.Parent.services.AnimationService)
+local GradientUtils = require(ReplicatedStorage.utils.GradientUtils)
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -34,6 +35,10 @@ local function PlaytimeRewardsPanel(props)
     local animationOffset, setAnimationOffset = React.useState(0)
     local rewardShakeScale, setRewardShakeScale = React.useState(1)
     local rewardShakeRotation, setRewardShakeRotation = React.useState(0)
+    
+    -- OP text animation state (same as OPPetButton)
+    local opTextScale, setOpTextScale = React.useState(1)
+    local opTextRotation, setOpTextRotation = React.useState(0)
     
     -- Animation references for cleanup
     local activeAnimations = React.useRef({})
@@ -67,6 +72,20 @@ local function PlaytimeRewardsPanel(props)
             onRotationChange = setRewardShakeRotation
         })
         activeAnimations.current.rewardShake = shakeAnimation
+        
+        -- OP text shake animation (same as OPPetButton)
+        local opTextShakeAnimation = AnimationService:CreateReactShakeAnimation({
+            interval = 3, -- Every 3 seconds like OPPetButton
+            growPhase = 0.1, -- 100ms grow phase like OPPetButton
+            shakePhase = 0.4, -- 400ms shake phase like OPPetButton
+            maxScale = 1.25, -- 1.25x size like OPPetButton
+            shakeIntensity = 20, -- 20 degrees rotation like OPPetButton
+            shakeFrequency = 25 -- 25 oscillations per second like OPPetButton
+        }, {
+            onScaleChange = setOpTextScale,
+            onRotationChange = setOpTextRotation
+        })
+        activeAnimations.current.opTextShake = opTextShakeAnimation
         
         -- Timer for session updates only (animations handled by AnimationService)
         local lastSessionUpdate = 0
@@ -166,27 +185,48 @@ local function PlaytimeRewardsPanel(props)
         local buttonColor
         local canClaim = false
         local timeUntilAvailable = 0
+        local isOPReward = reward.isOP or false
         
         if isClaimed then
-            cardColor = Color3.fromRGB(255, 215, 0) -- Gold border for claimed
-            cardBackgroundColor = Color3.fromRGB(255, 250, 205) -- Light gold background for claimed
+            if isOPReward then
+                cardColor = PlaytimeRewardsConfig.colors.opClaimed -- Darker gold for OP claimed
+                cardBackgroundColor = Color3.fromRGB(255, 245, 180) -- Light gold background for OP claimed
+                buttonColor = PlaytimeRewardsConfig.colors.opClaimed
+            else
+                cardColor = Color3.fromRGB(255, 215, 0) -- Gold border for claimed
+                cardBackgroundColor = Color3.fromRGB(255, 250, 205) -- Light gold background for claimed
+                buttonColor = Color3.fromRGB(255, 215, 0) -- Gold button for claimed
+            end
             buttonText = "CLAIMED"
-            buttonColor = Color3.fromRGB(255, 215, 0) -- Gold button for claimed
         elseif isAvailable then
-            cardColor = Color3.fromRGB(85, 200, 85) -- Green for available
-            cardBackgroundColor = Color3.fromRGB(255, 255, 255) -- White background
+            if isOPReward then
+                cardColor = PlaytimeRewardsConfig.colors.opAvailable -- Bright gold for OP available
+                cardBackgroundColor = Color3.fromRGB(255, 248, 200) -- Golden background for OP available
+                buttonColor = PlaytimeRewardsConfig.colors.opAvailable
+            else
+                cardColor = Color3.fromRGB(85, 200, 85) -- Green for available
+                cardBackgroundColor = Color3.fromRGB(255, 255, 255) -- White background
+                buttonColor = Color3.fromRGB(50, 180, 50)
+            end
             buttonText = "CLAIM"
-            buttonColor = Color3.fromRGB(50, 180, 50)
             canClaim = true
         else
-            cardColor = Color3.fromRGB(200, 120, 120) -- Red for locked
-            cardBackgroundColor = Color3.fromRGB(255, 255, 255) -- White background
+            if isOPReward then
+                cardColor = PlaytimeRewardsConfig.colors.opLocked -- Light gold for OP locked
+                cardBackgroundColor = Color3.fromRGB(255, 252, 230) -- Very light gold background for OP locked
+                buttonColor = PlaytimeRewardsConfig.colors.opLocked
+            else
+                cardColor = Color3.fromRGB(200, 120, 120) -- Red for locked
+                cardBackgroundColor = Color3.fromRGB(255, 255, 255) -- White background
+                buttonColor = Color3.fromRGB(160, 160, 160)
+            end
             timeUntilAvailable = reward.timeMinutes - currentPlaytime
             buttonText = "In " .. PlaytimeRewardsConfig.formatTime(timeUntilAvailable)
-            buttonColor = Color3.fromRGB(160, 160, 160)
         end
         
-        local cardColor = getGradientColor(index, #allRewards)
+        -- Use OP reward colors if it's an OP reward, otherwise use gradient color
+        local finalCardColor = isOPReward and cardColor or getGradientColor(index, #allRewards)
+        local finalBackgroundColor = isOPReward and cardBackgroundColor or Color3.fromRGB(255, 255, 255)
         
         local cardChildren = {
             -- Rounded corners - RESPONSIVE
@@ -196,7 +236,7 @@ local function PlaytimeRewardsPanel(props)
             
             -- Vibrant color outline for each card - RESPONSIVE
             ColorOutline = React.createElement("UIStroke", {
-                Color = cardColor, -- Vibrant color based on card index
+                Color = finalCardColor, -- Vibrant color based on card index or OP status
                 Thickness = ScreenUtils.getProportionalSize(3) -- RESPONSIVE thickness for vibrant colors
             }),
             
@@ -406,9 +446,10 @@ local function PlaytimeRewardsPanel(props)
                 -- Gradient overlay for shiny effect
                 ButtonGradient = React.createElement("UIGradient", {
                     Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, canClaim and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(120, 120, 120)), -- Lighter shade on left
-                        ColorSequenceKeypoint.new(0.5, canClaim and Color3.fromRGB(60, 140, 65) or Color3.fromRGB(80, 80, 80)), -- Medium shade in middle
-                        ColorSequenceKeypoint.new(1, canClaim and Color3.fromRGB(45, 105, 50) or Color3.fromRGB(50, 50, 50)) -- Darker shade on right
+                        -- OP rewards get golden gradient, normal rewards get green/gray
+                        ColorSequenceKeypoint.new(0, canClaim and (isOPReward and Color3.fromRGB(255, 230, 100) or Color3.fromRGB(76, 175, 80)) or Color3.fromRGB(120, 120, 120)), -- Lighter shade on left
+                        ColorSequenceKeypoint.new(0.5, canClaim and (isOPReward and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(60, 140, 65)) or Color3.fromRGB(80, 80, 80)), -- Medium shade in middle
+                        ColorSequenceKeypoint.new(1, canClaim and (isOPReward and Color3.fromRGB(200, 160, 0) or Color3.fromRGB(45, 105, 50)) or Color3.fromRGB(50, 50, 50)) -- Darker shade on right
                     }),
                     Rotation = 0 -- Horizontal gradient (left to right)
                 }),
@@ -465,6 +506,35 @@ local function PlaytimeRewardsPanel(props)
                 })
             }),
             
+            -- "OP!" text overlay for OP rewards (same as OPPetButton)
+            isOPReward and React.createElement("TextLabel", {
+                Name = "OPText",
+                Size = UDim2.new(0.25 * opTextScale, 0, 0.15 * opTextScale, 0), -- Apply OP text animation scale
+                Position = UDim2.new(0.88, 0, 0.12, 0), -- Top right corner position
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                Text = "OP!",
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
+                TextSize = ScreenUtils.getTextSize(28), -- Responsive text size
+                TextStrokeTransparency = 0,
+                TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
+                Font = Enum.Font.FredokaOne,
+                TextScaled = true,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                Rotation = opTextRotation, -- Apply OP text animation rotation
+                ZIndex = 115, -- Above everything else
+            }, {
+                -- Add UIStroke for thicker outline
+                OPStroke = React.createElement("UIStroke", {
+                    Color = Color3.fromRGB(0, 0, 0),
+                    Thickness = 2,
+                    Transparency = 0
+                }),
+                -- Gradient from dark orange-red to golden (same as OPPetButton)
+                OPTextGradient = GradientUtils.CreateReactGradient(GradientUtils.OP_TEXT)
+            }) or nil,
+            
             -- Claimed badge overlay when reward is claimed
             isClaimed and React.createElement("Frame", {
                 Name = "ClaimedOverlay",
@@ -514,7 +584,7 @@ local function PlaytimeRewardsPanel(props)
         
         rewardCards["RewardCard" .. index] = React.createElement("Frame", {
             Name = "RewardCard" .. index,
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- White background
+            BackgroundColor3 = finalBackgroundColor, -- Use OP golden background or white
             BorderSizePixel = 0,
             LayoutOrder = index,
             ZIndex = 102,

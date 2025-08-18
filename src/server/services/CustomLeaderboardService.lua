@@ -26,6 +26,7 @@ local LEADERBOARD_TYPES = {
 	MONEY = "Money",
 	DIAMONDS = "Diamonds",
 	REBIRTHS = "Rebirths",
+	TIME_PLAYED = "TimePlayed",
 }
 
 local LEADERBOARD_PERIODS = {
@@ -45,11 +46,13 @@ local leaderboardCache = {
 		[LEADERBOARD_TYPES.MONEY] = {},
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
+		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
 	},
 	[LEADERBOARD_PERIODS.WEEKLY] = {
 		[LEADERBOARD_TYPES.MONEY] = {},
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
+		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
 	},
 }
 
@@ -59,11 +62,13 @@ local leaderboardFullCache = {
 		[LEADERBOARD_TYPES.MONEY] = {},
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
+		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
 	},
 	[LEADERBOARD_PERIODS.WEEKLY] = {
 		[LEADERBOARD_TYPES.MONEY] = {},
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
+		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
 	},
 }
 
@@ -164,7 +169,7 @@ function CustomLeaderboardService:GetPlayerValue(player: Player?, leaderboardTyp
 		return 0
 	end
 	local playerData = DataService:GetPlayerData(player)
-	if not playerData or not playerData.Resources then
+	if not playerData then
 		-- Only warn for players that are actually still in-game
 		if player.Parent then
 			warn("CustomLeaderboardService: No player data for", player.Name)
@@ -173,11 +178,15 @@ function CustomLeaderboardService:GetPlayerValue(player: Player?, leaderboardTyp
 	end
 
 	if leaderboardType == LEADERBOARD_TYPES.MONEY then
-		return playerData.Resources.Money or 0
+		return (playerData.Resources and playerData.Resources.Money) or 0
 	elseif leaderboardType == LEADERBOARD_TYPES.DIAMONDS then
-		return playerData.Resources.Diamonds or 0
+		return (playerData.Resources and playerData.Resources.Diamonds) or 0
 	elseif leaderboardType == LEADERBOARD_TYPES.REBIRTHS then
-		return playerData.Resources.Rebirths or 0
+		return (playerData.Resources and playerData.Resources.Rebirths) or 0
+	elseif leaderboardType == LEADERBOARD_TYPES.TIME_PLAYED then
+		-- Get playtime in seconds (convert minutes to seconds for consistency)
+		local playtimeMinutes = playerData.PlaytimeMinutes or 0
+		return math.floor(playtimeMinutes * 60) -- Convert to seconds and round down
 	end
 	return 0
 end
@@ -449,9 +458,10 @@ function CustomLeaderboardService:GetLeaderboard(period: string, leaderboardType
 	if period == "Weekly"   then serverPeriod = LEADERBOARD_PERIODS.WEEKLY   end
 
 	local serverType = leaderboardType
-	if leaderboardType == "Money"    then serverType = LEADERBOARD_TYPES.MONEY    end
-	if leaderboardType == "Diamonds" then serverType = LEADERBOARD_TYPES.DIAMONDS end
-	if leaderboardType == "Rebirths" then serverType = LEADERBOARD_TYPES.REBIRTHS end
+	if leaderboardType == "Money"      then serverType = LEADERBOARD_TYPES.MONEY      end
+	if leaderboardType == "Diamonds"   then serverType = LEADERBOARD_TYPES.DIAMONDS   end
+	if leaderboardType == "Rebirths"   then serverType = LEADERBOARD_TYPES.REBIRTHS   end
+	if leaderboardType == "TimePlayed" then serverType = LEADERBOARD_TYPES.TIME_PLAYED end
 
 	ensureTables(serverPeriod, serverType)
 

@@ -15,14 +15,12 @@ PlaytimeRewardsConfig.rewards = {
     },
     {
         timeMinutes = 2, -- 30 seconds - CONFIGURABLE: Change to any time
-        type = "Pet", -- Reward 7: Pet reward
-        petName = "Frosty Cat", -- CONFIGURABLE: Pet asset name (must match asset)
-        amount = 1, -- CONFIGURABLE: Number of pets to give
-        boost = 5, -- CONFIGURABLE: Pet boost multiplier (20x)
-        value = 500, -- CONFIGURABLE: Pet base value
-        title = "Frosty Cat Reward",
-        description = "Play for 15 minutes",
-        icon = "🔥"
+        type = "Potion", -- Reward 2: 2x Money Potion (moved from position 4)
+        potionId = "money_2x_10m", -- 2x Money potion for 10 minutes
+        quantity = 1, -- One potion
+        title = "Money Booster",
+        description = "2x Money for 10 minutes",
+        icon = "🧪"
     },
     {
         timeMinutes = 2.5, -- 45 seconds - CONFIGURABLE: Change to any time
@@ -34,12 +32,15 @@ PlaytimeRewardsConfig.rewards = {
     },
     {
         timeMinutes = 5, -- 1 minute - CONFIGURABLE: Change to any time
-        type = "Potion", -- Reward 4: 2x Money Potion
-        potionId = "money_2x_10m", -- 2x Money potion for 10 minutes
-        quantity = 1, -- One potion
-        title = "Money Booster",
-        description = "2x Money for 10 minutes",
-        icon = "🧪"
+        type = "Pet", -- Reward 4: Frosty Cat (moved from position 2)
+        petName = "Frosty Cat", -- CONFIGURABLE: Pet asset name (must match asset)
+        amount = 1, -- CONFIGURABLE: Number of pets to give
+        boost = 5, -- CONFIGURABLE: Pet boost multiplier (5x)
+        value = 500, -- CONFIGURABLE: Pet base value
+        title = "Frosty Cat Reward",
+        description = "Play for 1 minute",
+        icon = "🔥",
+        isOP = true -- Mark Frosty Cat as OP
     },
     {
         timeMinutes = 7.5, -- 1m 15s - CONFIGURABLE: Change to any time
@@ -67,7 +68,8 @@ PlaytimeRewardsConfig.rewards = {
         value = 500, -- CONFIGURABLE: Pet base value
         title = "Chocolate Dragon Reward",
         description = "Play for 15 minutes",
-        icon = "🔥"
+        icon = "🔥",
+        isOP = true -- Mark Chocolate Dragon as OP (20x boost pet)
     },
     {
         timeMinutes = 20, -- Pet Magnet potion reward
@@ -108,7 +110,8 @@ PlaytimeRewardsConfig.rewards = {
         amount = 100000, -- CONFIGURABLE: Change amount as needed
         title = "Half Hour",
         description = "Play for 30 minutes",
-        icon = "💰"
+        icon = "💰",
+        isOP = true -- Mark this high-value money reward as OP
     },
     {
         timeMinutes = 45, -- 1 hour - CONFIGURABLE: Change to any time
@@ -132,7 +135,8 @@ PlaytimeRewardsConfig.rewards = {
         amount = 20000, -- CONFIGURABLE: Change amount as needed
         title = "Three Hours",
         description = "Play for 3 hours",
-        icon = "💎"
+        icon = "💎",
+        isOP = true -- Mark this ultimate reward as OP
     }
 }
 
@@ -140,7 +144,10 @@ PlaytimeRewardsConfig.rewards = {
 PlaytimeRewardsConfig.colors = {
     available = Color3.fromRGB(85, 255, 85),    -- Green - can claim
     claimed = Color3.fromRGB(150, 150, 150),    -- Gray - already claimed
-    locked = Color3.fromRGB(255, 150, 150)      -- Light red - not yet available
+    locked = Color3.fromRGB(255, 150, 150),     -- Light red - not yet available
+    opAvailable = Color3.fromRGB(255, 215, 0),  -- Gold - OP reward available
+    opClaimed = Color3.fromRGB(200, 180, 0),    -- Darker gold - OP reward claimed
+    opLocked = Color3.fromRGB(255, 200, 100)    -- Light gold - OP reward locked
 }
 
 -- Get all rewards sorted by time
