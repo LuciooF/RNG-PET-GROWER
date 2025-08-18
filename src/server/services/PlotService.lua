@@ -99,17 +99,17 @@ function PlotService:SetupCollisionGroups()
     local boundaryParts = CollectionService:GetTagged("PetBallBoundary") 
     
     for _, boundaryPart in pairs(boundaryParts) do
-        boundaryPart.CanCollide = true      -- Must be true for collision groups to work
+        boundaryPart.CanCollide = false     -- Disable collision for mouse raycasting
         boundaryPart.Transparency = 1       -- Invisible
-        boundaryPart.CanTouch = true        -- Enable touch detection
+        boundaryPart.CanTouch = true        -- Enable touch detection (this is what pet balls actually use)
         boundaryPart.CollisionGroup = "PetBallBoundaries"
     end
     
     -- Listen for new boundary parts being tagged
     CollectionService:GetInstanceAddedSignal("PetBallBoundary"):Connect(function(part)
-        part.CanCollide = true
+        part.CanCollide = false     -- Disable collision for mouse raycasting
         part.Transparency = 1
-        part.CanTouch = true
+        part.CanTouch = true        -- Enable touch detection (this is what pet balls actually use)
         part.CollisionGroup = "PetBallBoundaries"
     end)
     

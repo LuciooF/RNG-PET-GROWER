@@ -252,8 +252,14 @@ local function updateGUIState(guiData, playerMoney, playerRebirths, ownedSet, is
             rebirthIcon.Size = UDim2.new(0, 20, 0, 20)
             
             costLabel.Text = requiredRebirths .. " Needed"
-            costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-            costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+            -- Color based on how close player is to the requirement
+            if playerRebirths >= (requiredRebirths - 1) then
+                costLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold when close (1 rebirth away)
+                costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black stroke
+            else
+                costLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red when far away
+                costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255) -- White stroke
+            end
             costLabel.TextSize = ScreenUtils.getTextSize(23)
             -- Position text below the centered icon
             costLabel.Position = UDim2.new(0, 0, 0.45, 0) -- Below icon
@@ -316,10 +322,11 @@ end
 -- Update all GUIs based on current player data from Rodux store
 function PlotGUIService:UpdateAllGUIs()
     local state = store:getState()
-    local playerMoney = state.player.money or 0
-    local playerRebirths = state.player.rebirths or 0
-    local ownedPlots = state.player.ownedPlots or {}
-    local ownedTubes = state.player.ownedTubes or {}
+    local playerMoney = state.player.Resources.Money or 0
+    local playerRebirths = state.player.Resources.Rebirths or 0
+    local ownedPlots = state.player.OwnedPlots or {}
+    local ownedTubes = state.player.OwnedTubes or {}
+    
     
     -- Convert arrays to sets for faster lookup
     local ownedPlotsSet = {}

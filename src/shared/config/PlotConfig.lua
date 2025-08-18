@@ -6,8 +6,8 @@ PlotConfig.TOTAL_PLOTS = 49  -- Server has 49 plots total
 PlotConfig.TOTAL_TUBEPLOTS = 10
 
 -- Plot pricing configuration
-local PLOT_BASE_COST = 25
-local PLOT_SCALING_FACTOR = 1.7 -- 70% increment per plot
+local PLOT_BASE_COST = 75 -- Set to 75
+local PLOT_SCALING_FACTOR = 1.8 -- Set to 1.8 (80% increment per plot)
 
 -- TubePlot pricing configuration  
 local TUBEPLOT_BASE_COST = 50
@@ -49,15 +49,18 @@ function PlotConfig.getPlotCost(plotNumber, playerRebirths)
     playerRebirths = playerRebirths or 0
     local rebirthMultiplier = 1.0
     
-    if playerRebirths <= 1 then
-        -- Easier for first two rebirths (20% cheaper)
+    if playerRebirths == 0 then
+        -- First rebirth slightly easier (20% cheaper)
         rebirthMultiplier = 0.8
-    elseif playerRebirths <= 3 then
-        -- Normal pricing for rebirths 2-3
+    elseif playerRebirths <= 2 then
+        -- Normal pricing for rebirths 1-2
         rebirthMultiplier = 1.0
+    elseif playerRebirths <= 4 then
+        -- Double cost for rebirths 3-4
+        rebirthMultiplier = 2.0
     else
-        -- 50% more expensive after rebirth 4+
-        rebirthMultiplier = 1.5
+        -- Triple cost after rebirth 5+
+        rebirthMultiplier = 3.0
     end
     
     local finalCost = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ (plotNumber - 2)) * rebirthMultiplier

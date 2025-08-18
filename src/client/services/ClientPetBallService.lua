@@ -3,6 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 
 local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 
@@ -493,9 +495,9 @@ function ClientPetBallService:UpdateCounterGUI(areaName, count)
     local textLabel = backgroundFrame and backgroundFrame:FindFirstChild("CounterText")
     local progressBar = backgroundFrame and backgroundFrame:FindFirstChild("ProgressBar")
     
-    -- Create plus button if it doesn't exist
-    local plusButton = backgroundFrame and backgroundFrame:FindFirstChild("PlusButton")
-    if backgroundFrame and not plusButton then
+    -- Create plus button if it doesn't exist (check for button frame in SurfaceGui)
+    local buttonFrame = surfaceGui and surfaceGui:FindFirstChild("PlusButtonFrame")
+    if backgroundFrame and not buttonFrame then
         self:CreatePlusButton(backgroundFrame)
     end
     
@@ -520,31 +522,32 @@ function ClientPetBallService:UpdateCounterGUI(areaName, count)
     end
 end
 
--- Create plus button for expanding pet limit
+-- Create plus button for expanding pet limit - SIMPLE VERSION
 function ClientPetBallService:CreatePlusButton(backgroundFrame)
+    -- Just resize the progress bar and add a simple button next to it
+    backgroundFrame.Size = UDim2.new(0.75, 0, 0.6, 0)
+    
+    -- Create a simple button directly in the SurfaceGui  
+    local surfaceGui = backgroundFrame.Parent
     local plusButton = Instance.new("ImageButton")
     plusButton.Name = "PlusButton"
-    plusButton.Size = UDim2.new(0, 30, 0, 30)
-    plusButton.Position = UDim2.new(1, -35, 0.5, -15) -- Right side of the frame
-    plusButton.BackgroundTransparency = 1
-    plusButton.Image = IconAssets.getIcon("UI", "PLUS")
+    plusButton.Size = UDim2.new(0.2, 0, 0.6, 0)
+    plusButton.Position = UDim2.new(0.8, 0, 0.2, 0)
+    plusButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Yellow background
+    plusButton.BorderSizePixel = 2
+    plusButton.BorderColor3 = Color3.fromRGB(200, 170, 0) -- Darker yellow border
+    plusButton.Image = IconAssets.getIcon("UI", "PLUS") -- Use the plus icon
+    plusButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- White icon
     plusButton.ScaleType = Enum.ScaleType.Fit
-    plusButton.ImageColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
-    plusButton.Parent = backgroundFrame
+    plusButton.Parent = surfaceGui
     
-    -- Add hover effects
-    plusButton.MouseEnter:Connect(function()
-        plusButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- White on hover
-        plusButton.Size = UDim2.new(0, 35, 0, 35) -- Slightly bigger
-    end)
+    -- Add corner radius
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = plusButton
     
-    plusButton.MouseLeave:Connect(function()
-        plusButton.ImageColor3 = Color3.fromRGB(255, 215, 0) -- Back to gold
-        plusButton.Size = UDim2.new(0, 30, 0, 30) -- Back to normal size
-    end)
-    
-    -- Handle button click
-    plusButton.MouseButton1Click:Connect(function()
+    -- Simple click handler
+    plusButton.Activated:Connect(function()
         self:HandlePetLimitPurchase()
     end)
 end
@@ -758,5 +761,6 @@ function ClientPetBallService:CreateHeavenPetBall(petData, tubeNumber, areaName)
         end)
     end)
 end
+
 
 return ClientPetBallService
