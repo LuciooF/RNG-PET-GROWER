@@ -463,6 +463,7 @@ function DataService:ResetPlayerData(player)
         }
         profile.Data.Potions = {} -- Reset potion inventory
         profile.Data.ActivePotions = {} -- Reset active potions
+        profile.Data.PetLimitPurchases = 0 -- Reset pet limit purchases
         
         -- Clean up any active potion timers via PotionService
         local PotionService = require(script.Parent.PotionService)

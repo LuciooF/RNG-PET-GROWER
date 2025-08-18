@@ -20,6 +20,7 @@ local DailyRewardsService = require(ServerScriptService.services.DailyRewardsSer
 local CustomLeaderboardService = require(ServerScriptService.services.CustomLeaderboardService)
 local PotionService = require(ServerScriptService.services.PotionService)
 local FreeOpItemService = require(ServerScriptService.services.FreeOpItemService)
+local PetLimitService = require(ServerScriptService.services.PetLimitService)
 local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
 
 DataService:Initialize()
@@ -35,6 +36,7 @@ DailyRewardsService:Initialize()
 CustomLeaderboardService:Initialize()
 PotionService:Initialize()
 FreeOpItemService:Initialize()
+PetLimitService:Initialize()
 
 -- Initialize Crazy Chest service
 local CrazyChestService = require(ServerScriptService.services.CrazyChestService)
@@ -186,6 +188,12 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
     local result = OPPetService:ProcessReceipt(receiptInfo)
     if result ~= Enum.ProductPurchaseDecision.NotProcessedYet then
         return result
+    end
+    
+    -- Check if this is a pet limit purchase
+    local petLimitResult = PetLimitService:ProcessReceipt(receiptInfo)
+    if petLimitResult ~= Enum.ProductPurchaseDecision.NotProcessedYet then
+        return petLimitResult
     end
     
     -- If we don't handle this product, don't grant it

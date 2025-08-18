@@ -14,6 +14,7 @@ IconAssets.UI = {
     TROPHY = "rbxassetid://109359695542141", -- Leaderboard trophy icon
     CHEST_LEVEL = "rbxassetid://138661508380946", -- Chest level upgrade icon
     LUCK = "rbxassetid://132766128034954", -- Luck upgrade icon
+    PLUS = "rbxassetid://113659939452435", -- Plus icon for expanding limits
     -- Add more UI icons here as needed
     -- SHOP = "rbxassetid://...",
     -- CLOSE = "rbxassetid://...",

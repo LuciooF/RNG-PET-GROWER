@@ -4,6 +4,8 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
+local IconAssets = require(ReplicatedStorage.utils.IconAssets)
+
 local ClientPetBallService = {}
 ClientPetBallService.__index = ClientPetBallService
 
@@ -41,7 +43,8 @@ end
 local player = Players.LocalPlayer
 
 -- Configuration
-local MAX_PET_BALLS_PER_AREA = 50
+local BASE_PET_LIMIT = 50
+local currentMaxPetLimit = BASE_PET_LIMIT -- Will be updated from server
 
 -- Track pet balls per area for this client
 local areaPetBallCounts = {}
@@ -49,11 +52,38 @@ local areaPetBallCounts = {}
 -- Remote events
 local spawnPetBallRemote = nil
 local spawnHeavenPetBallRemote = nil
+local petLimitPurchaseRemote = nil
+local getPetLimitRemote = nil
+local petLimitSuccessRemote = nil
 
 function ClientPetBallService:Initialize()
     -- Wait for remote events from server
     spawnPetBallRemote = ReplicatedStorage:WaitForChild("SpawnPetBall")
     spawnHeavenPetBallRemote = ReplicatedStorage:WaitForChild("SpawnHeavenPetBall")
+    
+    -- Wait for pet limit related remotes
+    petLimitPurchaseRemote = ReplicatedStorage:WaitForChild("PetLimitPurchase")
+    getPetLimitRemote = ReplicatedStorage:WaitForChild("GetPetLimit")
+    
+    -- Listen for purchase success
+    spawn(function()
+        petLimitSuccessRemote = ReplicatedStorage:WaitForChild("PetLimitPurchaseSuccess")
+        petLimitSuccessRemote.OnClientEvent:Connect(function(newLimit)
+            currentMaxPetLimit = newLimit
+            self:UpdateAllCounterGUIs() -- Update all pet counters with new limit
+        end)
+    end)
+    
+    -- Get initial pet limit from server
+    spawn(function()
+        local success, limit = pcall(function()
+            return getPetLimitRemote:InvokeServer()
+        end)
+        if success and limit then
+            currentMaxPetLimit = limit
+            self:UpdateAllCounterGUIs() -- Update all pet counters
+        end
+    end)
     
     -- Listen for pet ball spawn requests from server
     spawnPetBallRemote.OnClientEvent:Connect(function(doorPosition, petData, areaName)
@@ -110,7 +140,7 @@ function ClientPetBallService:CreatePetBall(doorPosition, petData, areaName)
     
     -- Check local pet ball limit
     local currentCount = areaPetBallCounts[areaName] or 0
-    if currentCount >= MAX_PET_BALLS_PER_AREA then
+    if currentCount >= currentMaxPetLimit then
         return
     end
     
@@ -463,14 +493,20 @@ function ClientPetBallService:UpdateCounterGUI(areaName, count)
     local textLabel = backgroundFrame and backgroundFrame:FindFirstChild("CounterText")
     local progressBar = backgroundFrame and backgroundFrame:FindFirstChild("ProgressBar")
     
+    -- Create plus button if it doesn't exist
+    local plusButton = backgroundFrame and backgroundFrame:FindFirstChild("PlusButton")
+    if backgroundFrame and not plusButton then
+        self:CreatePlusButton(backgroundFrame)
+    end
+    
     if textLabel then
-        local newText = string.format("Pets: %d/%d", count, MAX_PET_BALLS_PER_AREA)
+        local newText = string.format("Pets: %d/%d", count, currentMaxPetLimit)
         textLabel.Text = newText
     end
     
     -- Update progress bar
     if progressBar then
-        local percentage = count / MAX_PET_BALLS_PER_AREA
+        local percentage = count / currentMaxPetLimit
         progressBar.Size = UDim2.new(percentage, 0, 1, 0)
         
         -- Change progress bar color based on percentage
@@ -480,6 +516,57 @@ function ClientPetBallService:UpdateCounterGUI(areaName, count)
             progressBar.BackgroundColor3 = Color3.fromRGB(255, 200, 100) -- Orange when almost full
         else
             progressBar.BackgroundColor3 = Color3.fromRGB(100, 255, 100) -- Green when normal
+        end
+    end
+end
+
+-- Create plus button for expanding pet limit
+function ClientPetBallService:CreatePlusButton(backgroundFrame)
+    local plusButton = Instance.new("ImageButton")
+    plusButton.Name = "PlusButton"
+    plusButton.Size = UDim2.new(0, 30, 0, 30)
+    plusButton.Position = UDim2.new(1, -35, 0.5, -15) -- Right side of the frame
+    plusButton.BackgroundTransparency = 1
+    plusButton.Image = IconAssets.getIcon("UI", "PLUS")
+    plusButton.ScaleType = Enum.ScaleType.Fit
+    plusButton.ImageColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
+    plusButton.Parent = backgroundFrame
+    
+    -- Add hover effects
+    plusButton.MouseEnter:Connect(function()
+        plusButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- White on hover
+        plusButton.Size = UDim2.new(0, 35, 0, 35) -- Slightly bigger
+    end)
+    
+    plusButton.MouseLeave:Connect(function()
+        plusButton.ImageColor3 = Color3.fromRGB(255, 215, 0) -- Back to gold
+        plusButton.Size = UDim2.new(0, 30, 0, 30) -- Back to normal size
+    end)
+    
+    -- Handle button click
+    plusButton.MouseButton1Click:Connect(function()
+        self:HandlePetLimitPurchase()
+    end)
+end
+
+-- Handle pet limit purchase
+function ClientPetBallService:HandlePetLimitPurchase()
+    if petLimitPurchaseRemote then
+        petLimitPurchaseRemote:FireServer()
+    end
+end
+
+-- Update all counter GUIs (called when pet limit changes)
+function ClientPetBallService:UpdateAllCounterGUIs()
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        return
+    end
+    
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("^PlayerArea%d+$") then
+            local count = areaPetBallCounts[area.Name] or 0
+            self:UpdateCounterGUI(area.Name, count)
         end
     end
 end
