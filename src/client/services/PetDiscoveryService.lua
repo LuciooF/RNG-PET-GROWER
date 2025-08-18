@@ -10,6 +10,7 @@ local PetConstants = require(ReplicatedStorage.constants.PetConstants)
 local PetConfig = require(ReplicatedStorage.config.PetConfig)
 local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
 local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 
 local PetDiscoveryService = {}
 PetDiscoveryService.__index = PetDiscoveryService
@@ -497,6 +498,37 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     congratsLabel.ZIndex = 1002
     congratsLabel.Parent = infoPanel
+    
+    -- Close button (X) positioned on the top-right corner (half in, half out)
+    local closeButton = Instance.new("ImageButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = ScreenUtils.udim2(0, 50, 0, 50) -- Bigger button
+    closeButton.Position = ScreenUtils.udim2(1, -25, 0, -25) -- Center on corner (half button size offset)
+    closeButton.AnchorPoint = Vector2.new(0, 0) -- Default anchor
+    closeButton.BackgroundTransparency = 1
+    closeButton.Image = IconAssets.getIcon("UI", "X_BUTTON")
+    closeButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.ScaleType = Enum.ScaleType.Fit
+    closeButton.ZIndex = 1003
+    closeButton.Parent = popupFrame
+    
+    -- Close button click handler
+    closeButton.Activated:Connect(function()
+        -- Same closing animation as auto-dismiss
+        local shrinkTween = TweenService:Create(popupFrame, TweenInfo.new(
+            0.5,
+            Enum.EasingStyle.Back,
+            Enum.EasingDirection.In
+        ), {
+            Size = UDim2.new(0, 0, 0, 0)
+        })
+        
+        shrinkTween:Play()
+        shrinkTween.Completed:Connect(function()
+            popupGui:Destroy()
+            isShowingDiscovery = false
+        end)
+    end)
     
     local finalSize = ScreenUtils.udim2(0, 675, 0, 351)
     

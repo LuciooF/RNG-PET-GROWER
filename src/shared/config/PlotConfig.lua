@@ -10,8 +10,8 @@ local PLOT_BASE_COST = 75 -- Set to 75
 local PLOT_SCALING_FACTOR = 1.8 -- Set to 1.8 (80% increment per plot)
 
 -- TubePlot pricing configuration  
-local TUBEPLOT_BASE_COST = 50
-local TUBEPLOT_SCALING_FACTOR = 3.5 -- Aggressive 3.5x scaling
+local TUBEPLOT_BASE_COST = 150 -- Increased from 50 to 150 for much higher base cost
+local TUBEPLOT_SCALING_FACTOR = 6.0 -- Increased from 3.5x to 6.0x for extreme scaling
 
 -- Rebirth requirement functions
 function PlotConfig.getPlotRebirthRequirement(plotNumber)
@@ -81,11 +81,11 @@ function PlotConfig.getTubePlotCost(tubePlotNumber, playerRebirths)
     
     -- Even harder scaling for higher rebirths to maintain challenge
     if playerRebirths >= 4 then
-        baseCost = 100
-        scalingFactor = 4.0
+        baseCost = 1250 -- Set to 1250 for late-game cost
+        scalingFactor = 8.0 -- Increased from 4.0 to 8.0 for exponential scaling
     elseif playerRebirths >= 2 then
-        baseCost = 75
-        scalingFactor = 3.8
+        baseCost = 1000 -- Set to 1000 for mid-game cost
+        scalingFactor = 7.0 -- Increased from 3.8 to 7.0 for aggressive scaling
     end
     
     return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))

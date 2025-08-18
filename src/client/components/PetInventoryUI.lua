@@ -521,7 +521,7 @@ local function PetInventoryUI(props)
         local finalBoost = hoveredPet.FinalBoost or hoveredPet.BaseBoost or 1
         
         return React.createElement("Frame", {
-            Size = ScreenUtils.udim2(0, 280, 0, 210), -- Even bigger tooltip to fit rarity chance
+            Size = ScreenUtils.udim2(0, 360, 0, 280), -- Much bigger tooltip for better text readability
             Position = tooltipPosition,
             BackgroundColor3 = Color3.fromRGB(250, 250, 250), -- Light background
             BorderSizePixel = 0, -- No border, using shadow effect
@@ -547,12 +547,12 @@ local function PetInventoryUI(props)
             
             -- Pet name (title)
             Name = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 30),
-                Position = ScreenUtils.udim2(0, 10, 0, 10),
+                Size = ScreenUtils.udim2(1, -20, 0, 35),
+                Position = ScreenUtils.udim2(0, 10, 0, 15),
                 BackgroundTransparency = 1,
                 Text = hoveredPet.Name,
                 TextColor3 = Color3.fromRGB(50, 50, 50),
-                TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Bigger title
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.2, -- Even bigger title
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
@@ -560,12 +560,12 @@ local function PetInventoryUI(props)
             
             -- Rarity (with color or rainbow for OP)
             Rarity = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 45),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 65),
                 BackgroundTransparency = 1,
                 Text = "Rarity: " .. (type(hoveredPet.Rarity) == "table" and hoveredPet.Rarity.RarityName or hoveredPet.Rarity),
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or rarityColor,
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0, -- Even bigger text
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
@@ -576,12 +576,12 @@ local function PetInventoryUI(props)
             
             -- Variation (with color or rainbow for OP)
             Variation = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 75),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 110),
                 BackgroundTransparency = 1,
                 Text = "Variation: " .. (type(hoveredPet.Variation) == "table" and hoveredPet.Variation.VariationName or hoveredPet.Variation),
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or variationColor,
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0,
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 ZIndex = 1001,
@@ -592,8 +592,8 @@ local function PetInventoryUI(props)
             
             -- Rarity chance (1 in xxx format)
             RarityChance = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 105),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 155),
                 BackgroundTransparency = 1,
                 Text = "Chance: 1 in " .. (function()
                     local PetConfig = require(ReplicatedStorage.config.PetConfig)
@@ -613,7 +613,7 @@ local function PetInventoryUI(props)
                     end
                 end)(),
                 TextColor3 = Color3.fromRGB(150, 150, 150), -- Lighter gray for better visibility
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0,
                 Font = Enum.Font.GothamSemibold,
                 TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                 TextStrokeTransparency = 0.5, -- Lighter stroke
@@ -623,8 +623,8 @@ local function PetInventoryUI(props)
             
             -- Value with money icon
             Value = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 135), -- Moved down to make room for rarity chance
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 200), -- Better spacing
                 BackgroundTransparency = 1,
                 ZIndex = 1001,
             }, {
@@ -643,7 +643,7 @@ local function PetInventoryUI(props)
                     BackgroundTransparency = 1,
                     Text = "Value: " .. NumberFormatter.format(finalValue),
                     TextColor3 = Color3.fromRGB(50, 50, 50),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
+                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0, -- Even bigger text
                     Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                     ZIndex = 1002,
@@ -652,8 +652,8 @@ local function PetInventoryUI(props)
             
             -- Boost with boost icon
             Boost = React.createElement("Frame", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 165), -- Moved down further to make room for rarity chance and value
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 240), -- Better spacing at bottom
                 BackgroundTransparency = 1,
                 ZIndex = 1001,
             }, {
@@ -672,7 +672,7 @@ local function PetInventoryUI(props)
                     BackgroundTransparency = 1,
                     Text = "x" .. NumberFormatter.formatBoost(finalBoost),
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White base for gradient
-                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85, -- Same size as pet name
+                    TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.4, -- Bigger boost text
                     Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center, -- Center the text
                     TextYAlignment = Enum.TextYAlignment.Center,

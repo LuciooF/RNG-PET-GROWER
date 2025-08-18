@@ -353,6 +353,8 @@ local function App()
                 setGamepassVisible(false)
             end
         }),
+        -- OP Pet Purchase Button (moved here so PetMixerUI appears on top)
+        OPPetButton = React.createElement(OPPetButton),
         PetMixerUI = React.createElement(PetMixerUI),
         PetIndexUI = React.createElement(PetIndexUI, {
             visible = petIndexVisible,
@@ -445,10 +447,6 @@ local function App()
             sharedFreeOpClaimCount = sharedFreeOpClaimCount,
             setSharedFreeOpClaimCount = setSharedFreeOpClaimCount
         }) or nil,
-        
-        -- OP Pet Purchase Button (always visible on top right)
-        OPPetButton = React.createElement(OPPetButton),
-        
         
         -- Crazy Chest UI (conditional rendering based on visibility)
         CrazyChestUI = React.createElement(CrazyChestUI.new, crazyChestProps)

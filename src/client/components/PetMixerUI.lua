@@ -383,7 +383,7 @@ local function PetMixerUI()
         local finalBoost = hoveredPet.FinalBoost or hoveredPet.BaseBoost or 1
         
         return React.createElement("Frame", {
-            Size = ScreenUtils.udim2(0, 280, 0, 210),
+            Size = ScreenUtils.udim2(0, 360, 0, 280),
             Position = tooltipPosition,
             BackgroundColor3 = Color3.fromRGB(250, 250, 250),
             BorderSizePixel = 0,
@@ -402,12 +402,12 @@ local function PetMixerUI()
             
             -- Pet name (title)
             Name = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 30),
-                Position = ScreenUtils.udim2(0, 10, 0, 10),
+                Size = ScreenUtils.udim2(1, -20, 0, 35),
+                Position = ScreenUtils.udim2(0, 10, 0, 15),
                 BackgroundTransparency = 1,
                 Text = hoveredPet.Name,
                 TextColor3 = Color3.fromRGB(50, 50, 50),
-                TextSize = ScreenUtils.TEXT_SIZES.LARGE(),
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.2,
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
@@ -415,12 +415,12 @@ local function PetMixerUI()
             
             -- Rarity (with color)
             Rarity = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 45),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 65),
                 BackgroundTransparency = 1,
                 Text = "Rarity: " .. (type(hoveredPet.Rarity) == "table" and hoveredPet.Rarity.RarityName or hoveredPet.Rarity),
                 TextColor3 = rarityColor,
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0,
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
@@ -428,12 +428,12 @@ local function PetMixerUI()
             
             -- Variation (with color)
             Variation = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 75),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 110),
                 BackgroundTransparency = 1,
                 Text = "Variation: " .. (type(hoveredPet.Variation) == "table" and hoveredPet.Variation.VariationName or hoveredPet.Variation),
                 TextColor3 = variationColor,
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0,
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
@@ -441,12 +441,12 @@ local function PetMixerUI()
             
             -- Value with money icon
             Value = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 105),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 155),
                 BackgroundTransparency = 1,
                 Text = "Value: $" .. NumberFormatter.format(finalValue),
                 TextColor3 = Color3.fromRGB(85, 170, 85),
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0,
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
@@ -454,12 +454,12 @@ local function PetMixerUI()
             
             -- Boost with icon
             Boost = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 135),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 200),
                 BackgroundTransparency = 1,
                 Text = "Boost: x" .. string.format("%.2f", finalBoost),
                 TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 0.85,
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.4,
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
@@ -474,12 +474,12 @@ local function PetMixerUI()
             
             -- Quantity owned
             Quantity = React.createElement("TextLabel", {
-                Size = ScreenUtils.udim2(1, -20, 0, 25),
-                Position = ScreenUtils.udim2(0, 10, 0, 165),
+                Size = ScreenUtils.udim2(1, -20, 0, 30),
+                Position = ScreenUtils.udim2(0, 10, 0, 240),
                 BackgroundTransparency = 1,
                 Text = "Owned: " .. (hoveredPet.Quantity or 1),
                 TextColor3 = Color3.fromRGB(100, 100, 100),
-                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 ZIndex = 1001,
@@ -677,26 +677,41 @@ local function PetMixerUI()
                 ZIndex = 15,
                 [React.Event.MouseEnter] = function(rbx)
                     setHoveredPet(pet)
-                    -- Start tracking mouse position for tooltip
-                    if mouseConnections.petCard then
-                        mouseConnections.petCard:Disconnect()
-                    end
-                    
-                    mouseConnections.petCard = UserInputService.InputChanged:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseMovement then
-                            local mousePos = UserInputService:GetMouseLocation()
-                            local responsiveOffset = ScreenUtils.getScaleFactor() * 15
-                            setTooltipPosition(UDim2.new(0, mousePos.X + responsiveOffset, 0, mousePos.Y - responsiveOffset))
+                    -- Set tooltip position based on element position (like PetInventoryUI)
+                    local success, _ = pcall(function()
+                        if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                            local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                            setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
                         end
                     end)
-                end,
-                [React.Event.MouseLeave] = function(rbx)
-                    setHoveredPet(nil)
-                    -- Disconnect mouse tracking
-                    if mouseConnections.petCard then
-                        mouseConnections.petCard:Disconnect()
-                        mouseConnections.petCard = nil
+                    
+                    if not success then
+                        -- Fallback: try again after a brief delay
+                        task.spawn(function()
+                            task.wait(0.1)
+                            pcall(function()
+                                if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                                    local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
+                                end
+                            end)
+                        end)
                     end
+                end,
+                [React.Event.MouseLeave] = function()
+                    -- Store reference to current pet for delayed clearing (like PetInventoryUI)
+                    local currentPet = pet
+                    task.spawn(function()
+                        task.wait(0.05) -- Very short delay (50ms) like PetInventoryUI
+                        -- Only clear if we're still on the same pet (haven't moved to another card)
+                        setHoveredPet(function(currentHoveredPet)
+                            if currentHoveredPet == currentPet then
+                                return nil -- Clear only if still the same pet
+                            else
+                                return currentHoveredPet -- Keep current hovered pet
+                            end
+                        end)
+                    end)
                 end,
                 [React.Event.Activated] = function()
                     if not isDisabled then
@@ -907,7 +922,8 @@ local function PetMixerUI()
     
     return React.createElement("ScreenGui", {
         Name = "PetMixerUI",
-        ResetOnSpawn = false
+        ResetOnSpawn = false,
+        DisplayOrder = 10 -- Higher than default to appear on top of OPPetButton
     }, {
         -- Background overlay (no darkening, no auto-close)
         Background = isVisible and React.createElement("Frame", {
@@ -1517,27 +1533,30 @@ local function PetMixerUI()
                                     }
                                     setHoveredPet(tooltipPet)
                                     
-                                    -- Track mouse position
-                                    if mouseConnections.outcomeCard then
-                                        mouseConnections.outcomeCard:Disconnect()
-                                    end
-                                    
-                                    mouseConnections.outcomeCard = UserInputService.InputChanged:Connect(function(input)
-                                        if input.UserInputType == Enum.UserInputType.MouseMovement then
-                                            local mousePos = UserInputService:GetMouseLocation()
-                                            local responsiveOffset = ScreenUtils.getScaleFactor() * 15
-                                            setTooltipPosition(UDim2.new(0, mousePos.X + responsiveOffset, 0, mousePos.Y - responsiveOffset))
+                                    -- Set tooltip position based on element position (like PetInventoryUI)
+                                    local success, _ = pcall(function()
+                                        if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                                            local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                                            setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
                                         end
                                     end)
+                                    
+                                    if not success then
+                                        -- Fallback: try again after a brief delay
+                                        task.spawn(function()
+                                            task.wait(0.1)
+                                            pcall(function()
+                                                if rbx and rbx.Parent and rbx.AbsolutePosition and rbx.AbsoluteSize then
+                                                    local responsiveOffset = ScreenUtils.getScaleFactor() * 10
+                                                    setTooltipPosition(UDim2.new(0, rbx.AbsolutePosition.X + rbx.AbsoluteSize.X + responsiveOffset, 0, rbx.AbsolutePosition.Y))
+                                                end
+                                            end)
+                                        end)
+                                    end
                                 end
                             end,
                             [React.Event.MouseLeave] = function(rbx)
                                 setHoveredPet(nil)
-                                -- Disconnect mouse tracking
-                                if mouseConnections.outcomeCard then
-                                    mouseConnections.outcomeCard:Disconnect()
-                                    mouseConnections.outcomeCard = nil
-                                end
                             end
                         })
                     }),
@@ -1930,11 +1949,11 @@ local function PetMixerUI()
                     TextWrapped = true,
                     ZIndex = 7,
                 })
-            }),
-            
-            -- Tooltip (floating)
-            Tooltip = createTooltip()
-        }) or nil
+            })
+        }) or nil,
+        
+        -- Tooltip (floating at ScreenGui level like PetInventoryUI)
+        Tooltip = createTooltip()
     })
 end
 
