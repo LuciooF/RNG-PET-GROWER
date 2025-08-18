@@ -197,7 +197,7 @@ function PopupService:ShowPopup(resourceType, amount, iconAsset)
     popupLabel.BackgroundTransparency = 1
     popupLabel.Font = Enum.Font.FredokaOne
     popupLabel.Text = "+" .. NumberFormatter.format(amount)
-    popupLabel.TextSize = ScreenUtils.getTextSize(30) -- Slightly larger text
+    popupLabel.TextSize = ScreenUtils.getTextSize(45) -- Larger text for better readability
     popupLabel.TextStrokeTransparency = 0
     popupLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     popupLabel.TextXAlignment = Enum.TextXAlignment.Left

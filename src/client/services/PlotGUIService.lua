@@ -121,7 +121,7 @@ local function createGUIElements(container, config, data)
     costLabel.BackgroundTransparency = 1
     costLabel.BorderSizePixel = 0
     costLabel.Font = Enum.Font.FredokaOne
-    costLabel.TextSize = ScreenUtils.getTextSize(25)
+    costLabel.TextSize = ScreenUtils.getTextSize(38)
     costLabel.TextColor3 = config.costLabelColor
     costLabel.TextStrokeTransparency = 0
     costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -137,7 +137,7 @@ local function createGUIElements(container, config, data)
     bonusLabel.BackgroundTransparency = 1
     bonusLabel.BorderSizePixel = 0
     bonusLabel.Font = Enum.Font.FredokaOne
-    bonusLabel.TextSize = ScreenUtils.getTextSize(18)
+    bonusLabel.TextSize = ScreenUtils.getTextSize(28)
     bonusLabel.TextColor3 = config.bonusLabelColor
     bonusLabel.TextStrokeTransparency = 0
     bonusLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -252,15 +252,10 @@ local function updateGUIState(guiData, playerMoney, playerRebirths, ownedSet, is
             rebirthIcon.Size = UDim2.new(0, 20, 0, 20)
             
             costLabel.Text = requiredRebirths .. " Needed"
-            -- Color based on how close player is to the requirement
-            if playerRebirths >= (requiredRebirths - 1) then
-                costLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold when close (1 rebirth away)
-                costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black stroke
-            else
-                costLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red when far away
-                costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255) -- White stroke
-            end
-            costLabel.TextSize = ScreenUtils.getTextSize(23)
+            -- Always use black text for "x Needed"
+            costLabel.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
+            costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255) -- White stroke for visibility
+            costLabel.TextSize = ScreenUtils.getTextSize(36)
             -- Position text below the centered icon
             costLabel.Position = UDim2.new(0, 0, 0.45, 0) -- Below icon
             costLabel.Size = UDim2.new(1, 0, 0.5, 0) -- Full width, bottom half
@@ -278,7 +273,7 @@ local function updateGUIState(guiData, playerMoney, playerRebirths, ownedSet, is
         rebirthIcon.Visible = false
         costLabel.Text = "FREE"
         costLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        costLabel.TextSize = ScreenUtils.getTextSize(25)
+        costLabel.TextSize = ScreenUtils.getTextSize(38)
         costLabel.Position = UDim2.new(0, 0, 0, 0)
         costLabel.Size = UDim2.new(1, 0, 0.5, 0) -- Half height for bonus text
         costLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -304,7 +299,7 @@ local function updateGUIState(guiData, playerMoney, playerRebirths, ownedSet, is
             costLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red
         end
         
-        costLabel.TextSize = ScreenUtils.getTextSize(25)
+        costLabel.TextSize = ScreenUtils.getTextSize(38)
         billboard.Size = UDim2.new(0, 90, 0, 60)
         billboard.Enabled = true
     end

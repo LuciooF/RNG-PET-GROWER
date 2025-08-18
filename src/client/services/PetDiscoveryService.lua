@@ -349,7 +349,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = discovery.variation and "🌟 NEW VARIATION DISCOVERED! 🌟" or "🎉 NEW PET DISCOVERED! 🎉"
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.2 -- Consistent sizing
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.8 -- Smaller to fit within popup box
     titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -372,7 +372,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = actualPetName
     nameLabel.TextColor3 = rarityColor
-    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() -- Standard header size
+    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.2 -- A smidge bigger
     nameLabel.Font = Enum.Font.FredokaOne
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
@@ -389,7 +389,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         variationLabel.BackgroundTransparency = 1
         variationLabel.Text = discovery.variation .. " Variation"
         variationLabel.TextColor3 = variationColor
-        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() -- Standard large size
+        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.1 -- A smidge bigger
         variationLabel.Font = Enum.Font.FredokaOne
         variationLabel.TextXAlignment = Enum.TextXAlignment.Center
         variationLabel.TextStrokeTransparency = 0
@@ -430,7 +430,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityPrefixLabel.BackgroundTransparency = 1
     rarityPrefixLabel.Text = "Rarity:"
     rarityPrefixLabel.TextColor3 = Color3.fromRGB(150, 150, 150) -- Grey color
-    rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() -- Standard medium size
+    rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0 -- A smidge bigger
     rarityPrefixLabel.Font = Enum.Font.Gotham
     rarityPrefixLabel.TextXAlignment = Enum.TextXAlignment.Right
     rarityPrefixLabel.TextStrokeTransparency = 0
@@ -445,7 +445,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityValueLabel.BackgroundTransparency = 1
     rarityValueLabel.Text = petConfig.Rarity
     rarityValueLabel.TextColor3 = rarityColor -- Bright rarity color
-    rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() -- Standard medium size
+    rarityValueLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0 -- A smidge bigger
     rarityValueLabel.Font = Enum.Font.FredokaOne
     rarityValueLabel.TextXAlignment = Enum.TextXAlignment.Left
     rarityValueLabel.TextStrokeTransparency = 0
@@ -461,7 +461,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     chanceLabel.BackgroundTransparency = 1
     chanceLabel.Text = "1 in " .. (type(rarityChance) == "number" and NumberFormatter.format(rarityChance) or rarityChance)
     chanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White base for rainbow gradient
-    chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.2 -- Slightly bigger for emphasis
+    chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.2 -- A smidge bigger
     chanceLabel.Font = Enum.Font.FredokaOne -- Bold font
     chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
     chanceLabel.TextStrokeTransparency = 0
@@ -490,7 +490,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "Check your Pet Index!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
-    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2 -- Slightly bigger
+    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.6 -- Smaller to fit within popup box
     congratsLabel.Font = Enum.Font.FredokaOne
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0

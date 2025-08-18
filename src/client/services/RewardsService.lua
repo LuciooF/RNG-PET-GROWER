@@ -325,7 +325,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = displayInfo.title
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.5
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.4
     titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -350,7 +350,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     mainLabel.BackgroundTransparency = 1
     mainLabel.Text = displayInfo.mainText
     mainLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White for rainbow gradient
-    mainLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.4
+    mainLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.2
     mainLabel.Font = Enum.Font.FredokaOne
     mainLabel.TextXAlignment = Enum.TextXAlignment.Center
     mainLabel.TextStrokeTransparency = 0
@@ -380,7 +380,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     subLabel.BackgroundTransparency = 1
     subLabel.Text = displayInfo.subText
     subLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    subLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.3
+    subLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.1
     subLabel.Font = Enum.Font.FredokaOne
     subLabel.TextXAlignment = Enum.TextXAlignment.Center
     subLabel.TextStrokeTransparency = 0
@@ -396,7 +396,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     sourceLabel.BackgroundTransparency = 1
     sourceLabel.Text = "From: " .. displayInfo.sourceText
     sourceLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    sourceLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.2
+    sourceLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0
     sourceLabel.Font = Enum.Font.Gotham
     sourceLabel.TextXAlignment = Enum.TextXAlignment.Center
     sourceLabel.TextStrokeTransparency = 0
@@ -412,7 +412,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "Reward Added!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
-    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.5
+    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.3
     congratsLabel.Font = Enum.Font.FredokaOne
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0
