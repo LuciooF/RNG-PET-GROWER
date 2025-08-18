@@ -1,6 +1,6 @@
 # Pet Grower RNG
 
-A Roblox game using modern React, Redux, and ProfileStore.
+A Roblox game using React, Redux, and ProfileStore.
 
 ## Setup
 
@@ -27,7 +27,7 @@ rojo serve
 
 ## Technologies
 
-- **React for Roblox** - Modern UI framework
+- **React for Roblox** - UI framework
 - **Redux (Rodux)** - State management
 - **ProfileStore** - Data persistence
 - **Rojo** - Live development sync
