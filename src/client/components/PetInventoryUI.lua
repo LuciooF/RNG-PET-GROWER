@@ -32,7 +32,6 @@ local function playHoverSound()
     hoverSound:Play()
 end
 
--- Helper function to create pet models for ViewportFrame (same pattern as ClientPetBallService)
 local function createPetModelForInventory(petData, rotationIndex)
     -- Try to get actual pet model from ReplicatedStorage.Pets
     local petsFolder = ReplicatedStorage:FindFirstChild("Pets")
@@ -505,8 +504,8 @@ local function PetInventoryUI(props)
     local function createTooltip()
         if not hoveredPet then return nil end
         
-        local variationColor = PetConstants.getVariationColor(hoveredPet.Variation)
-        local rarityColor = PetConstants.getRarityColor(hoveredPet.Rarity)
+        local variationColor = PetConstants.getVariationColor(type(hoveredPet.Variation) == "table" and hoveredPet.Variation.VariationName or hoveredPet.Variation)
+        local rarityColor = PetConstants.getRarityColor(type(hoveredPet.Rarity) == "table" and hoveredPet.Rarity.RarityName or hoveredPet.Rarity)
         
         -- Check if this is an OP pet
         local isOPPet = hoveredPet.Rarity == "OP" or hoveredPet.Rarity == PetConstants.Rarity.OP or 
@@ -564,7 +563,7 @@ local function PetInventoryUI(props)
                 Size = ScreenUtils.udim2(1, -20, 0, 25),
                 Position = ScreenUtils.udim2(0, 10, 0, 45),
                 BackgroundTransparency = 1,
-                Text = "Rarity: " .. hoveredPet.Rarity,
+                Text = "Rarity: " .. (type(hoveredPet.Rarity) == "table" and hoveredPet.Rarity.RarityName or hoveredPet.Rarity),
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or rarityColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(), -- Bigger text
                 Font = Enum.Font.FredokaOne,
@@ -580,7 +579,7 @@ local function PetInventoryUI(props)
                 Size = ScreenUtils.udim2(1, -20, 0, 25),
                 Position = ScreenUtils.udim2(0, 10, 0, 75),
                 BackgroundTransparency = 1,
-                Text = "Variation: " .. hoveredPet.Variation,
+                Text = "Variation: " .. (type(hoveredPet.Variation) == "table" and hoveredPet.Variation.VariationName or hoveredPet.Variation),
                 TextColor3 = isOPPet and Color3.fromRGB(255, 255, 255) or variationColor,
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                 Font = Enum.Font.FredokaOne,
@@ -596,7 +595,23 @@ local function PetInventoryUI(props)
                 Size = ScreenUtils.udim2(1, -20, 0, 25),
                 Position = ScreenUtils.udim2(0, 10, 0, 105),
                 BackgroundTransparency = 1,
-                Text = "Chance: 1 in " .. (PetConstants.getCombinedRarityChance and NumberFormatter.format(PetConstants.getCombinedRarityChance(hoveredPet.Rarity, hoveredPet.Variation)) or "???"),
+                Text = "Chance: 1 in " .. (function()
+                    local PetConfig = require(ReplicatedStorage.config.PetConfig)
+                    local variationName = type(hoveredPet.Variation) == "table" and hoveredPet.Variation.VariationName or hoveredPet.Variation
+                    local spawnLevel = hoveredPet.SpawnLevel or 1
+                    local spawnDoor = hoveredPet.SpawnDoor or nil
+                    if PetConfig.getActualPetRarity then
+                        local rarity = PetConfig.getActualPetRarity(hoveredPet.Name, variationName, spawnLevel, spawnDoor)
+                        if type(rarity) == "number" then
+                            return NumberFormatter.format(rarity)
+                        else
+                            return rarity  -- "Unknown"
+                        end
+                    else
+                        -- Fallback to old system
+                        return PetConstants.getCombinedRarityChance and NumberFormatter.format(PetConstants.getCombinedRarityChance(hoveredPet.Rarity, variationName)) or "???"
+                    end
+                end)(),
                 TextColor3 = Color3.fromRGB(150, 150, 150), -- Lighter gray for better visibility
                 TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
                 Font = Enum.Font.GothamSemibold,

@@ -612,12 +612,15 @@ function TutorialService:GetProgressText()
 
 	elseif stepId == "get_rare_pet" then
 		if playerData.Pets then
-			local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+			local PetConfig = require(ReplicatedStorage.config.PetConfig)
 			for _, pet in ipairs(playerData.Pets) do
-				if pet.Rarity and pet.Variation then
+				if pet.Name and pet.Variation then
 					local variationName = type(pet.Variation) == "table" and pet.Variation.VariationName or pet.Variation
-					local combinedOdds = PetConstants.getCombinedRarityChance(pet.Rarity, variationName)
-					if combinedOdds and combinedOdds > 250 then
+					-- Use new accurate rarity calculation
+					local spawnLevel = pet.SpawnLevel or 1
+					local spawnDoor = pet.SpawnDoor or nil
+					local combinedOdds = PetConfig.getActualPetRarity(pet.Name, variationName, spawnLevel, spawnDoor)
+					if type(combinedOdds) == "number" and combinedOdds > 250 then
 						return "100%"
 					end
 				end
@@ -718,12 +721,15 @@ local function calculateTaskProgress(step, playerData)
 
 	elseif stepId == "get_rare_pet" then
 		if playerData.Pets then
-			local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+			local PetConfig = require(ReplicatedStorage.config.PetConfig)
 			for _, pet in ipairs(playerData.Pets) do
-				if pet.Rarity and pet.Variation then
+				if pet.Name and pet.Variation then
 					local variationName = type(pet.Variation) == "table" and pet.Variation.VariationName or pet.Variation
-					local combinedOdds = PetConstants.getCombinedRarityChance(pet.Rarity, variationName)
-					if combinedOdds and combinedOdds > 250 then
+					-- Use new accurate rarity calculation
+					local spawnLevel = pet.SpawnLevel or 1
+					local spawnDoor = pet.SpawnDoor or nil
+					local combinedOdds = PetConfig.getActualPetRarity(pet.Name, variationName, spawnLevel, spawnDoor)
+					if type(combinedOdds) == "number" and combinedOdds > 250 then
 						return 100
 					end
 				end
@@ -794,12 +800,15 @@ function TutorialService:CheckStepCompletion(playerData)
 
 	elseif stepId == "get_rare_pet" then
 		if playerData.Pets then
-			local PetConstants = require(ReplicatedStorage.constants.PetConstants)
+			local PetConfig = require(ReplicatedStorage.config.PetConfig)
 			for _, pet in ipairs(playerData.Pets) do
-				if pet.Rarity and pet.Variation then
+				if pet.Name and pet.Variation then
 					local variationName = type(pet.Variation) == "table" and pet.Variation.VariationName or pet.Variation
-					local combinedOdds = PetConstants.getCombinedRarityChance(pet.Rarity, variationName)
-					if combinedOdds and combinedOdds > 250 then
+					-- Use new accurate rarity calculation
+					local spawnLevel = pet.SpawnLevel or 1
+					local spawnDoor = pet.SpawnDoor or nil
+					local combinedOdds = PetConfig.getActualPetRarity(pet.Name, variationName, spawnLevel, spawnDoor)
+					if type(combinedOdds) == "number" and combinedOdds > 250 then
 						stepCompleted = true
 						break
 					end

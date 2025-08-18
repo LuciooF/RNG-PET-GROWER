@@ -1438,11 +1438,6 @@ function PlotService:AddDoorSurfaceGuis(area)
     -- Static door level/number GUIs already exist from template copying
 end
 
-function PlotService:CreateDoorSurfaceGui(door, level, doorNumber)
-    -- DEPRECATED: Door GUIs are now pre-created in AreaTemplate
-    -- This function is kept for backward compatibility but should not be called
-    return
-end
 
 function PlotService:InitializeAreaDoors(area)
     local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
@@ -1754,16 +1749,20 @@ function PlotService:SpawnPetBall(door)
     local doorNumber = tonumber(door.Name:match("Door(%d+)")) or 1
     local level = self:GetLevelFromDoor(door)
     
-    -- Generate random pet data using PetConfig (only pets with actual models)
+    -- Generate random pet data using NEW door-based system
     local PetConfig = require(ReplicatedStorage.config.PetConfig)
-    local randomPetData = PetConfig.createRandomPetForLevel(level)
+    local randomPetData = PetConfig.createRandomPetForLevelAndDoor(level, doorNumber)
     
     if not randomPetData then
         warn("PlotService: Failed to generate random pet data")
         return
     end
     
-    -- Pet data already includes variation from PetConfig.createRandomPetForLevel()
+    -- Add level and door info to pet data for accurate rarity calculation
+    randomPetData.SpawnLevel = level
+    randomPetData.SpawnDoor = doorNumber
+    
+    -- Spawn logging removed for cleaner console output
     
     -- Get door position
     local doorPosition
@@ -2425,31 +2424,8 @@ function PlotService:ClearAllPetBallsInPlayerArea(player)
     end
 end
 
--- Debug function to manually update plot colors for all players
-function PlotService:DebugUpdateAllPlotColors()
-    -- Manually updating plot colors for all players
-    
-    local Players = game:GetService("Players")
-    local AreaService = require(script.Parent.AreaService)
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-        if assignedAreaNumber then
-            local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-            if playerAreas then
-                local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
-                if area then
-                    -- Updating GUIs and visibility for player
-                    self:UpdatePlotGUIs(area, player)
-                    self:UpdatePlotColors(area, player)
-                    self:UpdatePlotVisibility(area, player)
-                end
-            end
-        end
-    end
-end
 
--- Reset player area data (called from debug reset)
+-- Reset player area data
 function PlotService:ResetPlayerAreaData(player)
     local AreaService = require(script.Parent.AreaService)
     local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)

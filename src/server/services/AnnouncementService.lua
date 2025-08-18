@@ -11,9 +11,8 @@ AnnouncementService.__index = AnnouncementService
 
 -- Anti-spam system - track last announcement time globally
 local lastAnnouncementTime = 0
-local ANNOUNCEMENT_COOLDOWN = 3 -- 3 seconds between announcements
+local ANNOUNCEMENT_COOLDOWN = 3
 
--- Helper function to get rarity order (same as PetDiscoveryService)
 local function getRarityOrder(rarity)
     local rarityOrder = {
         ["Common"] = 1,
@@ -36,7 +35,7 @@ local function getRarityOrder(rarity)
 end
 
 -- Configuration: Announce only Epic+ pets (same filter as discovery popup)
-local MIN_RARITY_FOR_ANNOUNCEMENT = 4 -- Epic and above (matches popup exactly)
+local MIN_RARITY_FOR_ANNOUNCEMENT = 4
 
 -- Configuration: Announce Epic+ pets (same filter as discovery popup)
 -- No variation filtering - all Epic+ pets qualify regardless of variation
@@ -54,11 +53,9 @@ function AnnouncementService:Initialize()
     -- AnnouncementService initialized
 end
 
--- Helper function to find pet config by name (same as popup)
 local function findPetByName(petName)
     local PetConfig = require(ReplicatedStorage.config.PetConfig)
     
-    -- Extract just the pet name (remove variation suffix) - same logic as popup
     local actualPetName = petName
     local variations = {"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Emerald", "Sapphire", "Ruby", "Titanium", "Obsidian", "Crystal", "Rainbow", "Cosmic", "Void", "Divine"}
     for _, variation in pairs(variations) do
@@ -68,7 +65,6 @@ local function findPetByName(petName)
         end
     end
     
-    -- Search through all levels to find the pet - same logic as popup
     for level = 1, 7 do
         local petsInLevel = PetConfig.getPetsByLevel(level)
         if petsInLevel then
@@ -87,22 +83,19 @@ end
 function AnnouncementService:AnnouncePetDiscovery(player, petData)
     if not player or not petData then return end
     
-    -- Anti-spam check - prevent announcement flooding (same as popup anti-spam)
     local currentTime = tick()
     if currentTime - lastAnnouncementTime < ANNOUNCEMENT_COOLDOWN then
-        return -- Too soon since last announcement
+        return
     end
     
-    -- Look up pet config the same way the popup does (CRITICAL - must match exactly)
     local petConfig = findPetByName(petData.Name)
     if not petConfig then
         return
     end
     
-    -- Check rarity filter using pet config rarity (Epic+ only, same as discovery popup)
     local rarityOrder = getRarityOrder(petConfig.Rarity)
     if rarityOrder < MIN_RARITY_FOR_ANNOUNCEMENT then
-        return -- Not rare enough rarity to announce
+        return
     end
     
     local variation = petData.Variation
@@ -110,37 +103,46 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         variation = variation.VariationName
     end
     
-    -- Get combined rarity chance for odds calculation (pet rarity × variation rarity)
-    local odds = PetConstants.getCombinedRarityChance(petConfig.Rarity, variation)
+    local PetConfig = require(ReplicatedStorage.config.PetConfig)
     
-    -- Debug info for troubleshooting
-    if not odds then
-        warn("AnnouncementService: getCombinedRarityChance returned nil for rarity:", petConfig.Rarity, "variation:", variation, "type:", type(variation))
+    local spawnLevel = petData.SpawnLevel or 1
+    local spawnDoor = petData.SpawnDoor or nil
+    
+    local odds = 1000000 -- fallback
+    if PetConfig.getActualPetRarity then
+        local result = PetConfig.getActualPetRarity(petData.Name, variation, spawnLevel, spawnDoor)
+        if type(result) == "number" then
+            odds = result
+        else
+                warn("AnnouncementService: Pet has unknown rarity, skipping announcement:", petData.Name, variation)
+            return
+        end
+    else
+        odds = PetConstants.getCombinedRarityChance(petConfig.Rarity, variation)
+        
+        if not odds then
+            warn("AnnouncementService: getCombinedRarityChance returned nil for rarity:", petConfig.Rarity, "variation:", variation, "type:", type(variation))
+        end
+        
+        if not odds or odds <= 0 then
+            odds = PetConstants.getRarityChance(petConfig.Rarity) or 50
+            warn("AnnouncementService: Combined rarity calculation failed for", petConfig.Rarity, variation, "- using pet rarity only")
+        end
     end
     
-    -- Build the announcement message
     local petName = petData.Name or "Unknown Pet"
     local rarityName = petConfig.Rarity -- Use rarity from pet config
     
-    -- Fallback if combined calculation fails
-    if not odds or odds <= 0 then
-        odds = PetConstants.getRarityChance(petConfig.Rarity) or 50
-        warn("AnnouncementService: Combined rarity calculation failed for", petConfig.Rarity, variation, "- using pet rarity only")
-    end
-    
-    -- Create dynamic message based on rarity (match popup behavior)
     local actionMessage = "has discovered"
-    if odds >= 1000 then -- Very rare pets (1 in 1000+)
+    if odds >= 1000 then
         actionMessage = "has struck GOLD and found"
-    elseif odds >= 100 then -- Rare pets (1 in 100+)
+    elseif odds >= 100 then
         actionMessage = "has found the rare"
     end
     
-    -- Get colors for rich text formatting
     local rarityColor = PetConstants.getRarityColor(petConfig.Rarity)
     local variationColor = PetConstants.getVariationColor(variation)
     
-    -- Convert Color3 to hex for rich text
     local function color3ToHex(color3)
         local r = math.floor(color3.R * 255)
         local g = math.floor(color3.G * 255)
@@ -148,7 +150,6 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         return string.format("#%02X%02X%02X", r, g, b)
     end
     
-    -- Enhanced rarity colors to avoid conflicts and look cooler
     local function getEnhancedRarityColor(rarity)
         local enhancedColors = {
             ["Common"] = Color3.fromRGB(150, 150, 150),      -- Gray
@@ -170,16 +171,15 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         return enhancedColors[rarity] or rarityColor
     end
     
-    -- Create rainbow player name (one color per letter) with bold
     local function createRainbowText(text)
         local rainbowColors = {
-            "#FF0000", -- Red
-            "#FF7F00", -- Orange
-            "#FFFF00", -- Yellow
-            "#00FF00", -- Green
-            "#0080FF", -- Blue
-            "#8000FF", -- Purple
-            "#FF00FF"  -- Magenta
+            "#FF0000",
+            "#FF7F00",
+            "#FFFF00",
+            "#00FF00",
+            "#0080FF",
+            "#8000FF",
+            "#FF00FF"
         }
         
         local rainbowText = ""
@@ -195,10 +195,9 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
     local rarityHex = color3ToHex(enhancedRarityColor)
     local variationHex = color3ToHex(variationColor)
     local rainbowPlayerName = createRainbowText(player.Name)
-    local whiteHex = "#FFFFFF" -- White for pet name
-    local goldHex = "#FFD700" -- Gold for odds
+    local whiteHex = "#FFFFFF"
+    local goldHex = "#FFD700"
     
-    -- Create colorful rich text message with rainbow player name and all bold text
     local message = string.format(
         "%s <b>%s</b> <font color=\"%s\"><b>%s</b></font> <font color=\"%s\"><b>%s</b></font> <font color=\"%s\"><b>%s</b></font> <font color=\"%s\"><b>(1 in %s)</b></font>!",
         rainbowPlayerName,
@@ -209,20 +208,15 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         goldHex, NumberFormatter.format(odds)
     )
     
-    -- Update last announcement time to prevent spam
     lastAnnouncementTime = currentTime
     
-    -- Send to all players via TextChatService
     self:BroadcastMessage(message)
 end
 
--- Broadcast message to all players in the server
 function AnnouncementService:BroadcastMessage(message)
-    -- Use RemoteEvent method primarily (TextChatService method is unreliable)
     local success, error = pcall(function()
         local chatEvent = ReplicatedStorage:FindFirstChild("GlobalChatMessage")
         if chatEvent then
-            -- Fire to all clients with colored message
             chatEvent:FireAllClients(message)
         else
             error("GlobalChatMessage RemoteEvent not found")

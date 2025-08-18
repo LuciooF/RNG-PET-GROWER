@@ -939,6 +939,40 @@ debugCommandRemote.OnServerEvent:Connect(function(player, commandType, ...)
             print("Main: Successfully gave", quantity, "x", potionId, "to", player.Name, "with reward popup")
         end
         
+    elseif commandType == "TestDoorWeights" then
+        -- Test door weight distribution
+        local level, doorNumber = ...
+        level = tonumber(level) or 1
+        doorNumber = tonumber(doorNumber) or 1
+        
+        local PetConfig = require(ReplicatedStorage.config.PetConfig)
+        PetConfig.debugDoorWeights(level, doorNumber)
+        
+        print("Main: Tested door weights for Level", level, "Door", doorNumber)
+        
+    elseif commandType == "SimulateSpawns" then
+        -- Simulate pet spawns to test distribution
+        local level, doorNumber, count = ...
+        level = tonumber(level) or 1
+        doorNumber = tonumber(doorNumber) or 1
+        count = tonumber(count) or 100
+        
+        local PetConfig = require(ReplicatedStorage.config.PetConfig)
+        local spawnCounts = {}
+        
+        for i = 1, count do
+            local pet = PetConfig.createRandomPetForLevelAndDoor(level, doorNumber)
+            if pet then
+                spawnCounts[pet.Name] = (spawnCounts[pet.Name] or 0) + 1
+            end
+        end
+        
+        print(string.format("\n=== Simulated %d spawns for Level %d, Door %d ===", count, level, doorNumber))
+        for petName, spawnCount in pairs(spawnCounts) do
+            print(string.format("  %s: %d spawns (%.1f%%)", petName, spawnCount, (spawnCount/count)*100))
+        end
+        print("===============================================\n")
+        
     else
         warn("Main: Unknown debug command type:", commandType)
     end

@@ -18,25 +18,20 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local connections = {}
 
--- Discovery queue to prevent spam
 local discoveryQueue = {}
 local isShowingDiscovery = false
 local previousCollectedPets = {}
 
--- Anti-spam system - track last popup time 
 local lastPopupTime = 0
-local POPUP_COOLDOWN = 3 -- 3 seconds between popups (matches announcements)
+local POPUP_COOLDOWN = 3
 
--- Sound configuration
 local DISCOVERY_SOUND_ID = "rbxassetid://5728423829"
 
--- Pre-create discovery sound for instant playback
 local discoverySound = Instance.new("Sound")
 discoverySound.SoundId = DISCOVERY_SOUND_ID
 discoverySound.Volume = 0.8 -- Celebratory volume
 discoverySound.Parent = SoundService
 
--- Play discovery sound instantly
 local function playDiscoverySound()
     discoverySound:Play()
 end
@@ -57,7 +52,6 @@ function PetDiscoveryService:Initialize()
         previousCollectedPets = self:CloneTable(initialData.CollectedPets)
     end
     
-    -- No queue processor needed - discoveries show immediately or not at all
 end
 
 function PetDiscoveryService:CloneTable(original)
@@ -117,7 +111,6 @@ function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
         end
     end
     
-    -- Anti-spam check - prevent popup flooding
     local currentTime = tick()
     if currentTime - lastPopupTime < POPUP_COOLDOWN then
         return -- Too soon since last popup
@@ -174,14 +167,10 @@ function PetDiscoveryService:GetRarityOrder(rarity)
     return rarityOrder[rarity] or 1
 end
 
--- Queue processor removed - no longer needed since we don't queue discoveries
 
--- Helper function to find pet data by name
 function PetDiscoveryService:FindPetByName(petName)
-    -- Extract just the pet name (remove variation suffix)
     local actualPetName = petName
     
-    -- Check if petName contains a variation suffix and extract base name
     local variations = {"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Emerald", "Sapphire", "Ruby", "Titanium", "Obsidian", "Crystal", "Rainbow", "Cosmic", "Void", "Divine"}
     for _, variation in pairs(variations) do
         if string.find(petName, variation .. "$") then -- ends with variation
@@ -205,7 +194,6 @@ function PetDiscoveryService:FindPetByName(petName)
     return nil
 end
 
--- Helper function to create pet model for discovery viewport (similar to pet inventory)
 function PetDiscoveryService:CreatePetModelForDiscovery(petName)
     local petsFolder = ReplicatedStorage:FindFirstChild("Pets")
     if not petsFolder then return nil end
@@ -219,7 +207,6 @@ function PetDiscoveryService:CreatePetModelForDiscovery(petName)
         local clonedModel = petModelTemplate:Clone()
         clonedModel.Name = "DiscoveryPetModel"
         
-        -- Scale for discovery viewport (bigger for more impressive discovery)
         local scaleFactor = 7.0
         
         for _, descendant in pairs(clonedModel:GetDescendants()) do
@@ -235,7 +222,6 @@ function PetDiscoveryService:CreatePetModelForDiscovery(petName)
             end
         end
         
-        -- Position and rotate model
         local rotationAngle = 160
         clonedModel:MoveTo(Vector3.new(0, 0, 0))
         
@@ -276,10 +262,8 @@ end
 function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     isShowingDiscovery = true
     
-    -- Play discovery sound at the start of popup creation
     playDiscoverySound()
     
-    -- Get pet config for rarity and variation colors
     local petConfig = self:FindPetByName(discovery.name)
     if not petConfig then
         isShowingDiscovery = false
@@ -289,7 +273,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     local rarityColor = PetConstants.getRarityColor(petConfig.Rarity)
     local variationColor = discovery.variation and PetConstants.getVariationColor(discovery.variation) or PetConstants.getVariationColor("Bronze")
     
-    -- Extract actual pet name (remove variation suffix)
     local actualPetName = discovery.name
     local variations = {"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Emerald", "Sapphire", "Ruby", "Titanium", "Obsidian", "Crystal", "Rainbow", "Cosmic", "Void", "Divine"}
     for _, variation in pairs(variations) do
@@ -299,7 +282,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         end
     end
     
-    -- Create popup GUI
     local popupGui = Instance.new("ScreenGui")
     popupGui.Name = "PetDiscoveryPopup"
     popupGui.ResetOnSpawn = false
@@ -307,11 +289,10 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     popupGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     popupGui.Parent = playerGui
     
-    -- Main popup frame with expanding animation
     local popupFrame = Instance.new("Frame")
     popupFrame.Name = "PopupFrame"
     popupFrame.Size = UDim2.new(0, 0, 0, 0) -- Start at size 0 for expanding animation
-    popupFrame.Position = UDim2.new(0.5, 0, 0.75, 0) -- Bottom-middle with padding from screen edge (same as rewards)
+    popupFrame.Position = UDim2.new(0.5, 0, 0.75, 0)
     popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     popupFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Dark background
     popupFrame.BackgroundTransparency = 0.1
@@ -319,19 +300,16 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     popupFrame.ZIndex = 1000
     popupFrame.Parent = popupGui
     
-    -- Rounded corners
     local corner = Instance.new("UICorner")
     corner.CornerRadius = ScreenUtils.udim(0, ScreenUtils.getCornerRadius(20))
     corner.Parent = popupFrame
     
-    -- Drop shadow
     local shadow = Instance.new("UIStroke")
     shadow.Color = Color3.fromRGB(0, 0, 0)
     shadow.Thickness = math.max(2, ScreenUtils.getScaleFactor() * 4)
     shadow.Transparency = 0.5
     shadow.Parent = popupFrame
     
-    -- Rainbow gradient border for excitement
     local gradientBorder = Instance.new("UIStroke")
     gradientBorder.Color = Color3.fromRGB(255, 255, 255)
     gradientBorder.Thickness = math.max(3, ScreenUtils.getScaleFactor() * 5)
@@ -350,7 +328,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     })
     rainbowGradient.Parent = gradientBorder
     
-    -- Pet viewport (left side) - 1.5x bigger
     local petViewport = Instance.new("ViewportFrame")
     petViewport.Name = "PetViewport"
     petViewport.Size = ScreenUtils.udim2(0, 270, 0, 270)
@@ -359,14 +336,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     petViewport.ZIndex = 1001
     petViewport.Parent = popupFrame
     
-    -- Create pet model and setup viewport
     local petModel = self:CreatePetModelForDiscovery(actualPetName)
     if petModel then
         petModel.Parent = petViewport
         self:SetupDiscoveryViewportCamera(petViewport, petModel)
     end
     
-    -- "New Pet Discovered!" title (top center) - 1.5x bigger
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
     titleLabel.Size = ScreenUtils.udim2(1, -54, 0, 54)
@@ -382,7 +357,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     titleLabel.ZIndex = 1001
     titleLabel.Parent = popupFrame
     
-    -- Info panel (right side of viewport) - 1.5x bigger
     local infoPanel = Instance.new("Frame")
     infoPanel.Name = "InfoPanel"
     infoPanel.Size = ScreenUtils.udim2(0, 324, 0, 243)
@@ -391,7 +365,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
     
-    -- Pet name - 1.5x bigger
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "PetName"
     nameLabel.Size = ScreenUtils.udim2(1, 0, 0, 68)
@@ -407,7 +380,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     nameLabel.ZIndex = 1002
     nameLabel.Parent = infoPanel
     
-    -- Variation (if applicable)
     local yOffset = 75
     if discovery.variation then
         local variationLabel = Instance.new("TextLabel")
@@ -427,20 +399,30 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         yOffset = yOffset + 50
     end
     
-    -- Combined rarity info (pet rarity × variation rarity)
     local rarityChance = 1000000 -- fallback
     
-    if PetConstants.getCombinedRarityChance then
-        rarityChance = PetConstants.getCombinedRarityChance(petConfig.Rarity, discovery.variation)
-        
-        -- Fallback if combined calculation fails
-        if not rarityChance or rarityChance <= 0 then
-            rarityChance = PetConstants.getRarityChance(petConfig.Rarity) or 1000000
-            warn("PetDiscoveryService: Combined rarity calculation failed for", petConfig.Rarity, discovery.variation, "- using pet rarity only")
+    local spawnLevel = discovery.data and discovery.data.SpawnLevel or 1
+    local spawnDoor = discovery.data and discovery.data.SpawnDoor or nil
+    
+    local PetConfig = require(ReplicatedStorage.config.PetConfig)
+    if PetConfig.getActualPetRarity then
+        local result = PetConfig.getActualPetRarity(actualPetName, discovery.variation, spawnLevel, spawnDoor)
+        if type(result) == "number" then
+            rarityChance = result
+        else
+                rarityChance = "Unknown"
+        end
+    else
+        if PetConstants.getCombinedRarityChance then
+            rarityChance = PetConstants.getCombinedRarityChance(petConfig.Rarity, discovery.variation)
+            
+            if not rarityChance or rarityChance <= 0 then
+                rarityChance = PetConstants.getRarityChance(petConfig.Rarity) or 1000000
+                warn("PetDiscoveryService: Combined rarity calculation failed for", petConfig.Rarity, discovery.variation, "- using pet rarity only")
+            end
         end
     end
     
-    -- "Rarity:" label in grey - 1.5x bigger
     local rarityPrefixLabel = Instance.new("TextLabel")
     rarityPrefixLabel.Name = "RarityPrefix"
     rarityPrefixLabel.Size = ScreenUtils.udim2(0.4, 0, 0, 38)
@@ -456,7 +438,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityPrefixLabel.ZIndex = 1002
     rarityPrefixLabel.Parent = infoPanel
     
-    -- Actual rarity value in rarity color - 1.5x bigger
     local rarityValueLabel = Instance.new("TextLabel")
     rarityValueLabel.Name = "RarityValue"
     rarityValueLabel.Size = ScreenUtils.udim2(0.6, 0, 0, 38)
@@ -473,13 +454,12 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityValueLabel.Parent = infoPanel
     yOffset = yOffset + 45
     
-    -- Chance info with bigger text and rainbow colors - 1.5x bigger
     local chanceLabel = Instance.new("TextLabel")
     chanceLabel.Name = "Chance"
     chanceLabel.Size = ScreenUtils.udim2(1, 0, 0, 53) -- 1.5x taller for bigger text
     chanceLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     chanceLabel.BackgroundTransparency = 1
-    chanceLabel.Text = "1 in " .. NumberFormatter.format(rarityChance)
+    chanceLabel.Text = "1 in " .. (type(rarityChance) == "number" and NumberFormatter.format(rarityChance) or rarityChance)
     chanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White base for rainbow gradient
     chanceLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.2 -- Slightly bigger for emphasis
     chanceLabel.Font = Enum.Font.FredokaOne -- Bold font
@@ -489,7 +469,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     chanceLabel.ZIndex = 1002
     chanceLabel.Parent = infoPanel
     
-    -- Rainbow gradient for chance text
     local chanceGradient = Instance.new("UIGradient")
     chanceGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),     -- Red
@@ -504,7 +483,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     chanceGradient.Parent = chanceLabel
     yOffset = yOffset + ScreenUtils.getProportionalSize(68) -- 1.5x more space for bigger text
     
-    -- Congratulations message - 1.5x bigger
     local congratsLabel = Instance.new("TextLabel")
     congratsLabel.Name = "Congrats"
     congratsLabel.Size = ScreenUtils.udim2(1, 0, 0, 60)
@@ -520,10 +498,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     congratsLabel.ZIndex = 1002
     congratsLabel.Parent = infoPanel
     
-    -- AMAZING POP OUT ANIMATION - Every element animates individually!
-    local finalSize = ScreenUtils.udim2(0, 675, 0, 351) -- Scaled down by 10% - udim2 already handles proportional sizing
+    local finalSize = ScreenUtils.udim2(0, 675, 0, 351)
     
-    -- Set all elements to start invisible/small for pop-out effect
     local elementsToAnimate = {
         {element = titleLabel, delay = 0.1, type = "scale"},
         {element = petViewport, delay = 0.2, type = "fade_in"}, -- Use fade instead of scale for viewport
@@ -534,12 +510,10 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         {element = congratsLabel, delay = 0.6, type = "fade_in"}
     }
     
-    -- Add variation label if it exists
     if discovery.variation then
         table.insert(elementsToAnimate, 4, {element = infoPanel:FindFirstChild("Variation"), delay = 0.35, type = "slide_right"})
     end
     
-    -- Store original properties for animation
     local originalProperties = {}
     for _, animData in ipairs(elementsToAnimate) do
         local element = animData.element
@@ -550,13 +524,11 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
                 BackgroundTransparency = element.BackgroundTransparency or 1
             }
             
-            -- Only store text properties for TextLabels
             if element:IsA("TextLabel") then
                 originalProperties[element].TextTransparency = element.TextTransparency or 0
                 originalProperties[element].TextStrokeTransparency = element.TextStrokeTransparency or 0
             end
             
-            -- Set initial animation states
             if animData.type == "scale" then
                 element.Size = UDim2.new(0, 0, 0, 0)
             elseif animData.type == "slide_right" then
@@ -594,7 +566,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         end
     end
     
-    -- Create main popup frame expansion
     local expandTween = TweenService:Create(popupFrame, TweenInfo.new(
         0.6, -- Faster main expansion
         Enum.EasingStyle.Back,
@@ -603,7 +574,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         Size = finalSize
     })
     
-    -- Add pet model rotation animation
     local function animatePetModel()
         if petModel then
             task.spawn(function()
@@ -615,21 +585,20 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
                             descendant.CFrame = currentCFrame * rotationIncrement
                         end
                     end
-                    task.wait(0.03) -- Smooth rotation
+                    task.wait(0.03)
                 end
             end)
         end
     end
     
-    -- Rainbow border pulsing animation
     local function animateRainbowBorder()
         task.spawn(function()
             local rotationTween = TweenService:Create(rainbowGradient, TweenInfo.new(
-                3, -- 3 second rotation
+                3,
                 Enum.EasingStyle.Linear,
                 Enum.EasingDirection.InOut,
-                -1, -- Infinite repeat
-                false, -- No reverse
+                -1,
+                false,
                 0
             ), {
                 Rotation = 360
@@ -638,10 +607,8 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         end)
     end
     
-    -- Start main popup expansion
     expandTween:Play()
     
-    -- Create individual element animations
     local function createElementAnimation(animData)
         local element = animData.element
         if not element then return end
@@ -650,7 +617,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
             task.wait(animData.delay)
             
             if animData.type == "scale" then
-                -- Scale from 0 to full size with bounce
                 local originalSize = originalProperties[element].Size
                 
                 local scaleTween = TweenService:Create(element, TweenInfo.new(
@@ -663,7 +629,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
                 scaleTween:Play()
                 
             elseif animData.type == "slide_right" then
-                -- Slide in from left with fade
                 local originalPos = originalProperties[element].Position
                 local tweenProperties = {Position = originalPos}
                 
@@ -682,7 +647,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
                 slideTween:Play()
                 
             elseif animData.type == "slide_left" then
-                -- Slide in from right with fade
                 local originalPos = originalProperties[element].Position
                 local tweenProperties = {Position = originalPos}
                 
@@ -701,7 +665,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
                 slideTween:Play()
                 
             elseif animData.type == "bounce" then
-                -- Big bounce effect for chance text
                 local originalSize = originalProperties[element].Size
                 local tweenProperties = {Size = originalSize}
                 
@@ -720,7 +683,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
                 bounceTween:Play()
                 
             elseif animData.type == "fade_in" then
-                -- Simple fade in
                 local tweenProperties = {}
                 if element:IsA("TextLabel") then
                     tweenProperties.TextTransparency = originalProperties[element].TextTransparency
@@ -739,28 +701,24 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         end)
     end
     
-    -- Start all individual element animations
     for _, animData in ipairs(elementsToAnimate) do
         createElementAnimation(animData)
     end
     
-    -- Start secondary animations after main expansion
     expandTween.Completed:Connect(function()
         animatePetModel()
         animateRainbowBorder()
     end)
     
-    -- Auto-dismiss after 4 seconds (longer to enjoy the new popup)
     task.spawn(function()
         task.wait(4)
         
-        -- Shrinking animation (reverse of expanding)
         local shrinkTween = TweenService:Create(popupFrame, TweenInfo.new(
             0.5,
             Enum.EasingStyle.Back,
             Enum.EasingDirection.In
         ), {
-            Size = UDim2.new(0, 0, 0, 0) -- Shrink back to nothing
+            Size = UDim2.new(0, 0, 0, 0)
         })
         
         shrinkTween:Play()
@@ -772,7 +730,6 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
 end
 
 function PetDiscoveryService:Cleanup()
-    -- Disconnect all connections
     for name, connection in pairs(connections) do
         if connection and type(connection) == "function" then
             connection()
@@ -782,16 +739,13 @@ function PetDiscoveryService:Cleanup()
     end
     connections = {}
     
-    -- Clear discovery queue
     discoveryQueue = {}
     isShowingDiscovery = false
 end
 
--- Handle character respawn
 Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Re-initialize after character respawn
     PetDiscoveryService:Cleanup()
-    task.wait(1) -- Wait for character to fully load
+    task.wait(1)
     PetDiscoveryService:Initialize()
 end)
 

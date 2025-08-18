@@ -28,7 +28,6 @@ local function playHoverSound()
     hoverSound:Play()
 end
 
--- Helper function to create pet models for ViewportFrame (EXACT COPY from Pets UI)
 local function createPetModelForIndex(petName)
     local petsFolder = ReplicatedStorage:FindFirstChild("Pets")
     
@@ -42,7 +41,7 @@ local function createPetModelForIndex(petName)
             local clonedModel = petModelTemplate:Clone()
             clonedModel.Name = "PetModel"
             
-            local scaleFactor = 4.2 -- EXACT same as Pets UI
+            local scaleFactor = 4.2
             
             for _, descendant in pairs(clonedModel:GetDescendants()) do
                 if descendant:IsA("BasePart") then
@@ -57,7 +56,7 @@ local function createPetModelForIndex(petName)
                 end
             end
             
-            local rotationAngle = 160 -- EXACT same as Pets UI
+            local rotationAngle = 160
             clonedModel:MoveTo(Vector3.new(0, 0, 0))
             
             for _, descendant in pairs(clonedModel:GetDescendants()) do
@@ -77,7 +76,6 @@ local function createPetModelForIndex(petName)
     return nil
 end
 
--- Helper function to setup ViewportFrame camera (EXACT COPY from Pets UI)
 local function setupPetViewportCamera(viewportFrame, petModel)
     if not viewportFrame or not petModel then
         return
@@ -343,7 +341,6 @@ local function PetIndexUI(props)
                 })
             }),
             
-            -- Squiggle background (same as Pet Inventory UI)
             SquiggleBackground = React.createElement("ImageLabel", {
                 Size = ScreenUtils.udim2(0.9, 0, 0.9, 0), -- Same relative size as Pet Inventory
                 Position = ScreenUtils.udim2(0.5, 0, 0.5, 0), -- Centered in card
@@ -356,11 +353,10 @@ local function PetIndexUI(props)
                 ZIndex = 109, -- Behind viewport
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, 72) -- Circular clipping to match card size
+                    CornerRadius = ScreenUtils.udim(0, 72)
                 }),
             }),
             
-            -- Pet viewport (same as Pet Inventory UI)
             PetViewport = React.createElement("ViewportFrame", {
                 Size = ScreenUtils.udim2(1, -10, 1, -25), -- Same size as Pet Inventory viewport
                 Position = ScreenUtils.udim2(0, 5, 0, 5), -- Same position as Pet Inventory
@@ -472,7 +468,7 @@ local function PetIndexUI(props)
                 local variationColor = PetConstants.getVariationColor(variation) or Color3.fromRGB(150, 150, 150)
                 
                 variationElements[i] = React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(1, -10, 0, 30), -- Fixed height for consistent rows
+                    Size = ScreenUtils.udim2(1, -10, 0, 30),
                     BackgroundColor3 = hasVariation and variationColor or Color3.fromRGB(245, 245, 245),
                     BackgroundTransparency = hasVariation and 0.3 or 0.1,
                     BorderSizePixel = 0,
@@ -521,7 +517,18 @@ local function PetIndexUI(props)
                         Size = UDim2.new(0, 90, 1, 0),
                         Position = UDim2.new(1, -95, 0, 0),
                         BackgroundTransparency = 1,
-                        Text = "1 in " .. (PetConstants.getCombinedRarityChance and NumberFormatter.format(PetConstants.getCombinedRarityChance(petConfig.Rarity, variation)) or "???"),
+                        Text = "1 in " .. (function()
+                            if PetConfig.getActualPetRarity then
+                                local rarity = PetConfig.getActualPetRarity(petConfig.Name, variation, level, nil)
+                                if type(rarity) == "number" then
+                                    return NumberFormatter.format(rarity)
+                                else
+                                    return rarity  -- "Unknown"
+                                end
+                            else
+                                return "???"
+                            end
+                        end)(),
                         TextColor3 = Color3.fromRGB(60, 60, 60),
                         TextSize = ScreenUtils.TEXT_SIZES.SMALL() + 5, -- Even bigger text
                         Font = Enum.Font.FredokaOne, -- Bold for emphasis
