@@ -121,14 +121,14 @@ function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
         return
     end
     
-    -- Filter discoveries to only show rarer pets (Epic and above)
+    -- Filter discoveries to only show pets rarer than 1 in 250
     local filteredDiscoveries = {}
     for _, discovery in ipairs(newDiscoveries) do
         local petConfig = self:FindPetByName(discovery.name)
         if petConfig then
-            local rarityOrder = self:GetRarityOrder(petConfig.Rarity)
-            -- Only show pets with rarity Epic (4) or higher
-            if rarityOrder >= 4 then
+            -- Get actual rarity using the accurate calculation
+            local rarity = PetConfig.getActualPetRarity(discovery.name, discovery.variation, discovery.spawnLevel, discovery.spawnDoor)
+            if type(rarity) == "number" and rarity >= 250 then
                 table.insert(filteredDiscoveries, discovery)
             end
         end

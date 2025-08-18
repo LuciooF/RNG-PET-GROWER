@@ -518,7 +518,16 @@ local function PetIndexUI(props)
                         Position = UDim2.new(1, -95, 0, 0),
                         BackgroundTransparency = 1,
                         Text = "1 in " .. (function()
-                            if PetConfig.getActualPetRarity then
+                            -- Use UI display rarity for consistent display
+                            if PetConfig.getUIDisplayRarity then
+                                local rarity = PetConfig.getUIDisplayRarity(petConfig.Name, variation, level)
+                                if type(rarity) == "number" then
+                                    return NumberFormatter.format(rarity)
+                                else
+                                    return rarity  -- "Unknown"
+                                end
+                            elseif PetConfig.getActualPetRarity then
+                                -- Fallback to actual rarity if new function doesn't exist
                                 local rarity = PetConfig.getActualPetRarity(petConfig.Name, variation, level, nil)
                                 if type(rarity) == "number" then
                                     return NumberFormatter.format(rarity)

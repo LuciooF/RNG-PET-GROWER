@@ -182,9 +182,21 @@ function PetConfig.createRandomPet(rarityWeights, variationWeights)
     }
     
     variationWeights = variationWeights or {
-        [PetConstants.Variation.BRONZE] = 50,
-        [PetConstants.Variation.SILVER] = 35,
-        [PetConstants.Variation.GOLD] = 15
+        [PetConstants.Variation.BRONZE] = 30.0,
+        [PetConstants.Variation.SILVER] = 25.0,
+        [PetConstants.Variation.GOLD] = 18.0,
+        [PetConstants.Variation.PLATINUM] = 12.0,
+        [PetConstants.Variation.DIAMOND] = 8.0,
+        [PetConstants.Variation.EMERALD] = 4.0,
+        [PetConstants.Variation.SAPPHIRE] = 2.0,
+        [PetConstants.Variation.RUBY] = 0.8,
+        [PetConstants.Variation.TITANIUM] = 0.4,
+        [PetConstants.Variation.OBSIDIAN] = 0.3,
+        [PetConstants.Variation.CRYSTAL] = 0.2,
+        [PetConstants.Variation.RAINBOW] = 0.15,
+        [PetConstants.Variation.COSMIC] = 0.1,
+        [PetConstants.Variation.VOID] = 0.04,
+        [PetConstants.Variation.DIVINE] = 0.01
     }
     
     -- Select random rarity
@@ -378,8 +390,94 @@ function PetConfig.getPetSpawnChanceAtDoor(petIndex, doorNumber, level)
     return weights[pet] or 0
 end
 
+-- Get the UI display rarity (using base spawn chance, not door-weighted)
+-- This is for pet index display - shows the raw chance without door effects
+function PetConfig.getUIDisplayRarity(petName, variation, level)
+    if not petName or not variation then
+        return "Unknown"
+    end
+    
+    level = level or 1
+    
+    -- Find the pet in the level
+    local levelPets = PetConfig.getPetsByLevel(level)
+    if not levelPets or #levelPets == 0 then
+        return "Unknown"
+    end
+    
+    local petData = nil
+    for _, pet in ipairs(levelPets) do
+        if pet and pet.Name == petName then
+            petData = pet
+            break
+        end
+    end
+    
+    if not petData or not petData.SpawnChance then
+        return "Unknown"
+    end
+    
+    -- Get variation chance (as percentage) - all 15 variations
+    local variationWeights = {
+        [PetConstants.Variation.BRONZE] = 30.0,
+        [PetConstants.Variation.SILVER] = 25.0,
+        [PetConstants.Variation.GOLD] = 18.0,
+        [PetConstants.Variation.PLATINUM] = 12.0,
+        [PetConstants.Variation.DIAMOND] = 8.0,
+        [PetConstants.Variation.EMERALD] = 4.0,
+        [PetConstants.Variation.SAPPHIRE] = 2.0,
+        [PetConstants.Variation.RUBY] = 0.8,
+        [PetConstants.Variation.TITANIUM] = 0.4,
+        [PetConstants.Variation.OBSIDIAN] = 0.3,
+        [PetConstants.Variation.CRYSTAL] = 0.2,
+        [PetConstants.Variation.RAINBOW] = 0.15,
+        [PetConstants.Variation.COSMIC] = 0.1,
+        [PetConstants.Variation.VOID] = 0.04,
+        [PetConstants.Variation.DIVINE] = 0.01
+    }
+    
+    -- Handle string variations
+    if type(variation) == "string" then
+        local stringToEnum = {
+            ["Bronze"] = PetConstants.Variation.BRONZE,
+            ["Silver"] = PetConstants.Variation.SILVER,
+            ["Gold"] = PetConstants.Variation.GOLD,
+            ["Platinum"] = PetConstants.Variation.PLATINUM,
+            ["Diamond"] = PetConstants.Variation.DIAMOND,
+            ["Emerald"] = PetConstants.Variation.EMERALD,
+            ["Sapphire"] = PetConstants.Variation.SAPPHIRE,
+            ["Ruby"] = PetConstants.Variation.RUBY,
+            ["Titanium"] = PetConstants.Variation.TITANIUM,
+            ["Obsidian"] = PetConstants.Variation.OBSIDIAN,
+            ["Crystal"] = PetConstants.Variation.CRYSTAL,
+            ["Rainbow"] = PetConstants.Variation.RAINBOW,
+            ["Cosmic"] = PetConstants.Variation.COSMIC,
+            ["Void"] = PetConstants.Variation.VOID,
+            ["Divine"] = PetConstants.Variation.DIVINE
+        }
+        variation = stringToEnum[variation] or variation
+    end
+    
+    local variationChance = variationWeights[variation]
+    if not variationChance then
+        return "Unknown"
+    end
+    
+    -- Use raw SpawnChance from pet data (not door-weighted)
+    local petChance = petData.SpawnChance
+    
+    -- Calculate combined chance
+    local combinedChance = (petChance / 100) * (variationChance / 100)
+    
+    if combinedChance > 0 then
+        return math.floor(1 / combinedChance)
+    else
+        return "Unknown"
+    end
+end
+
 -- Calculate the true combined rarity of a pet (pet chance × variation chance)
--- Returns either a number (for "1 in X") or "Unknown" string for display
+-- This uses door-weighted chances for actual spawning
 function PetConfig.getActualPetRarity(petName, variation, level, doorNumber)
     if not petName or not variation then
         return "Unknown"
@@ -417,7 +515,7 @@ function PetConfig.getActualPetRarity(petName, variation, level, doorNumber)
         return "Unknown"
     end
     
-    -- Get variation chance (as percentage)
+    -- Get variation chance (as percentage) - all 15 variations
     local variationWeights = {
         [PetConstants.Variation.BRONZE] = 30.0,
         [PetConstants.Variation.SILVER] = 25.0,
@@ -427,11 +525,16 @@ function PetConfig.getActualPetRarity(petName, variation, level, doorNumber)
         [PetConstants.Variation.EMERALD] = 4.0,
         [PetConstants.Variation.SAPPHIRE] = 2.0,
         [PetConstants.Variation.RUBY] = 0.8,
-        [PetConstants.Variation.VOID] = 0.15,
-        [PetConstants.Variation.DIVINE] = 0.05
+        [PetConstants.Variation.TITANIUM] = 0.4,
+        [PetConstants.Variation.OBSIDIAN] = 0.3,
+        [PetConstants.Variation.CRYSTAL] = 0.2,
+        [PetConstants.Variation.RAINBOW] = 0.15,
+        [PetConstants.Variation.COSMIC] = 0.1,
+        [PetConstants.Variation.VOID] = 0.04,
+        [PetConstants.Variation.DIVINE] = 0.01
     }
     
-    -- Handle string variations
+    -- Handle string variations - all 15 variations
     if type(variation) == "string" then
         local stringToEnum = {
             ["Bronze"] = PetConstants.Variation.BRONZE,
@@ -442,6 +545,11 @@ function PetConfig.getActualPetRarity(petName, variation, level, doorNumber)
             ["Emerald"] = PetConstants.Variation.EMERALD,
             ["Sapphire"] = PetConstants.Variation.SAPPHIRE,
             ["Ruby"] = PetConstants.Variation.RUBY,
+            ["Titanium"] = PetConstants.Variation.TITANIUM,
+            ["Obsidian"] = PetConstants.Variation.OBSIDIAN,
+            ["Crystal"] = PetConstants.Variation.CRYSTAL,
+            ["Rainbow"] = PetConstants.Variation.RAINBOW,
+            ["Cosmic"] = PetConstants.Variation.COSMIC,
             ["Void"] = PetConstants.Variation.VOID,
             ["Divine"] = PetConstants.Variation.DIVINE
         }
@@ -479,9 +587,9 @@ function PetConfig.createRandomPetForLevelAndDoor(level, doorNumber, variationWe
         return nil
     end
     
-    -- 10 variation distribution (simplified after removing 5 variations)
+    -- All 15 variation distribution
     variationWeights = variationWeights or {
-        [PetConstants.Variation.BRONZE] = 30.0,    -- Most common
+        [PetConstants.Variation.BRONZE] = 30.0,
         [PetConstants.Variation.SILVER] = 25.0,
         [PetConstants.Variation.GOLD] = 18.0,
         [PetConstants.Variation.PLATINUM] = 12.0,
@@ -489,8 +597,13 @@ function PetConfig.createRandomPetForLevelAndDoor(level, doorNumber, variationWe
         [PetConstants.Variation.EMERALD] = 4.0,
         [PetConstants.Variation.SAPPHIRE] = 2.0,
         [PetConstants.Variation.RUBY] = 0.8,
-        [PetConstants.Variation.VOID] = 0.15,
-        [PetConstants.Variation.DIVINE] = 0.05    -- Rarest (0.05% chance)
+        [PetConstants.Variation.TITANIUM] = 0.4,
+        [PetConstants.Variation.OBSIDIAN] = 0.3,
+        [PetConstants.Variation.CRYSTAL] = 0.2,
+        [PetConstants.Variation.RAINBOW] = 0.15,
+        [PetConstants.Variation.COSMIC] = 0.1,
+        [PetConstants.Variation.VOID] = 0.04,
+        [PetConstants.Variation.DIVINE] = 0.01
     }
     
     -- Select random pet based on door-weighted chances

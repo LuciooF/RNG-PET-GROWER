@@ -93,10 +93,6 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         return
     end
     
-    local rarityOrder = getRarityOrder(petConfig.Rarity)
-    if rarityOrder < MIN_RARITY_FOR_ANNOUNCEMENT then
-        return
-    end
     
     local variation = petData.Variation
     if type(variation) == "table" then
@@ -108,7 +104,7 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
     local spawnLevel = petData.SpawnLevel or 1
     local spawnDoor = petData.SpawnDoor or nil
     
-    local odds = 1000000 -- fallback
+    local odds = 1000000
     if PetConfig.getActualPetRarity then
         local result = PetConfig.getActualPetRarity(petData.Name, variation, spawnLevel, spawnDoor)
         if type(result) == "number" then
@@ -117,6 +113,11 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
                 warn("AnnouncementService: Pet has unknown rarity, skipping announcement:", petData.Name, variation)
             return
         end
+    end
+    
+    -- Only announce pets rarer than 1 in 250
+    if odds < 250 then
+        return
     else
         odds = PetConstants.getCombinedRarityChance(petConfig.Rarity, variation)
         
@@ -171,36 +172,17 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         return enhancedColors[rarity] or rarityColor
     end
     
-    local function createRainbowText(text)
-        local rainbowColors = {
-            "#FF0000",
-            "#FF7F00",
-            "#FFFF00",
-            "#00FF00",
-            "#0080FF",
-            "#8000FF",
-            "#FF00FF"
-        }
-        
-        local rainbowText = ""
-        for i = 1, #text do
-            local char = string.sub(text, i, i)
-            local colorIndex = ((i - 1) % #rainbowColors) + 1
-            rainbowText = rainbowText .. string.format('<font color="%s"><b>%s</b></font>', rainbowColors[colorIndex], char)
-        end
-        return rainbowText
-    end
     
     local enhancedRarityColor = getEnhancedRarityColor(petConfig.Rarity)
     local rarityHex = color3ToHex(enhancedRarityColor)
     local variationHex = color3ToHex(variationColor)
-    local rainbowPlayerName = createRainbowText(player.Name)
+    local whitePlayerName = string.format('<font color="#FFFFFF"><b>%s</b></font>', player.Name)
     local whiteHex = "#FFFFFF"
     local goldHex = "#FFD700"
     
     local message = string.format(
         "%s <b>%s</b> <font color=\"%s\"><b>%s</b></font> <font color=\"%s\"><b>%s</b></font> <font color=\"%s\"><b>%s</b></font> <font color=\"%s\"><b>(1 in %s)</b></font>!",
-        rainbowPlayerName,
+        whitePlayerName,
         actionMessage,
         rarityHex, rarityName,
         variationHex, variation,
