@@ -19,7 +19,8 @@ local PROFILE_TEMPLATE = {
     Resources = {
         Diamonds = 0,
         Money = 0, -- Starting money
-        Rebirths = 0
+        Rebirths = 0,
+        RobuxSpent = 0 -- Total robux spent by player
     },
     Pets = {}, -- Array of pet objects
     EquippedPets = {}, -- Array of equipped pets
@@ -239,6 +240,25 @@ function DataService:SetPlayerResource(player, resourceType, amount)
     return false
 end
 
+-- Add robux spending to player's total (for leaderboard tracking)
+function DataService:AddRobuxSpent(player, robuxAmount)
+    local profile = Profiles[player]
+    if profile then
+        local currentSpent = profile.Data.Resources.RobuxSpent or 0
+        profile.Data.Resources.RobuxSpent = currentSpent + robuxAmount
+        
+        -- Sync updated data to client immediately
+        self:SyncPlayerDataToClient(player)
+        
+        -- Notify leaderboard service of robux spending change
+        local CustomLeaderboardService = require(script.Parent.CustomLeaderboardService)
+        CustomLeaderboardService:NotifyPlayerDataChanged(player)
+        
+        return true
+    end
+    return false
+end
+
 function DataService:AddPet(player, petData)
     local profile = Profiles[player]
     if profile then
@@ -424,11 +444,13 @@ function DataService:ResetPlayerData(player)
             autoEquipDebounceTimers[player] = nil
         end
         
-        -- Reset data to template values
+        -- Reset data to template values (preserve RobuxSpent across rebirths)
+        local currentRobuxSpent = profile.Data.Resources.RobuxSpent or 0
         profile.Data.Resources = {
             Diamonds = 0,
             Money = 0, -- Starting money
-            Rebirths = 0
+            Rebirths = 0,
+            RobuxSpent = currentRobuxSpent -- Keep robux spent across rebirths
         }
         profile.Data.Pets = {}
         profile.Data.EquippedPets = {}

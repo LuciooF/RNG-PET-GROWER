@@ -119,6 +119,20 @@ local CRAZY_CHEST_LEVEL_PRODUCT_ID = 3360998824
 local CRAZY_CHEST_LUCK_PRODUCT_ID = 3360998460
 local CRAZY_CHEST_OPEN_PRODUCT_ID = 3361129353
 
+-- Dynamic function to get dev product price from Roblox marketplace
+local function getDevProductPrice(productId)
+    local success, productInfo = pcall(function()
+        return MarketplaceService:GetProductInfo(productId, Enum.InfoType.Product)
+    end)
+    
+    if success and productInfo then
+        return productInfo.PriceInRobux or 0
+    else
+        warn("Failed to get price for dev product:", productId)
+        return 0
+    end
+end
+
 MarketplaceService.ProcessReceipt = function(receiptInfo)
     print("📦 ProcessReceipt called for Product ID:", receiptInfo.ProductId, "Player ID:", receiptInfo.PlayerId)
     
@@ -129,6 +143,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             -- Perform rebirth (skip money check since they paid Robux)
             local success = performRebirth(player, true)
             if success then
+                -- Track robux spending for leaderboard (dynamic price)
+                local price = getDevProductPrice(receiptInfo.ProductId)
+                DataService:AddRobuxSpent(player, price)
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             else
                 return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -145,6 +162,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             local success = CrazyChestService:HandleChestUpgradeRobux(player)
             print("🎯 Level upgrade result:", success)
             if success then
+                -- Track robux spending for leaderboard (dynamic price)
+                local price = getDevProductPrice(receiptInfo.ProductId)
+                DataService:AddRobuxSpent(player, price)
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             else
                 return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -161,6 +181,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             local success = CrazyChestService:HandleLuckUpgradeRobux(player)
             print("🍀 Luck upgrade result:", success)
             if success then
+                -- Track robux spending for leaderboard (dynamic price)
+                local price = getDevProductPrice(receiptInfo.ProductId)
+                DataService:AddRobuxSpent(player, price)
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             else
                 return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -177,6 +200,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             local success = CrazyChestService:HandleChestOpen(player, true) -- true = Robux purchase
             print("🎰 Chest open result:", success)
             if success then
+                -- Track robux spending for leaderboard (dynamic price)
+                local price = getDevProductPrice(receiptInfo.ProductId)
+                DataService:AddRobuxSpent(player, price)
                 return Enum.ProductPurchaseDecision.PurchaseGranted
             else
                 return Enum.ProductPurchaseDecision.NotProcessedYet

@@ -27,6 +27,7 @@ local LEADERBOARD_TYPES = {
 	DIAMONDS = "Diamonds",
 	REBIRTHS = "Rebirths",
 	TIME_PLAYED = "TimePlayed",
+	ROBUX_SPENT = "RobuxSpent",
 }
 
 local LEADERBOARD_PERIODS = {
@@ -47,12 +48,14 @@ local leaderboardCache = {
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
 		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
+		[LEADERBOARD_TYPES.ROBUX_SPENT] = {},
 	},
 	[LEADERBOARD_PERIODS.WEEKLY] = {
 		[LEADERBOARD_TYPES.MONEY] = {},
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
 		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
+		[LEADERBOARD_TYPES.ROBUX_SPENT] = {},
 	},
 }
 
@@ -63,12 +66,14 @@ local leaderboardFullCache = {
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
 		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
+		[LEADERBOARD_TYPES.ROBUX_SPENT] = {},
 	},
 	[LEADERBOARD_PERIODS.WEEKLY] = {
 		[LEADERBOARD_TYPES.MONEY] = {},
 		[LEADERBOARD_TYPES.DIAMONDS] = {},
 		[LEADERBOARD_TYPES.REBIRTHS] = {},
 		[LEADERBOARD_TYPES.TIME_PLAYED] = {},
+		[LEADERBOARD_TYPES.ROBUX_SPENT] = {},
 	},
 }
 
@@ -187,6 +192,9 @@ function CustomLeaderboardService:GetPlayerValue(player: Player?, leaderboardTyp
 		-- Get playtime in seconds (convert minutes to seconds for consistency)
 		local playtimeMinutes = playerData.PlaytimeMinutes or 0
 		return math.floor(playtimeMinutes * 60) -- Convert to seconds and round down
+	elseif leaderboardType == LEADERBOARD_TYPES.ROBUX_SPENT then
+		-- Get total robux spent by player
+		return (playerData.Resources and playerData.Resources.RobuxSpent) or 0
 	end
 	return 0
 end
@@ -462,6 +470,7 @@ function CustomLeaderboardService:GetLeaderboard(period: string, leaderboardType
 	if leaderboardType == "Diamonds"   then serverType = LEADERBOARD_TYPES.DIAMONDS   end
 	if leaderboardType == "Rebirths"   then serverType = LEADERBOARD_TYPES.REBIRTHS   end
 	if leaderboardType == "TimePlayed" then serverType = LEADERBOARD_TYPES.TIME_PLAYED end
+	if leaderboardType == "RobuxSpent" then serverType = LEADERBOARD_TYPES.ROBUX_SPENT end
 
 	ensureTables(serverPeriod, serverType)
 

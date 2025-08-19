@@ -36,8 +36,11 @@ function GamepassService:OnGamepassPurchased(player, gamePassId)
         if success then
             -- Added gamepass to player
             
-            -- Sync data to client Rodux store
+            -- Track robux spending for leaderboard
             local DataService = require(script.Parent.DataService)
+            DataService:AddRobuxSpent(player, gamepassConfig.price)
+            
+            -- Sync data to client Rodux store
             DataService:SyncPlayerDataToClient(player)
             
             -- Show success message

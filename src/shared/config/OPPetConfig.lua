@@ -75,7 +75,7 @@ function OPPetConfig.createOPPet(opPetData, playerId)
         FinalValue = opPetData.BaseValue * PetConstants.VariationMultipliers[PetConstants.Variation.OP],
         FinalBoost = opPetData.BaseBoost * PetConstants.VariationMultipliers[PetConstants.Variation.OP],
         DevProductId = opPetData.DevProductId,
-        RobuxPrice = opPetData.RobuxPrice,
+        -- RobuxPrice removed - now fetched dynamically from marketplace
         Description = opPetData.Description,
         PurchasedBy = playerId,
         PurchaseTime = os.time(),

@@ -75,6 +75,23 @@ function PetLimitService:ProcessReceipt(receiptInfo)
     local success = self:IncreasePetLimit(player)
     
     if success then
+        -- Track robux spending for leaderboard (dynamic price)
+        local function getDevProductPrice(productId)
+            local success, productInfo = pcall(function()
+                return MarketplaceService:GetProductInfo(productId, Enum.InfoType.Product)
+            end)
+            
+            if success and productInfo then
+                return productInfo.PriceInRobux or 0
+            else
+                warn("Failed to get price for dev product:", productId)
+                return 0
+            end
+        end
+        
+        local price = getDevProductPrice(receiptInfo.ProductId)
+        DataService:AddRobuxSpent(player, price)
+        
         -- Send success notification to client
         local successRemote = ReplicatedStorage:FindFirstChild("PetLimitPurchaseSuccess")
         if successRemote then

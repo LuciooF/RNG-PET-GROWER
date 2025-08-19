@@ -65,6 +65,8 @@ local function getCurrentPlayerValue(leaderboardType)
         -- Convert minutes to seconds to match server format
         local playtimeMinutes = playerData.PlaytimeMinutes or 0
         return math.floor(playtimeMinutes * 60)
+    elseif leaderboardType == "RobuxSpent" then
+        return playerData.Resources.RobuxSpent or 0
     end
     
     return 0
@@ -142,7 +144,8 @@ local LEADERBOARD_TYPES = {
     DIAMONDS = "Diamonds",
     MONEY = "Money", 
     REBIRTHS = "Rebirths",
-    TIME_PLAYED = "TimePlayed"
+    TIME_PLAYED = "TimePlayed",
+    ROBUX_SPENT = "RobuxSpent"
 }
 
 local function LeaderboardPanel(props)
@@ -154,6 +157,9 @@ local function LeaderboardPanel(props)
     local outerCircleRef = React.useRef()
     local hoveredEntry, setHoveredEntry = React.useState(nil)
     local resetCountdown, setResetCountdown = React.useState("")
+    
+    -- Rainbow gradient animation state for Robux Spent tab
+    local rainbowRotation, setRainbowRotation = React.useState(0)
     
     -- Fetch leaderboard data when tab or type changes
     React.useEffect(function()
@@ -307,6 +313,23 @@ local function LeaderboardPanel(props)
         end
     end, {})
     
+    -- Rainbow gradient animation for Robux Spent tab (same as Free OP Item)
+    React.useEffect(function()
+        local RunService = game:GetService("RunService")
+        
+        local connection = RunService.Heartbeat:Connect(function()
+            -- Animate rainbow gradient rotation (60 degrees per second like Free OP Item)
+            local rainbowSpeed = 60 -- degrees per second
+            setRainbowRotation(function(current)
+                return (current + rainbowSpeed * (1/60)) % 360
+            end)
+        end)
+        
+        return function()
+            connection:Disconnect()
+        end
+    end, {})
+    
     -- Helper function to get icon for leaderboard type
     local function getTypeIcon(leaderboardType)
         if leaderboardType == "Money" then
@@ -317,6 +340,8 @@ local function LeaderboardPanel(props)
             return IconAssets.getIcon("UI", "REBIRTH")
         elseif leaderboardType == "TimePlayed" then
             return "rbxassetid://6031075938" -- Clock icon
+        elseif leaderboardType == "RobuxSpent" then
+            return "rbxassetid://6031302977" -- Robux icon
         end
         return ""
     end
@@ -750,8 +775,8 @@ local function LeaderboardPanel(props)
                 -- Diamonds type (first position)
                 DiamondsType = React.createElement("TextButton", {
                     Name = "DiamondsType",
-                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
-                    Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0, ScreenUtils.getProportionalSize(5)),
+                    Size = UDim2.new(0.2, -ScreenUtils.getProportionalSize(6), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0, ScreenUtils.getProportionalSize(3), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.DIAMONDS and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.DIAMONDS and 0 or 1,
                     BorderSizePixel = 0,
@@ -778,8 +803,8 @@ local function LeaderboardPanel(props)
                 -- Money type (second position)
                 MoneyType = React.createElement("TextButton", {
                     Name = "MoneyType",
-                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
-                    Position = UDim2.new(0.25, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
+                    Size = UDim2.new(0.2, -ScreenUtils.getProportionalSize(6), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.2, ScreenUtils.getProportionalSize(1), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.MONEY and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.MONEY and 0 or 1,
                     BorderSizePixel = 0,
@@ -806,8 +831,8 @@ local function LeaderboardPanel(props)
                 -- Rebirths type (third position)
                 RebirthsType = React.createElement("TextButton", {
                     Name = "RebirthsType",
-                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
-                    Position = UDim2.new(0.5, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
+                    Size = UDim2.new(0.2, -ScreenUtils.getProportionalSize(6), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.4, ScreenUtils.getProportionalSize(1), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.REBIRTHS and Color3.fromRGB(57, 255, 20) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.REBIRTHS and 0 or 1,
                     BorderSizePixel = 0,
@@ -834,8 +859,8 @@ local function LeaderboardPanel(props)
                 -- Time Played type (fourth position)
                 TimePlayedType = React.createElement("TextButton", {
                     Name = "TimePlayedType",
-                    Size = UDim2.new(0.25, -ScreenUtils.getProportionalSize(7), 1, -ScreenUtils.getProportionalSize(10)),
-                    Position = UDim2.new(0.75, ScreenUtils.getProportionalSize(2), 0, ScreenUtils.getProportionalSize(5)),
+                    Size = UDim2.new(0.2, -ScreenUtils.getProportionalSize(6), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.6, ScreenUtils.getProportionalSize(1), 0, ScreenUtils.getProportionalSize(5)),
                     BackgroundColor3 = selectedType == LEADERBOARD_TYPES.TIME_PLAYED and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(0, 0, 0, 0),
                     BackgroundTransparency = selectedType == LEADERBOARD_TYPES.TIME_PLAYED and 0 or 1,
                     BorderSizePixel = 0,
@@ -857,7 +882,51 @@ local function LeaderboardPanel(props)
                     TimePlayedCorner = React.createElement("UICorner", {
                         CornerRadius = UDim.new(0, ScreenUtils.getProportionalSize(25))
                     })
-                } or {})
+                } or {}),
+                
+                -- Robux Spent type (fifth position)
+                RobuxSpentType = React.createElement("TextButton", {
+                    Name = "RobuxSpentType",
+                    Size = UDim2.new(0.2, -ScreenUtils.getProportionalSize(6), 1, -ScreenUtils.getProportionalSize(10)),
+                    Position = UDim2.new(0.8, ScreenUtils.getProportionalSize(1), 0, ScreenUtils.getProportionalSize(5)),
+                    BackgroundColor3 = selectedType == LEADERBOARD_TYPES.ROBUX_SPENT and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(0, 0, 0, 0), -- Dark background when selected
+                    BackgroundTransparency = selectedType == LEADERBOARD_TYPES.ROBUX_SPENT and 0 or 1,
+                    BorderSizePixel = 0,
+                    Text = "Robux Spent",
+                    TextColor3 = Color3.fromRGB(255, 255, 255), -- Always white (will be overridden by gradient)
+                    TextSize = ScreenUtils.getTextSize(22),
+                    Font = Enum.Font.Gotham,
+                    ZIndex = 53,
+                    [React.Event.Activated] = function()
+                        playClickSound()
+                        setSelectedType(LEADERBOARD_TYPES.ROBUX_SPENT)
+                    end,
+                    [React.Event.MouseEnter] = function()
+                        if selectedType ~= LEADERBOARD_TYPES.ROBUX_SPENT then
+                            playHoverSound()
+                        end
+                    end
+                }, {
+                    -- Always show rainbow gradient for text (regardless of selection)
+                    RobuxSpentGradient = React.createElement("UIGradient", {
+                        Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),    -- Red
+                            ColorSequenceKeypoint.new(0.14, Color3.fromRGB(255, 127, 0)),  -- Orange
+                            ColorSequenceKeypoint.new(0.28, Color3.fromRGB(255, 255, 0)),  -- Yellow
+                            ColorSequenceKeypoint.new(0.42, Color3.fromRGB(0, 255, 0)),    -- Green
+                            ColorSequenceKeypoint.new(0.57, Color3.fromRGB(0, 0, 255)),    -- Blue
+                            ColorSequenceKeypoint.new(0.71, Color3.fromRGB(75, 0, 130)),   -- Indigo
+                            ColorSequenceKeypoint.new(0.85, Color3.fromRGB(148, 0, 211)),  -- Violet
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))     -- Back to Red
+                        }),
+                        Rotation = rainbowRotation -- Animated rotation
+                    }),
+                    
+                    -- Corner radius when selected
+                    RobuxSpentCorner = selectedType == LEADERBOARD_TYPES.ROBUX_SPENT and React.createElement("UICorner", {
+                        CornerRadius = UDim.new(0, ScreenUtils.getProportionalSize(25))
+                    }) or nil
+                })
             }),
             
             -- Leaderboard content area
