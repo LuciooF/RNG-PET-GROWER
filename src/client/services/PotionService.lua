@@ -25,8 +25,8 @@ local potionActivatedRemote = ReplicatedStorage:WaitForChild("PotionActivated")
 local getActivePotionsRemote
 
 -- Sound effects
-local ACTIVATION_SOUND_ID = "rbxassetid://131961136" -- Potion drink sound
-local EXPIRATION_SOUND_ID = "rbxassetid://131961136" -- Same for now
+local ACTIVATION_SOUND_ID = "rbxassetid://7132999597" -- Potion drink sound
+local EXPIRATION_SOUND_ID = "rbxassetid://7132999597" -- Same for now
 
 -- Pre-create sounds
 local activationSound = Instance.new("Sound")
@@ -41,7 +41,7 @@ expirationSound.Parent = SoundService
 
 -- Initialize the service
 function PotionService:Initialize()
-    print("PotionService: Initializing client-side potion management")
+    -- PotionService client initialization
     
     -- Handle potion activation confirmations
     potionActivatedRemote.OnClientEvent:Connect(function(activePotionData)
@@ -72,7 +72,7 @@ function PotionService:RequestActivePotions()
         end
         
         if getActivePotionsRemote then
-            print("PotionService: Requesting active potions from server")
+            -- PotionService requesting active potions
             local success, serverActivePotions = pcall(function()
                 return getActivePotionsRemote:InvokeServer()
             end)
@@ -90,7 +90,7 @@ end
 
 -- Sync active potions data from server
 function PotionService:SyncActivePotionsFromServer(serverActivePotions)
-    print("PotionService: Syncing active potions from server:", #serverActivePotions, "potions")
+    -- PotionService syncing active potions
     
     -- Clear existing active potions
     activePotions = {}
@@ -100,14 +100,14 @@ function PotionService:SyncActivePotionsFromServer(serverActivePotions)
     for _, activePotionData in pairs(serverActivePotions) do
         if activePotionData.RemainingTime > 0 then
             activePotions[activePotionData.PotionId] = activePotionData
-            print("PotionService: Loaded active potion:", activePotionData.PotionId, "expires in", activePotionData.RemainingTime, "seconds")
+            -- PotionService loaded active potion
             validPotions = validPotions + 1
         else
             print("PotionService: Skipping expired potion:", activePotionData.PotionId, "(0 seconds remaining)")
         end
     end
     
-    print("PotionService: Loaded", validPotions, "valid active potions")
+    -- PotionService loaded active potions
     
     -- Notify UI about the sync
     self:NotifyCallbacks("PotionsSynced", activePotions)
@@ -131,7 +131,7 @@ function PotionService:ActivatePotion(potionId)
         end
     end
     
-    print("PotionService: Requesting activation of", potionId)
+    -- PotionService requesting activation
     activatePotionRemote:FireServer(potionId)
     return true
 end
@@ -143,7 +143,7 @@ function PotionService:CancelActivePotion(potionId)
         return false
     end
     
-    print("PotionService: Requesting cancellation of", potionId)
+    -- PotionService requesting cancellation
     
     -- Get the cancel remote
     local cancelPotionRemote = ReplicatedStorage:FindFirstChild("CancelPotion")

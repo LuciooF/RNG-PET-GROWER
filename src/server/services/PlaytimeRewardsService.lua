@@ -9,7 +9,7 @@ local PlaytimeRewardsService = {}
 PlaytimeRewardsService.__index = PlaytimeRewardsService
 
 function PlaytimeRewardsService:Initialize()
-    print("PlaytimeRewardsService: Initialized")
+    -- PlaytimeRewardsService initialized
 end
 
 -- Perform instant rebirth (same logic as Main.server.lua performRebirth function)

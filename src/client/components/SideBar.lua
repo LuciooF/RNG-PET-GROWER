@@ -73,20 +73,21 @@ local function SideBar(props)
     -- Create buttons array in the EXACT order we want them to appear
     local buttons = {}
     
-    -- 1. Gamepasses
-    buttons[1] = TooltipUtils.createHoverButton({
-        Name = "A_GamepassButton",
+    -- 1. Free OP Item Button (moved from right sidebar)
+    local FreeOpItemButton = require(script.Parent.FreeOpItemButton)
+    buttons[1] = React.createElement(FreeOpItemButton, {
+        Name = "A_FreeOpItemButton",
         Size = buttonSize,
-        BackgroundTransparency = 1,
-        Image = IconAssets.getIcon("CURRENCY", "ROBUX"),
-        ScaleType = Enum.ScaleType.Fit,
-        SizeConstraint = Enum.SizeConstraint.RelativeYY,
-        [React.Event.Activated] = function()
-            if props.onGamepassClick then
-                props.onGamepassClick()
+        buttonPixelSize = buttonPixelSize,
+        sharedSessionStartTime = props.sharedSessionStartTime,
+        sharedFreeOpLastClaimTime = props.sharedFreeOpLastClaimTime,
+        sharedFreeOpClaimCount = props.sharedFreeOpClaimCount,
+        onFreeOpItemClick = function()
+            if props.onFreeOpItemClick then
+                props.onFreeOpItemClick()
             end
         end
-    }, "Gamepasses")
+    })
     
     -- 2. Pets
     buttons[2] = React.createElement("Frame", {
@@ -173,30 +174,20 @@ local function SideBar(props)
         end
     }, "Rebirths")
     
-    -- 5. Debug (only for authorized users)
-    local localPlayer = Players.LocalPlayer
-    if AuthorizationUtils.isAuthorized(localPlayer) then
-        buttons[5] = TooltipUtils.createHoverButton({
-            Name = "E_DebugButton",
-            Size = buttonSize,
-            BackgroundTransparency = 1,
-            Image = IconAssets.getIcon("UI", "SETTINGS"),
-            ScaleType = Enum.ScaleType.Fit,
-            SizeConstraint = Enum.SizeConstraint.RelativeYY,
-            [React.Event.Activated] = function()
-                if props.onDebugClick then
-                    props.onDebugClick()
-                end
+    -- 5. Gamepasses (moved from position 1)
+    buttons[5] = TooltipUtils.createHoverButton({
+        Name = "E_GamepassButton",
+        Size = buttonSize,
+        BackgroundTransparency = 1,
+        Image = IconAssets.getIcon("CURRENCY", "ROBUX"),
+        ScaleType = Enum.ScaleType.Fit,
+        SizeConstraint = Enum.SizeConstraint.RelativeYY,
+        [React.Event.Activated] = function()
+            if props.onGamepassClick then
+                props.onGamepassClick()
             end
-        }, "Settings")
-    else
-        -- Create empty placeholder for unauthorized users
-        buttons[5] = React.createElement("Frame", {
-            Name = "E_DebugPlaceholder",
-            Size = buttonSize,
-            BackgroundTransparency = 1,
-        })
-    end
+        end
+    }, "Gamepasses")
     
     -- 6. Boost
     buttons[6] = React.createElement("Frame", {
@@ -260,13 +251,13 @@ local function SideBar(props)
         })
     }
     
-    -- Row 1: Gamepass Button (centered)
-    children["Row1_Gamepass"] = React.createElement("Frame", {
+    -- Row 1: Free OP Item Button (centered)
+    children["Row1_FreeOpItem"] = React.createElement("Frame", {
         Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
-        GamepassButton = buttons[1]
+        FreeOpItemButton = buttons[1]
     })
     
     -- Row 2: Pet Button | Pet Index Button (side by side)
@@ -303,16 +294,14 @@ local function SideBar(props)
         BoostButton = buttons[6]  -- Boost
     })
     
-    -- Row 4: Debug Button (only if authorized)
-    if AuthorizationUtils.isAuthorized(localPlayer) then
-        children["Row4_Debug"] = React.createElement("Frame", {
-            Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
-            BackgroundTransparency = 1,
-            ZIndex = 50
-        }, {
-            DebugButton = buttons[5]
-        })
-    end
+    -- Row 4: Gamepass Button (centered)
+    children["Row4_Gamepass"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        GamepassButton = buttons[5]
+    })
     
     -- Calculate proper width for 2 buttons side by side plus spacing
     local sidebarWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 + 100 -- Width for 2 buttons + safe padding

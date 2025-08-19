@@ -286,6 +286,9 @@ local function App()
     }, {
         -- Unified SideBar with all navigation buttons including boost
         SideBar = React.createElement(SideBar, {
+            onFreeOpItemClick = function()
+                setFreeOpItemVisible(function(prev) return not prev end)
+            end,
             onGamepassClick = function()
                 setGamepassVisible(function(prev) return not prev end)
             end,
@@ -298,16 +301,19 @@ local function App()
             onRebirthClick = function()
                 setRebirthUIVisible(true)
             end,
-            onDebugClick = function()
-                setDebugVisible(function(prev) return not prev end)
-            end,
             onBoostClick = function()
                 setBoostPanelVisible(not boostPanelVisible)
-            end
+            end,
+            sharedSessionStartTime = sharedSessionStartTime.current,
+            sharedFreeOpLastClaimTime = sharedFreeOpLastClaimTime,
+            sharedFreeOpClaimCount = sharedFreeOpClaimCount
         }),
         
         -- Right side navigation (now includes all right-side buttons)
         RightSideBar = React.createElement(RightSideBar, {
+            onDebugClick = function()
+                setDebugVisible(function(prev) return not prev end)
+            end,
             onPotionClick = function()
                 setPotionInventoryVisible(function(prev) return not prev end)
             end,
@@ -320,14 +326,9 @@ local function App()
             onLeaderboardClick = function()
                 setLeaderboardVisible(function(prev) return not prev end)
             end,
-            onFreeOpItemClick = function()
-                setFreeOpItemVisible(function(prev) return not prev end)
-            end,
             sharedSessionStartTime = sharedSessionStartTime.current,
             sharedSessionClaimedRewards = sharedSessionClaimedRewards,
-            setSharedSessionClaimedRewards = setSharedSessionClaimedRewards,
-            sharedFreeOpLastClaimTime = sharedFreeOpLastClaimTime,
-            sharedFreeOpClaimCount = sharedFreeOpClaimCount
+            setSharedSessionClaimedRewards = setSharedSessionClaimedRewards
         }),
         
         -- UI Components

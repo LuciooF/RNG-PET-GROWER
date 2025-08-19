@@ -61,11 +61,11 @@ function FreeOpItemService:Initialize()
     
     -- No periodic updates needed - using client-side tracking
     
-    print("FreeOpItemService: Initialized successfully")
+    -- FreeOpItemService initialized
 end
 
 function FreeOpItemService:StartSession(player)
-    print("FreeOpItemService: Starting session for", player.Name)
+    -- FreeOpItemService session started
     
     playerSessions[player] = {
         sessionStart = os.time(),

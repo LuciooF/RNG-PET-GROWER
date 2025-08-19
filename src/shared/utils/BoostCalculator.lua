@@ -91,7 +91,6 @@ end
 -- Calculate potion boost multiplier for a specific boost type
 function BoostCalculator.calculatePotionMultiplier(activePotions, boostType)
     if not activePotions or not boostType then
-        print("BoostCalculator DEBUG: No activePotions or boostType provided")
         return 1
     end
     

@@ -56,16 +56,7 @@ local function playPurchaseSound(player, soundId)
     end)
 end
 
--- Level and door mapping
-local LEVEL_CONFIG = {
-    [1] = {startPlot = 1, endPlot = 5, doors = 5},   -- Level 1: Plots 1-5, Doors 1-5
-    [2] = {startPlot = 8, endPlot = 14, doors = 7},  -- Level 2: Plots 8-14, Doors 1-7 (skip 6,7)
-    [3] = {startPlot = 15, endPlot = 21, doors = 7}, -- Level 3: Plots 15-21, Doors 1-7
-    [4] = {startPlot = 22, endPlot = 28, doors = 7}, -- Level 4: Plots 22-28, Doors 1-7
-    [5] = {startPlot = 29, endPlot = 35, doors = 7}, -- Level 5: Plots 29-35, Doors 1-7
-    [6] = {startPlot = 36, endPlot = 42, doors = 7}, -- Level 6: Plots 36-42, Doors 1-7
-    [7] = {startPlot = 43, endPlot = 49, doors = 7}  -- Level 7: Plots 43-49, Doors 1-7
-}
+-- Level and door mapping now centralized in PlotConfig.LEVEL_CONFIG
 
 -- Store plot connections for cleanup
 local plotConnections = {}
@@ -76,8 +67,48 @@ local spawningDoors = {}
 -- Note: Pet ball counting is now handled client-side
 local MAX_PET_BALLS_PER_AREA = 50 -- Kept for GUI display purposes only
 
-
 -- Helper functions now centralized in PlotConfig
+
+-- Utility functions for common patterns
+function PlotService:GetPlayerAreaModel(player)
+    local AreaService = require(script.Parent.AreaService)
+    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
+    
+    if not assignedAreaNumber then
+        return nil
+    end
+    
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        return nil
+    end
+    
+    return playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber), assignedAreaNumber
+end
+
+function PlotService:GetPlayerDataSafe(player)
+    local playerData = DataService:GetPlayerData(player)
+    if not playerData then
+        return nil
+    end
+    return playerData
+end
+
+function PlotService:CreateOwnedPlotsSet(ownedPlotsArray)
+    local ownedPlots = {}
+    for _, plotNumber in pairs(ownedPlotsArray) do
+        ownedPlots[plotNumber] = true
+    end
+    return ownedPlots
+end
+
+function PlotService:CreateOwnedTubesSet(ownedTubesArray)
+    local ownedTubes = {}
+    for _, tubeNumber in pairs(ownedTubesArray) do
+        ownedTubes[tubeNumber] = true
+    end
+    return ownedTubes
+end
 
 function PlotService:SetupCollisionGroups()
     local PhysicsService = game:GetService("PhysicsService")
@@ -193,8 +224,7 @@ function PlotService:SetupAreaPlots(area)
         return
     end
     
-    -- Skip Surface GUI creation during initialization - will be created when player is assigned
-    -- self:AddDoorSurfaceGuis(area) -- DEFERRED FOR PERFORMANCE
+    -- Note: Door GUIs are pre-created in AreaTemplate and copied automatically
     
     -- Set up touch detection for each plot
     for i = 1, PlotConfig.TOTAL_PLOTS do
@@ -223,9 +253,7 @@ function PlotService:SetupAreaPlots(area)
     -- Set up SendHeaven button
     self:SetupSendHeavenButton(area)
     
-    -- Hide UI for plots that players already own and initialize door colors
-    self:UpdateAreaPlotUIs(area)
-    self:UpdateAreaTubePlotUIs(area)
+    -- UI updates for plots are now handled client-side by PlotGUIService via Rodux
     -- Hide plots/tubeplots based on rebirth visibility
     self:UpdatePlotVisibility(area)
     -- First color all doors red (locked state)
@@ -238,8 +266,8 @@ function PlotService:SetupAreaPlots(area)
     self:InitializeAreaTubes(area)
     -- Color pet mixer black (locked state)
     self:ColorPetMixerInArea(area, Color3.fromRGB(0, 0, 0))
-    -- Initialize counter GUI
-    self:UpdateCounterGUI(area.Name, 0)
+    -- Create initial counter GUI structure (client handles updates)
+    self:CreateCounterGUI(area.Name)
     
     -- Initialize processing counter with 0 when area is set up
     self:UpdateProcessingCounter(area.Name, 0)
@@ -252,7 +280,7 @@ function PlotService:SetupAreaPlots(area)
         for _, player in pairs(Players:GetPlayers()) do
             local playerArea = AreaService:GetPlayerAssignedArea(player)
             if playerArea == areaNumber then
-                self:UpdatePlotGUIs(area, player)
+                -- GUI updates now handled client-side by PlotGUIService via Rodux
                 self:UpdatePlotColors(area, player) -- Add "Purchased" SurfaceGuis for owned plots
                 self:UpdatePlotVisibility(area, player)
                 break
@@ -262,7 +290,7 @@ function PlotService:SetupAreaPlots(area)
 end
 
 
-function PlotService:SetupPlotPurchasing(area, plot, plotNumber)
+function PlotService:SetupPurchasing(area, purchaseObject, objectNumber, isPlot)
     -- Find the assigned player for this area
     local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
     if not areaNumber then
@@ -286,64 +314,35 @@ function PlotService:SetupPlotPurchasing(area, plot, plotNumber)
             return
         end
         
-        -- Attempt to purchase plot
-        self:AttemptPlotPurchase(player, plotNumber)
+        -- Attempt to purchase based on type
+        if isPlot then
+            self:AttemptPlotPurchase(player, objectNumber)
+        else
+            self:AttemptTubePlotPurchase(player, objectNumber)
+        end
     end
     
-    -- Connect to all parts in the plot (in case it's a model with multiple parts)
-    if plot:IsA("Model") then
-        for _, part in pairs(plot:GetDescendants()) do
+    -- Connect to all parts in the object (in case it's a model with multiple parts)
+    if purchaseObject:IsA("Model") then
+        for _, part in pairs(purchaseObject:GetDescendants()) do
             if part:IsA("BasePart") then
                 local connection = part.Touched:Connect(onTouch)
                 table.insert(plotConnections, connection)
             end
         end
-    elseif plot:IsA("BasePart") then
-        local connection = plot.Touched:Connect(onTouch)
+    elseif purchaseObject:IsA("BasePart") then
+        local connection = purchaseObject.Touched:Connect(onTouch)
         table.insert(plotConnections, connection)
     end
 end
 
+-- Convenience wrappers for backward compatibility
+function PlotService:SetupPlotPurchasing(area, plot, plotNumber)
+    self:SetupPurchasing(area, plot, plotNumber, true)
+end
+
 function PlotService:SetupTubePlotPurchasing(area, tubePlot, tubePlotNumber)
-    -- Find the assigned player for this area
-    local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
-    if not areaNumber then
-        return
-    end
-    
-    -- Set up touch detection
-    local function onTouch(hit)
-        local humanoid = hit.Parent:FindFirstChild("Humanoid")
-        if not humanoid then
-            return
-        end
-        
-        local player = Players:GetPlayerFromCharacter(hit.Parent)
-        if not player then
-            return
-        end
-        
-        -- Check if player owns this area
-        if not self:PlayerOwnsArea(player, areaNumber) then
-            return
-        end
-        
-        -- Attempt to purchase TubePlot
-        self:AttemptTubePlotPurchase(player, tubePlotNumber)
-    end
-    
-    -- Connect to all parts in the TubePlot (in case it's a model with multiple parts)
-    if tubePlot:IsA("Model") then
-        for _, part in pairs(tubePlot:GetDescendants()) do
-            if part:IsA("BasePart") then
-                local connection = part.Touched:Connect(onTouch)
-                table.insert(plotConnections, connection)
-            end
-        end
-    elseif tubePlot:IsA("BasePart") then
-        local connection = tubePlot.Touched:Connect(onTouch)
-        table.insert(plotConnections, connection)
-    end
+    self:SetupPurchasing(area, tubePlot, tubePlotNumber, false)
 end
 
 function PlotService:SetupSendHeavenButton(area)
@@ -405,7 +404,7 @@ end
 -- CreateTubePlotUI function removed - GUI creation is now handled client-side by PlotGUIService
 
 function PlotService:AttemptPlotPurchase(player, plotNumber)
-    local playerData = DataService:GetPlayerData(player)
+    local playerData = self:GetPlayerDataSafe(player)
     if not playerData then
         return false
     end
@@ -426,7 +425,7 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
     end
     
     -- Check if player has enough money
-    local plotCost = self:GetPlotCost(plotNumber, playerRebirths)
+    local plotCost = PlotConfig.getPlotCost(plotNumber, playerRebirths)
     if playerData.Resources.Money < plotCost then
         -- Not enough money
         return false
@@ -441,31 +440,23 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
         -- Play plot purchase sound with anti-spam protection
         playPurchaseSound(player, PLOT_PURCHASE_SOUND_ID)
         
-        -- Hide the UI for this plot
-        self:HidePlotUI(player, plotNumber)
+        -- Note: Plot UI updates are handled client-side by PlotGUIService via Rodux state changes
         
         -- Unlock the corresponding door
         self:UnlockDoorForPlot(player, plotNumber)
         
         -- Play button press animation and update plot colors in player's area
-        local AreaService = require(script.Parent.AreaService)
-        local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-        if assignedAreaNumber then
-            local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-            if playerAreas then
-                local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
-                if area then
-                    -- Play press animation
-                    self:PlayPlotPressAnimation(area, plotNumber, false)
-                    
-                    -- Add "Purchased" SurfaceGui to the plot
-                    local buttons = area:FindFirstChild("Buttons")
-                    if buttons then
-                        local plot = buttons:FindFirstChild("Plot" .. plotNumber)
-                        if plot then
-                            self:AddPurchasedSurfaceGui(area, plot)
-                        end
-                    end
+        local area, assignedAreaNumber = self:GetPlayerAreaModel(player)
+        if area then
+            -- Play press animation
+            self:PlayPlotPressAnimation(area, plotNumber, false)
+            
+            -- Add "Purchased" SurfaceGui to the plot
+            local buttons = area:FindFirstChild("Buttons")
+            if buttons then
+                local plot = buttons:FindFirstChild("Plot" .. plotNumber)
+                if plot then
+                    self:AddPurchasedSurfaceGui(area, plot)
                 end
             end
         end
@@ -477,7 +468,7 @@ function PlotService:AttemptPlotPurchase(player, plotNumber)
 end
 
 function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
-    local playerData = DataService:GetPlayerData(player)
+    local playerData = self:GetPlayerDataSafe(player)
     if not playerData then
         return false
     end
@@ -498,7 +489,7 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     end
     
     -- Check if player has enough money
-    local tubePlotCost = self:GetTubePlotCost(tubePlotNumber, playerRebirths)
+    local tubePlotCost = PlotConfig.getTubePlotCost(tubePlotNumber, playerRebirths)
     if playerData.Resources.Money < tubePlotCost then
         -- Not enough money
         return false
@@ -513,31 +504,23 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
         -- Play tube purchase sound with anti-spam protection
         playPurchaseSound(player, TUBE_PURCHASE_SOUND_ID)
         
-        -- Hide the UI for this TubePlot
-        self:HideTubePlotUI(player, tubePlotNumber)
+        -- Note: TubePlot UI updates are handled client-side by PlotGUIService via Rodux state changes
         
         -- Unlock the corresponding tube
         self:UnlockTubeForTubePlot(player, tubePlotNumber)
         
         -- Play button press animation and update plot colors in player's area
-        local AreaService = require(script.Parent.AreaService)
-        local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-        if assignedAreaNumber then
-            local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-            if playerAreas then
-                local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
-                if area then
-                    -- Play press animation for TubePlot
-                    self:PlayPlotPressAnimation(area, tubePlotNumber, true)
-                    
-                    -- Add "Purchased" SurfaceGui to the tube plot
-                    local buttons = area:FindFirstChild("Buttons")
-                    if buttons then
-                        local tubePlot = buttons:FindFirstChild("TubePlot" .. tubePlotNumber)
-                        if tubePlot then
-                            self:AddPurchasedSurfaceGui(area, tubePlot)
-                        end
-                    end
+        local area, assignedAreaNumber = self:GetPlayerAreaModel(player)
+        if area then
+            -- Play press animation for TubePlot
+            self:PlayPlotPressAnimation(area, tubePlotNumber, true)
+            
+            -- Add "Purchased" SurfaceGui to the tube plot
+            local buttons = area:FindFirstChild("Buttons")
+            if buttons then
+                local tubePlot = buttons:FindFirstChild("TubePlot" .. tubePlotNumber)
+                if tubePlot then
+                    self:AddPurchasedSurfaceGui(area, tubePlot)
                 end
             end
         end
@@ -548,13 +531,7 @@ function PlotService:AttemptTubePlotPurchase(player, tubePlotNumber)
     return false
 end
 
-function PlotService:GetPlotCost(plotNumber, playerRebirths)
-    return PlotConfig.getPlotCost(plotNumber, playerRebirths)
-end
-
-function PlotService:GetTubePlotCost(tubePlotNumber, playerRebirths)
-    return PlotConfig.getTubePlotCost(tubePlotNumber, playerRebirths)
-end
+-- GetPlotCost and GetTubePlotCost wrapper functions removed - use PlotConfig directly
 
 function PlotService:PlayerOwnsArea(player, areaNumber)
     -- Use AreaService to get the player's assigned area
@@ -563,11 +540,6 @@ function PlotService:PlayerOwnsArea(player, areaNumber)
     
     -- Player owns the area if it matches their assigned area
     return assignedAreaNumber == areaNumber
-end
-
-function PlotService:HidePlotUI(player, plotNumber)
-    -- No longer hide plot UI when purchased - let UpdatePlotGUIs handle showing "Purchased"
-    -- This function is kept for compatibility but does nothing
 end
 
 function PlotService:AddPurchasedSurfaceGui(area, plot)
@@ -765,13 +737,8 @@ function PlotService:RemoveTubeNumberSurfaceGui(tubePlot)
     end
 end
 
-function PlotService:HideTubePlotUI(player, tubePlotNumber)
-    -- No longer hide tubeplot UI when purchased - let UpdatePlotGUIs handle showing "Purchased"
-    -- This function is kept for compatibility but does nothing
-end
-
 function PlotService:GetPlayerOwnedPlots(player)
-    local playerData = DataService:GetPlayerData(player)
+    local playerData = self:GetPlayerDataSafe(player)
     if not playerData then
         return {}
     end
@@ -792,7 +759,7 @@ function PlotService:PlayerOwnsPlot(player, plotNumber)
 end
 
 function PlotService:GetPlayerOwnedTubes(player)
-    local playerData = DataService:GetPlayerData(player)
+    local playerData = self:GetPlayerDataSafe(player)
     if not playerData then
         return {}
     end
@@ -812,72 +779,8 @@ function PlotService:PlayerOwnsTube(player, tubeNumber)
     return false
 end
 
-function PlotService:UpdateAreaPlotUIs(area)
-    -- Find the assigned player for this area
-    local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
-    if not areaNumber then
-        return
-    end
-    
-    -- Find the player assigned to this area (we'll need to get this from AreaService)
-    -- For now, we'll check when players join and update then
-    Players.PlayerAdded:Connect(function(player)
-        -- Small delay to ensure data is loaded
-        wait(2)
-        self:UpdatePlayerAreaPlotUIs(player, area)
-    end)
-    
-    -- Update for existing players
-    for _, player in pairs(Players:GetPlayers()) do
-        task.spawn(function()
-            wait(2)
-            self:UpdatePlayerAreaPlotUIs(player, area)
-            -- Don't initialize doors here - it's handled by DataService callback
-        end)
-    end
-end
-
-function PlotService:UpdateAreaTubePlotUIs(area)
-    -- Find the assigned player for this area
-    local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
-    if not areaNumber then
-        return
-    end
-    
-    -- Find the player assigned to this area (we'll need to get this from AreaService)
-    -- For now, we'll check when players join and update then
-    Players.PlayerAdded:Connect(function(player)
-        -- Small delay to ensure data is loaded
-        wait(2)
-        self:UpdatePlayerAreaTubePlotUIs(player, area)
-    end)
-    
-    -- Update for existing players
-    for _, player in pairs(Players:GetPlayers()) do
-        task.spawn(function()
-            wait(2)
-            self:UpdatePlayerAreaTubePlotUIs(player, area)
-        end)
-    end
-end
-
-function PlotService:UpdatePlayerAreaPlotUIs(player, area)
-    if not self:PlayerOwnsArea(player, tonumber(area.Name:match("PlayerArea(%d+)"))) then
-        return
-    end
-    
-    -- Don't destroy owned plot UIs anymore - let UpdatePlotGUIs handle showing "Purchased"
-    -- This allows purchased plots to show "Purchased" text instead of disappearing
-end
-
-function PlotService:UpdatePlayerAreaTubePlotUIs(player, area)
-    if not self:PlayerOwnsArea(player, tonumber(area.Name:match("PlayerArea(%d+)"))) then
-        return
-    end
-    
-    -- Don't destroy owned tubeplot UIs anymore - let UpdatePlotGUIs handle showing "Purchased"
-    -- This allows purchased tubeplots to show "Purchased" text instead of disappearing
-end
+-- UpdateAreaPlotUIs, UpdateAreaTubePlotUIs, UpdatePlayerAreaPlotUIs, and UpdatePlayerAreaTubePlotUIs functions removed
+-- All UI updates are now handled client-side by PlotGUIService via Rodux state changes
 
 -- Start proximity checking for UI visibility
 function PlotService:StartProximityChecking()
@@ -904,7 +807,7 @@ function PlotService:UpdatePlotUIVisibility(player)
     end
     
     -- Get player's rebirth level for visibility checking
-    local playerData = DataService:GetPlayerData(player)
+    local playerData = self:GetPlayerDataSafe(player)
     local playerRebirths = playerData and playerData.Resources and playerData.Resources.Rebirths or 0
     
     -- Check each area for plot UIs
@@ -971,7 +874,7 @@ function PlotService:GetLevelAndDoorForPlot(plotNumber)
         return nil, nil
     end
     
-    for level, config in pairs(LEVEL_CONFIG) do
+    for level, config in pairs(PlotConfig.LEVEL_CONFIG) do
         if plotNumber >= config.startPlot and plotNumber <= config.endPlot then
             local doorNumber = plotNumber - config.startPlot + 1
             return level, doorNumber
@@ -1140,7 +1043,7 @@ function PlotService:InitializePlayerDoors(player)
     if playerAreas then
         local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
         if area then
-            self:UpdatePlotGUIs(area, player)
+            -- GUI updates now handled client-side by PlotGUIService via Rodux
             self:UpdatePlotColors(area, player)
             self:UpdatePlotVisibility(area, player)
         end
@@ -1432,13 +1335,6 @@ function PlotService:HideAllTubesInArea(area)
 end
 
 -- Initialize doors for an area based on assigned player's owned plots
-function PlotService:AddDoorSurfaceGuis(area)
-    -- Door GUIs are now pre-created in AreaTemplate and copied automatically
-    -- This function is kept for backward compatibility but does nothing
-    -- Static door level/number GUIs already exist from template copying
-end
-
-
 function PlotService:InitializeAreaDoors(area)
     local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
     if not areaNumber then
@@ -1803,7 +1699,7 @@ function PlotService:CollectPet(player, petBall)
     
     -- Add pet to player's inventory
     local DataService = require(script.Parent.DataService)
-    DataService:AddPetToPlayer(player, petData)
+    DataService:AddPet(player, petData)
     
     -- Create collection effect
     local TweenService = game:GetService("TweenService")
@@ -1832,8 +1728,8 @@ function PlotService:GetAreaNameFromDoor(door)
     return nil
 end
 
--- Update counter GUI for an area
-function PlotService:UpdateCounterGUI(areaName, count)
+-- Create initial counter GUI structure (client-side service handles updates)
+function PlotService:CreateCounterGUI(areaName)
     local playerAreas = Workspace:FindFirstChild("PlayerAreas")
     if not playerAreas then return end
     
@@ -1850,60 +1746,55 @@ function PlotService:UpdateCounterGUI(areaName, count)
     local counterAnchor = counterAnchorModel:FindFirstChild("CounterAnchor")
     if not counterAnchor then return end
     
-    -- Find or create SurfaceGui
+    -- Only create if it doesn't exist
     local surfaceGui = counterAnchor:FindFirstChild("CounterGUI")
-    if not surfaceGui then
-        surfaceGui = Instance.new("SurfaceGui")
-        surfaceGui.Name = "CounterGUI"
-        surfaceGui.Face = Enum.NormalId.Front
-        surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-        surfaceGui.PixelsPerStud = 50
-        surfaceGui.Parent = counterAnchor
-        
-        -- Background frame for the progress bar (bigger)
-        local backgroundFrame = Instance.new("Frame")
-        backgroundFrame.Name = "BackgroundFrame"
-        backgroundFrame.Size = UDim2.new(0.9, 0, 0.6, 0)
-        backgroundFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
-        backgroundFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        backgroundFrame.BorderSizePixel = 2
-        backgroundFrame.BorderColor3 = Color3.fromRGB(200, 200, 200)
-        backgroundFrame.Parent = surfaceGui
-        
-        -- Progress bar fill
-        local progressBar = Instance.new("Frame")
-        progressBar.Name = "ProgressBar"
-        progressBar.Size = UDim2.new(0, 0, 1, 0)
-        progressBar.Position = UDim2.new(0, 0, 0, 0)
-        progressBar.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
-        progressBar.BorderSizePixel = 0
-        progressBar.Parent = backgroundFrame
-        
-        -- Text label (inside the progress bar)
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "CounterText"
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.Position = UDim2.new(0, 0, 0, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Font = Enum.Font.FredokaOne
-        textLabel.TextSize = 36
-        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        textLabel.TextStrokeTransparency = 0
-        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        textLabel.TextXAlignment = Enum.TextXAlignment.Center
-        textLabel.TextYAlignment = Enum.TextYAlignment.Center
-        textLabel.Text = "Pets: 0/100" -- Set initial text
-        textLabel.ZIndex = 2
-        textLabel.Parent = backgroundFrame
+    if surfaceGui then
+        return -- Already exists
     end
     
-    -- Update text and progress bar
-    local backgroundFrame = surfaceGui:FindFirstChild("BackgroundFrame")
-    local textLabel = backgroundFrame and backgroundFrame:FindFirstChild("CounterText")
-    local progressBar = backgroundFrame and backgroundFrame:FindFirstChild("ProgressBar")
+    -- Create SurfaceGui
+    surfaceGui = Instance.new("SurfaceGui")
+    surfaceGui.Name = "CounterGUI"
+    surfaceGui.Face = Enum.NormalId.Front
+    surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    surfaceGui.PixelsPerStud = 50
+    surfaceGui.Parent = counterAnchor
     
-    -- NOTE: Counter text and progress bar are now handled client-side by ClientPetBallService
-    -- Server no longer updates these - client-side service will handle the display
+    -- Create background frame for the progress bar
+    local backgroundFrame = Instance.new("Frame")
+    backgroundFrame.Name = "BackgroundFrame"
+    backgroundFrame.Size = UDim2.new(0.9, 0, 0.6, 0)
+    backgroundFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
+    backgroundFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    backgroundFrame.BorderSizePixel = 2
+    backgroundFrame.BorderColor3 = Color3.fromRGB(200, 200, 200)
+    backgroundFrame.Parent = surfaceGui
+    
+    -- Create progress bar fill
+    local progressBar = Instance.new("Frame")
+    progressBar.Name = "ProgressBar"
+    progressBar.Size = UDim2.new(0, 0, 1, 0)
+    progressBar.Position = UDim2.new(0, 0, 0, 0)
+    progressBar.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+    progressBar.BorderSizePixel = 0
+    progressBar.Parent = backgroundFrame
+    
+    -- Create text label
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "CounterText"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Position = UDim2.new(0, 0, 0, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.FredokaOne
+    textLabel.TextSize = 36
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    textLabel.Text = "Pets: 0/" .. MAX_PET_BALLS_PER_AREA
+    textLabel.ZIndex = 2
+    textLabel.Parent = backgroundFrame
 end
 
 -- Update processing pets counter GUI for a specific area
@@ -1967,27 +1858,10 @@ function PlotService:UpdateProcessingCounter(areaName, processingCount)
     end
 end
 
--- Handle pet ball collection notification from client (no longer needed since balls are client-only)
-function PlotService:OnPetBallCollected(ballPath)
-    -- Note: Pet ball counting is now handled client-side, this function is kept for compatibility
-end
-
 -- Reinitialize a player's area after data reset
 function PlotService:ReinitializePlayerArea(player)
     -- Get player's assigned area from AreaService
-    local AreaService = require(script.Parent.AreaService)
-    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-    
-    if not assignedAreaNumber then
-        return
-    end
-    
-    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        return
-    end
-    
-    local targetArea = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
+    local targetArea, assignedAreaNumber = self:GetPlayerAreaModel(player)
     if not targetArea then
         return
     end
@@ -1998,37 +1872,20 @@ function PlotService:ReinitializePlayerArea(player)
     -- Reset all tubes to hidden (locked)
     self:HideAllTubesInArea(targetArea)
     
-    -- Show all plot UIs again (since player owns no plots after reset)
-    self:RestoreAllPlotUIs(targetArea)
-    
-    -- Show all TubePlot UIs again
-    self:RestoreAllTubePlotUIs(targetArea)
+    -- Plot/TubePlot UI restoration is now handled client-side by PlotGUIService
     
     -- Initialize doors and tubes for any owned plots/tubes (should be none after reset)
     self:InitializeAreaDoors(targetArea)
     self:InitializeAreaTubes(targetArea)
     
     -- Update plot GUIs and visibility
-    self:UpdatePlotGUIs(targetArea, player)
+    -- GUI updates now handled client-side by PlotGUIService via Rodux
     self:UpdatePlotColors(targetArea, player)
     self:UpdatePlotVisibility(targetArea, player)
     
 end
 
--- Restore all plot UIs in an area (after data reset)
-function PlotService:RestoreAllPlotUIs(area)
-    for i = 1, PlotConfig.TOTAL_PLOTS do
-        -- Check if UI already exists
-        -- Plot UI creation is now handled client-side by PlotGUIService
-    end
-end
-
--- Restore all TubePlot UIs in an area (after data reset)
-function PlotService:RestoreAllTubePlotUIs(area)
-    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
-        -- TubePlot UI creation is now handled client-side by PlotGUIService
-    end
-end
+-- RestoreAllPlotUIs and RestoreAllTubePlotUIs functions removed - GUI creation is now handled client-side by PlotGUIService
 
 -- Play button press animation for a plot
 function PlotService:PlayPlotPressAnimation(area, plotNumber, isTubePlot)
@@ -2128,31 +1985,93 @@ function PlotService:ScaleModel(model, scale)
 end
 
 -- Update plot and tubeplot visibility based on player rebirth level
+-- Helper function to find assigned player for area
+function PlotService:FindAssignedPlayerForArea(areaNumber)
+    local AreaService = require(script.Parent.AreaService)
+    for _, player in pairs(Players:GetPlayers()) do
+        local playerArea = AreaService:GetPlayerAssignedArea(player)
+        if playerArea == areaNumber then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Helper function to get player rebirth level
+function PlotService:GetPlayerRebirthLevel(player)
+    if not player then
+        return 0
+    end
+    
+    local playerData = self:GetPlayerDataSafe(player)
+    return playerData and playerData.Resources and playerData.Resources.Rebirths or 0
+end
+
+-- Helper function to set object visibility
+function PlotService:SetObjectVisibility(object, visible)
+    if object:IsA("Model") then
+        for _, part in pairs(object:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = visible and 0 or 1
+                part.CanCollide = visible
+            end
+        end
+    elseif object:IsA("BasePart") then
+        object.Transparency = visible and 0 or 1
+        object.CanCollide = visible
+    end
+end
+
+-- Update plots visibility and GUI elements
+function PlotService:UpdatePlotsVisibility(buttonsFolder, playerRebirths)
+    for i = 1, PlotConfig.TOTAL_PLOTS do
+        local plot = buttonsFolder:FindFirstChild("Plot" .. i)
+        if plot then
+            local rebirthRequirement = PlotConfig.getPlotRebirthRequirement(i)
+            local shouldShow = playerRebirths >= (rebirthRequirement - 1)
+            
+            self:SetObjectVisibility(plot, shouldShow)
+            
+            if shouldShow then
+                self:AddLevelDoorSurfaceGui(plot, i)
+            else
+                self:RemoveLevelDoorSurfaceGui(plot)
+            end
+        end
+    end
+end
+
+-- Update tubeplots visibility and GUI elements  
+function PlotService:UpdateTubePlotsVisibility(buttonsFolder, playerRebirths)
+    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
+        local tubePlot = buttonsFolder:FindFirstChild("TubePlot" .. i)
+        if tubePlot then
+            local rebirthRequirement = PlotConfig.getTubePlotRebirthRequirement(i)
+            local shouldShow = playerRebirths >= (rebirthRequirement - 1)
+            
+            self:SetObjectVisibility(tubePlot, shouldShow)
+            
+            if shouldShow then
+                self:AddTubeNumberSurfaceGui(tubePlot, i)
+            else
+                self:RemoveTubeNumberSurfaceGui(tubePlot)
+            end
+        end
+    end
+end
+
+-- Main function - now much cleaner and focused
 function PlotService:UpdatePlotVisibility(area, player)
     local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
     if not areaNumber then
         return
     end
     
-    -- If no specific player provided, find the assigned player for this area
-    if not player then
-        local AreaService = require(script.Parent.AreaService)
-        -- Find which player is assigned to this area
-        for _, areaPlayer in pairs(Players:GetPlayers()) do
-            local playerArea = AreaService:GetPlayerAssignedArea(areaPlayer)
-            if playerArea == areaNumber then
-                player = areaPlayer
-                break
-            end
-        end
-    end
+    -- Find the assigned player if not provided
+    player = player or self:FindAssignedPlayerForArea(areaNumber)
     
-    -- If still no player, default to showing plots for rebirth level 0-1
-    local playerRebirths = 0
-    if player then
-        local playerData = DataService:GetPlayerData(player)
-        playerRebirths = playerData and playerData.Resources and playerData.Resources.Rebirths or 0
-    end
+    -- Get player's rebirth level
+    local playerRebirths = self:GetPlayerRebirthLevel(player)
     
     -- Update level visibility based on rebirth requirements
     self:UpdateLevelVisibility(area, playerRebirths)
@@ -2162,229 +2081,15 @@ function PlotService:UpdatePlotVisibility(area, player)
         return
     end
     
-    -- Get player's owned plots for level/door GUI management
-    local ownedPlots = {}
-    if player then
-        local ownedPlotsArray = self:GetPlayerOwnedPlots(player)
-        for _, plotNumber in pairs(ownedPlotsArray) do
-            ownedPlots[plotNumber] = true
-        end
-    end
-    
-    -- Update plot visibility
-    for i = 1, PlotConfig.TOTAL_PLOTS do
-        local plotName = "Plot" .. i
-        local plot = buttonsFolder:FindFirstChild(plotName)
-        
-        if plot then
-            local plotRebirthRequirement = PlotConfig.getPlotRebirthRequirement(i)
-            local shouldShowPlot = playerRebirths >= (plotRebirthRequirement - 1) -- Can see current level + next level
-            
-            -- Hide/show the entire plot model
-            if plot:IsA("Model") then
-                for _, part in pairs(plot:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = shouldShowPlot and 0 or 1
-                        part.CanCollide = shouldShowPlot
-                    end
-                end
-            elseif plot:IsA("BasePart") then
-                plot.Transparency = shouldShowPlot and 0 or 1
-                plot.CanCollide = shouldShowPlot
-            end
-            
-            -- Manage level/door GUI based on visibility only (show on both owned and unowned visible plots)
-            if shouldShowPlot then
-                -- Plot is visible - add level/door GUI if not already present
-                self:AddLevelDoorSurfaceGui(plot, i)
-            else
-                -- Plot is invisible - remove level/door GUI if present
-                self:RemoveLevelDoorSurfaceGui(plot)
-            end
-        end
-    end
-    
-    -- Update tubeplot visibility
-    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
-        local tubePlotName = "TubePlot" .. i
-        local tubePlot = buttonsFolder:FindFirstChild(tubePlotName)
-        
-        if tubePlot then
-            local tubePlotRebirthRequirement = PlotConfig.getTubePlotRebirthRequirement(i)
-            local shouldShowTubePlot = playerRebirths >= (tubePlotRebirthRequirement - 1) -- Can see current level + next level
-            
-            -- Hide/show the entire tubeplot model
-            if tubePlot:IsA("Model") then
-                for _, part in pairs(tubePlot:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = shouldShowTubePlot and 0 or 1
-                        part.CanCollide = shouldShowTubePlot
-                    end
-                end
-            elseif tubePlot:IsA("BasePart") then
-                tubePlot.Transparency = shouldShowTubePlot and 0 or 1
-                tubePlot.CanCollide = shouldShowTubePlot
-            end
-            
-            -- Manage tube number GUI based on visibility (show on all visible tube plots)
-            if shouldShowTubePlot then
-                -- Tube plot is visible - add tube number GUI if not already present
-                self:AddTubeNumberSurfaceGui(tubePlot, i)
-            else
-                -- Tube plot is invisible - remove tube number GUI if present
-                self:RemoveTubeNumberSurfaceGui(tubePlot)
-            end
-        end
-    end
+    -- Update plots and tubeplots visibility
+    self:UpdatePlotsVisibility(buttonsFolder, playerRebirths)
+    self:UpdateTubePlotsVisibility(buttonsFolder, playerRebirths)
 end
 
--- Create plot UIs for newly unlocked rebirth tiers
-function PlotService:CreateNewRebirthTierUIs(area, player)
-    if not player then
-        return
-    end
-    
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData then
-        return
-    end
-    
-    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
-    local buttonsFolder = area:FindFirstChild("Buttons")
-    if not buttonsFolder then
-        return
-    end
-    
-    -- Plot and TubePlot UI creation is now handled entirely client-side by PlotGUIService
-    -- This function is no longer needed as the client creates all GUIs dynamically
-end
+-- CreateNewRebirthTierUIs function removed - GUI creation is now handled client-side by PlotGUIService
 
 -- Update plot and tubeplot GUIs based on player status
-function PlotService:UpdatePlotGUIs(area, player)
-    if not player then
-        return
-    end
-    
-    local playerData = DataService:GetPlayerData(player)
-    if not playerData then
-        return
-    end
-    
-    -- First, create any missing UIs for newly unlocked rebirth tiers
-    self:CreateNewRebirthTierUIs(area, player)
-    
-    local playerRebirths = playerData.Resources and playerData.Resources.Rebirths or 0
-    local playerMoney = playerData.Resources and playerData.Resources.Money or 0
-    local ownedPlots = self:GetPlayerOwnedPlots(player)
-    local ownedTubes = self:GetPlayerOwnedTubes(player)
-    
-    -- Create sets for faster lookup
-    local ownedPlotsSet = {}
-    for _, plotNumber in pairs(ownedPlots) do
-        ownedPlotsSet[plotNumber] = true
-    end
-    
-    local ownedTubesSet = {}
-    for _, tubeNumber in pairs(ownedTubes) do
-        ownedTubesSet[tubeNumber] = true
-    end
-    
-    -- Update plot GUIs
-    for plotNumber = 1, PlotConfig.TOTAL_PLOTS do
-        if plotNumber ~= 6 and plotNumber ~= 7 then
-            local uiPart = area:FindFirstChild("PlotUI_" .. plotNumber)
-            if uiPart then
-                local billboard = uiPart:FindFirstChild("PlotBillboard")
-                if billboard then
-                    local costLabel = billboard:FindFirstChild("CostLabel")
-                    if costLabel then
-                        local requiredRebirths = PlotConfig.getPlotRebirthRequirement(plotNumber)
-                        local plotCost = self:GetPlotCost(plotNumber, playerRebirths)
-                        
-                        if ownedPlotsSet[plotNumber] then
-                            -- White text for purchased plots
-                            costLabel.Text = "Owned"
-                            costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                            costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                            costLabel.TextSize = 24
-                        elseif playerRebirths < requiredRebirths then
-                            -- Only show rebirth requirement on middle plot of row
-                            if PlotConfig.isMiddlePlotOfRow(plotNumber) then
-                                -- Large black text with white outline for rebirth requirement
-                                costLabel.Text = requiredRebirths .. " Rebirths Required"
-                                costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-                                costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-                                costLabel.TextSize = 36 -- Larger text for visibility
-                            else
-                                -- Hide text on non-middle plots that need rebirths
-                                costLabel.Text = ""
-                            end
-                        elseif playerMoney >= plotCost then
-                            -- Green text for affordable plots
-                            costLabel.Text = plotCost == 0 and "FREE" or ("$" .. plotCost)
-                            costLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                            costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                            costLabel.TextSize = 24
-                        else
-                            -- Red text for unaffordable plots
-                            costLabel.Text = plotCost == 0 and "FREE" or ("$" .. plotCost)
-                            costLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                            costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                            costLabel.TextSize = 24
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Update tubeplot GUIs
-    for tubeNumber = 1, PlotConfig.TOTAL_TUBEPLOTS do
-        local uiPart = area:FindFirstChild("TubePlotUI_" .. tubeNumber)
-        if uiPart then
-            local billboard = uiPart:FindFirstChild("TubePlotBillboard")
-            if billboard then
-                local costLabel = billboard:FindFirstChild("CostLabel")
-                if costLabel then
-                    local requiredRebirths = PlotConfig.getTubePlotRebirthRequirement(tubeNumber)
-                    local tubePlotCost = self:GetTubePlotCost(tubeNumber, playerRebirths)
-                    
-                    if ownedTubesSet[tubeNumber] then
-                        -- Orange text for purchased tubeplots
-                        costLabel.Text = "Owned"
-                        costLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
-                        costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                        costLabel.TextSize = 24
-                    elseif playerRebirths < requiredRebirths then
-                        -- Only show rebirth requirement on first inaccessible tubeplot
-                        if PlotConfig.shouldShowTubePlotRebirthText(tubeNumber, playerRebirths) then
-                            -- Large black text with white outline for rebirth requirement
-                            costLabel.Text = requiredRebirths .. " Rebirths Required"
-                            costLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-                            costLabel.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-                            costLabel.TextSize = 36 -- Larger text for visibility
-                        else
-                            -- Hide text on other tubeplots that need rebirths
-                            costLabel.Text = ""
-                        end
-                    elseif playerMoney >= tubePlotCost then
-                        -- Green text for affordable tubeplots
-                        costLabel.Text = tubePlotCost == 0 and "FREE" or ("$" .. tubePlotCost)
-                        costLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                        costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                        costLabel.TextSize = 24
-                    else
-                        -- Red text for unaffordable tubeplots
-                        costLabel.Text = tubePlotCost == 0 and "FREE" or ("$" .. tubePlotCost)
-                        costLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                        costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                        costLabel.TextSize = 24
-                    end
-                end
-            end
-        end
-    end
-end
+-- UpdatePlotGUIs function removed - all GUI updates are now handled client-side by PlotGUIService via Rodux state changes
 
 -- Update plot colors based on ownership and affordability
 function PlotService:UpdatePlotColors(area, player)
@@ -2496,22 +2201,9 @@ end
 function PlotService:OnPlayerDataReset(player)
     -- Updating door colors and plot states after reset
     
-    local AreaService = require(script.Parent.AreaService)
-    local assignedAreaNumber = AreaService:GetPlayerAssignedArea(player)
-    
-    if not assignedAreaNumber then
-        -- No assigned area found
-        return
-    end
-    
-    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
-        return
-    end
-    
-    local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
+    local area, assignedAreaNumber = self:GetPlayerAreaModel(player)
     if not area then
-        -- Area not found
+        -- No assigned area found
         return
     end
     
@@ -2533,7 +2225,7 @@ function PlotService:OnPlayerDataReset(player)
     end
     
     -- Update plot GUIs to show costs again (since no plots are owned)
-    self:UpdatePlotGUIs(area, player)
+    -- GUI updates now handled client-side by PlotGUIService via Rodux
     
     -- Update plot visibility based on rebirth level (should be 0 now)
     self:UpdatePlotVisibility(area, player)

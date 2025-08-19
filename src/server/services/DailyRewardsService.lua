@@ -9,7 +9,7 @@ local DailyRewardsService = {}
 DailyRewardsService.__index = DailyRewardsService
 
 function DailyRewardsService:Initialize()
-    print("DailyRewardsService: Initialized")
+    -- DailyRewardsService initialized
     
     -- Set up remote events
     self:SetupRemoteEvents()

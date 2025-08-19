@@ -5,6 +5,17 @@ local PlotConfig = {}
 PlotConfig.TOTAL_PLOTS = 49  -- Server has 49 plots total
 PlotConfig.TOTAL_TUBEPLOTS = 10
 
+-- Level configuration mapping
+PlotConfig.LEVEL_CONFIG = {
+    [1] = {startPlot = 1, endPlot = 5, doors = 5, rebirthRequired = 0},
+    [2] = {startPlot = 8, endPlot = 14, doors = 7, rebirthRequired = 1},
+    [3] = {startPlot = 15, endPlot = 21, doors = 7, rebirthRequired = 2},
+    [4] = {startPlot = 22, endPlot = 28, doors = 7, rebirthRequired = 4},
+    [5] = {startPlot = 29, endPlot = 35, doors = 7, rebirthRequired = 5},
+    [6] = {startPlot = 36, endPlot = 42, doors = 7, rebirthRequired = 6},
+    [7] = {startPlot = 43, endPlot = 49, doors = 7, rebirthRequired = 7}
+}
+
 -- Plot pricing configuration
 local PLOT_BASE_COST = 75 -- Set to 75
 local PLOT_SCALING_FACTOR = 1.8 -- Set to 1.8 (80% increment per plot)
@@ -94,6 +105,21 @@ function PlotConfig.shouldShowTubePlotRebirthText(tubePlotNumber, playerRebirths
     -- Only show for NEXT rebirth tier and on first tubeplot that needs higher rebirth
     return requiredRebirths == (playerRebirths + 1) and 
            (tubePlotNumber == 1 or playerRebirths >= PlotConfig.getTubePlotRebirthRequirement(tubePlotNumber - 1))
+end
+
+-- Helper function to get door number for a plot (used by PlotGUIService)
+function PlotConfig.getDoorForPlot(plotNumber)
+    if plotNumber == 6 or plotNumber == 7 then
+        return nil -- These plots don't exist
+    end
+    
+    for level, config in pairs(PlotConfig.LEVEL_CONFIG) do
+        if plotNumber >= config.startPlot and plotNumber <= config.endPlot then
+            return plotNumber - config.startPlot + 1
+        end
+    end
+    
+    return nil
 end
 
 return PlotConfig

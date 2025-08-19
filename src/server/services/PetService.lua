@@ -394,7 +394,7 @@ function PetService:ProcessOnePetPerTube(player, ownedTubes)
             if playerAreas then
                 local area = playerAreas:FindFirstChild("PlayerArea" .. assignedAreaNumber)
                 if area then
-                    PlotService:UpdatePlotGUIs(area, player)
+                    -- GUI updates are now handled client-side by PlotGUIService via Rodux state changes
                 end
             end
         end

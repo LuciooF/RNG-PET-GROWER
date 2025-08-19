@@ -22,7 +22,7 @@ local GUI_CONFIG = {
         moneyIconColor = Color3.fromRGB(255, 255, 255),
         costLabelColor = Color3.fromRGB(255, 255, 255),
         bonusLabelText = function(data) 
-            local doorNumber = PlotGUIService:GetDoorForPlot(data.number)
+            local doorNumber = PlotConfig.getDoorForPlot(data.number)
             return doorNumber and ("+" .. doorNumber .. " Luck") or ""
         end,
         bonusLabelColor = Color3.fromRGB(255, 215, 0), -- Gold for luck
@@ -183,30 +183,7 @@ local function createGUI(area, targetObject, guiType, number)
     }
 end
 
--- Helper function to get door number for a plot
-function PlotGUIService:GetDoorForPlot(plotNumber)
-    if plotNumber == 6 or plotNumber == 7 then
-        return nil -- These plots don't exist
-    end
-    
-    local LEVEL_CONFIG = {
-        [1] = {startPlot = 1, endPlot = 5},
-        [2] = {startPlot = 8, endPlot = 14},
-        [3] = {startPlot = 15, endPlot = 21},
-        [4] = {startPlot = 22, endPlot = 28},
-        [5] = {startPlot = 29, endPlot = 35},
-        [6] = {startPlot = 36, endPlot = 42},
-        [7] = {startPlot = 43, endPlot = 49}
-    }
-    
-    for level, config in pairs(LEVEL_CONFIG) do
-        if plotNumber >= config.startPlot and plotNumber <= config.endPlot then
-            return plotNumber - config.startPlot + 1
-        end
-    end
-    
-    return nil
-end
+-- GetDoorForPlot function moved to PlotConfig.getDoorForPlot() for centralization
 
 -- Public interface functions
 function PlotGUIService:CreatePlotGUI(area, plot, plotNumber)
@@ -391,7 +368,7 @@ function PlotGUIService:Initialize()
         -- Initial update
         self:UpdateAllGUIs()
         
-        print("PlotGUIService: Successfully initialized with", table.maxn(createdGUIs), "GUIs")
+        -- PlotGUIService initialized successfully
     end)
     
     if not success then
@@ -417,7 +394,7 @@ function PlotGUIService:Cleanup()
     end
     createdGUIs = {}
     
-    print("PlotGUIService: Cleaned up successfully")
+    -- PlotGUIService cleaned up
 end
 
 return PlotGUIService

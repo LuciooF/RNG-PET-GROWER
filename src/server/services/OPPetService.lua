@@ -12,7 +12,7 @@ OPPetService.__index = OPPetService
 function OPPetService:Initialize()
     -- ProcessReceipt is handled by Main.server.lua to avoid conflicts
     -- This service provides ProcessReceipt method for Main.server.lua to call
-    print("OPPetService initialized successfully")
+    -- OPPetService initialized
 end
 
 -- Process dev product purchases

@@ -39,7 +39,7 @@ function PetLimitService:Initialize()
         return self:GetPlayerPetLimit(player)
     end
     
-    print("PetLimitService initialized successfully")
+    -- PetLimitService initialized
 end
 
 -- Handle purchase request from client

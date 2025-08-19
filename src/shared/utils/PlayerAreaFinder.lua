@@ -109,7 +109,7 @@ function PlayerAreaFinder:WaitForPlayerArea(timeout)
     end
     
     if foundArea then
-        print("PlayerAreaFinder: Successfully found player area for", player.Name)
+        -- PlayerAreaFinder found player area
     else
         warn("PlayerAreaFinder: Failed to find player area for", player.Name, "after", timeout, "seconds")
     end

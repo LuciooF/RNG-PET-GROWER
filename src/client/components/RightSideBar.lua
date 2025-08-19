@@ -10,7 +10,7 @@ local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local DataSyncService = require(script.Parent.Parent.services.DataSyncService)
 local PlaytimeRewardsConfig = require(ReplicatedStorage.config.PlaytimeRewardsConfig)
 local DailyRewardsConfig = require(ReplicatedStorage.config.DailyRewardsConfig)
-local FreeOpItemButton = require(script.Parent.FreeOpItemButton)
+-- FreeOpItemButton moved to left sidebar
 
 -- Sound configuration
 local HOVER_SOUND_ID = "rbxassetid://6895079853"
@@ -292,19 +292,59 @@ local function RightSideBar(props)
     -- Create buttons array in the order we want them to appear
     local buttons = {}
     
-    -- 1. Free OP Item Button
-    buttons[1] = React.createElement(FreeOpItemButton, {
-        Name = "A_FreeOpItemButton",
-        Size = UDim2.new(0, math.max(buttonPixelSize, playtimeButtonWidth), 0, buttonPixelSize),
-        buttonPixelSize = buttonPixelSize,
-        sharedSessionStartTime = props.sharedSessionStartTime,
-        sharedFreeOpLastClaimTime = props.sharedFreeOpLastClaimTime,
-        sharedFreeOpClaimCount = props.sharedFreeOpClaimCount,
-        onFreeOpItemClick = function()
-            if props.onFreeOpItemClick then
-                props.onFreeOpItemClick()
+    -- 1. Daily Rewards Button (swapped from position 5)
+    buttons[1] = React.createElement("Frame", {
+        Name = "A_DailyRewardsButtonContainer",
+        Size = buttonSize,
+        BackgroundTransparency = 1,
+        ZIndex = 50
+    }, {
+        DailyRewardsButton = React.createElement("ImageButton", {
+            Name = "DailyRewardsButton",
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://78432604638666", -- Calendar icon
+            ImageColor3 = Color3.fromRGB(255, 255, 255), -- No tint for daily rewards button
+            ScaleType = Enum.ScaleType.Fit,
+            SizeConstraint = Enum.SizeConstraint.RelativeYY,
+            ZIndex = 50,
+            [React.Event.Activated] = function()
+                if props.onDailyRewardsClick then
+                    props.onDailyRewardsClick()
+                end
+            end,
+            [React.Event.MouseEnter] = function(rbx)
+                playHoverSound()
+                spinButton(rbx)
             end
-        end
+        }),
+        
+        -- Notification badge for claimable daily rewards
+        claimableDailyCount > 0 and React.createElement("Frame", {
+            Name = "DailyNotificationBadge",
+            Size = UDim2.new(0, ScreenUtils.getProportionalSize(24), 0, ScreenUtils.getProportionalSize(24)),
+            Position = UDim2.new(1, -ScreenUtils.getProportionalSize(8), 0, ScreenUtils.getProportionalSize(8)),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundColor3 = Color3.fromRGB(255, 50, 50), -- Red notification badge
+            BorderSizePixel = 0,
+            ZIndex = 53
+        }, {
+            BadgeCorner = React.createElement("UICorner", {
+                CornerRadius = UDim.new(0.5, 0) -- Circular badge
+            }),
+            BadgeText = React.createElement("TextLabel", {
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = tostring(claimableDailyCount),
+                TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
+                TextSize = ScreenUtils.getTextSize(18),
+                Font = Enum.Font.FredokaOne,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 54
+            })
+        }) or nil
     })
     
     -- 2. Playtime Rewards Button (original styled design)
@@ -525,60 +565,38 @@ local function RightSideBar(props)
         })
     })
     
-    -- 5. Daily Rewards Button
-    buttons[5] = React.createElement("Frame", {
-        Name = "E_DailyRewardsButtonContainer",
-        Size = buttonSize,
-        BackgroundTransparency = 1,
-        ZIndex = 50
-    }, {
-        DailyRewardsButton = React.createElement("ImageButton", {
-            Name = "DailyRewardsButton",
-            Size = UDim2.new(1, 0, 1, 0),
-            Position = UDim2.new(0, 0, 0, 0),
+    -- 5. Debug Button (swapped from position 1, only for authorized users)
+    local Players = game:GetService("Players")
+    local AuthorizationUtils = require(ReplicatedStorage.utils.AuthorizationUtils)
+    local TooltipUtils = require(ReplicatedStorage.utils.TooltipUtils)
+    local localPlayer = Players.LocalPlayer
+    
+    if AuthorizationUtils.isAuthorized(localPlayer) then
+        buttons[5] = TooltipUtils.createHoverButton({
+            Name = "E_DebugButton",
+            Size = buttonSize,
             BackgroundTransparency = 1,
-            Image = "rbxassetid://78432604638666", -- Calendar icon
-            ImageColor3 = Color3.fromRGB(255, 255, 255), -- No tint for daily rewards button
+            Image = IconAssets.getIcon("UI", "SETTINGS"),
             ScaleType = Enum.ScaleType.Fit,
             SizeConstraint = Enum.SizeConstraint.RelativeYY,
-            ZIndex = 50,
             [React.Event.Activated] = function()
-                if props.onDailyRewardsClick then
-                    props.onDailyRewardsClick()
+                if props.onDebugClick then
+                    props.onDebugClick()
                 end
             end,
             [React.Event.MouseEnter] = function(rbx)
                 playHoverSound()
                 spinButton(rbx)
             end
-        }),
-        
-        -- Notification badge for claimable daily rewards
-        claimableDailyCount > 0 and React.createElement("Frame", {
-            Name = "DailyNotificationBadge",
-            Size = UDim2.new(0, ScreenUtils.getProportionalSize(24), 0, ScreenUtils.getProportionalSize(24)),
-            Position = UDim2.new(1, -ScreenUtils.getProportionalSize(8), 0, ScreenUtils.getProportionalSize(8)),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = Color3.fromRGB(255, 50, 50), -- Red notification badge
-            BorderSizePixel = 0,
-            ZIndex = 53
-        }, {
-            BadgeCorner = React.createElement("UICorner", {
-                CornerRadius = UDim.new(0.5, 0) -- Circular badge
-            }),
-            BadgeText = React.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = tostring(claimableDailyCount),
-                TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
-                TextSize = ScreenUtils.getTextSize(18),
-                Font = Enum.Font.FredokaOne,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Center,
-                ZIndex = 54
-            })
-        }) or nil
-    })
+        }, "Settings")
+    else
+        -- Create empty placeholder for unauthorized users
+        buttons[5] = React.createElement("Frame", {
+            Name = "E_DebugPlaceholder",
+            Size = buttonSize,
+            BackgroundTransparency = 1,
+        })
+    end
     
     -- Convert array to React children object
     local children = {
@@ -591,9 +609,14 @@ local function RightSideBar(props)
         })
     }
     
-    -- Row 1: Free OP Item Button (centered)
-    children["Row1_FreeOpItem"] = React.createElement("Frame", {
-        Size = UDim2.new(0, maxRowWidth, 0, buttonPixelSize), -- Use full row width
+    -- Calculate max row width first
+    local maxSingleButtonWidth = math.max(buttonPixelSize, playtimeButtonWidth)
+    local doubleButtonWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 -- Width of row with 2 buttons
+    local maxRowWidth = math.max(maxSingleButtonWidth, doubleButtonWidth)
+
+    -- Row 1: Daily Rewards Button (centered)
+    children["Row1_DailyRewards"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
@@ -603,7 +626,7 @@ local function RightSideBar(props)
             VerticalAlignment = Enum.VerticalAlignment.Center,
             SortOrder = Enum.SortOrder.Name
         }),
-        FreeOpItemButton = buttons[1]
+        DailyRewardsButton = buttons[1]
     })
     
     -- Row 2: Potions Button | Leaderboard Button (side by side)
@@ -638,45 +661,24 @@ local function RightSideBar(props)
         PlaytimeRewardsButton = buttons[2]
     })
     
-    -- Row4: Daily Rewards Button (centered)
-    children["Row4_DailyRewards"] = React.createElement("Frame", {
-        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
-        BackgroundTransparency = 1,
-        ZIndex = 50
-    }, {
-        Layout = React.createElement("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
-            HorizontalAlignment = Enum.HorizontalAlignment.Center,
-            VerticalAlignment = Enum.VerticalAlignment.Center,
-            SortOrder = Enum.SortOrder.Name
-        }),
-        DailyRewardsButton = buttons[5]
-    })
-    
-    -- Calculate the maximum button width including FreeOpItem button
-    local textService = game:GetService("TextService")
-    local freeOpItemText = "Free OP Item!"
-    local freeOpItemTextBounds = textService:GetTextSize(
-        freeOpItemText,
-        ScreenUtils.getTextSize(36),
-        Enum.Font.Cartoon,
-        Vector2.new(1000, 100)
-    )
-    
-    local function getBucketedWidth(width)
-        local bucketSize = ScreenUtils.getProportionalSize(30)
-        return math.ceil(width / bucketSize) * bucketSize
+    -- Row4: Debug Button (centered, only if authorized)
+    local localPlayer = Players.LocalPlayer
+    if AuthorizationUtils.isAuthorized(localPlayer) then
+        children["Row4_Debug"] = React.createElement("Frame", {
+            Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
+            BackgroundTransparency = 1,
+            ZIndex = 50
+        }, {
+            Layout = React.createElement("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.Name
+            }),
+            DebugButton = buttons[5]
+        })
     end
     
-    local textPadding = ScreenUtils.getProportionalSize(20)
-    local leftPadding = ScreenUtils.getProportionalSize(15)
-    local rawFreeOpItemWidth = freeOpItemTextBounds.X + textPadding * 2 + leftPadding
-    local freeOpItemButtonWidth = getBucketedWidth(rawFreeOpItemWidth)
-    
-    -- Find the maximum width among all button configurations
-    local maxSingleButtonWidth = math.max(buttonPixelSize, playtimeButtonWidth, freeOpItemButtonWidth)
-    local doubleButtonWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 -- Width of row with 2 buttons
-    local maxRowWidth = math.max(maxSingleButtonWidth, doubleButtonWidth)
     local totalSidebarWidth = maxRowWidth + 200 -- Even higher padding for right side
     
     return React.createElement("Frame", {

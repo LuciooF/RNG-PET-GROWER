@@ -185,7 +185,7 @@ local function validateConfig()
         assert(type(potion.StackLimit) == "number" and potion.StackLimit > 0, "Invalid StackLimit for " .. potionId)
         assert(type(potion.SortOrder) == "number", "Invalid SortOrder for " .. potionId)
     end
-    print("PotionConfig: Configuration validated successfully")
+    -- PotionConfig validation complete
 end
 
 -- Validate on load

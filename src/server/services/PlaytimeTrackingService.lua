@@ -39,7 +39,7 @@ function PlaytimeTrackingService:Initialize()
         end
     end)
     
-    print("PlaytimeTrackingService: Initialized")
+    -- PlaytimeTrackingService initialized
 end
 
 function PlaytimeTrackingService:StartSession(player)

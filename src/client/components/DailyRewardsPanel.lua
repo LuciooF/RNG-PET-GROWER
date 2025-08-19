@@ -462,18 +462,18 @@ local function DailyRewardsPanel(props)
                 })
                 }),
                 
-                -- Boost text (always white with black outline)
+                -- Boost text (always white with black outline) - responsive sizing
                 BoostText = React.createElement("TextLabel", {
                     Name = "BoostText",
-                    Size = UDim2.new(1, 0, 0, ScreenUtils.getProportionalSize(35)),
+                    Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(40)),
                     BackgroundTransparency = 1,
                     Text = NumberFormatter.format(reward.boost) .. "x Boost",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.getTextSize(32),
+                    TextSize = ScreenUtils.getTextSize(28), -- Slightly smaller base size
                     Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
-                    TextScaled = false,
+                    TextScaled = true, -- Enable scaling to fit container
                     TextWrapped = false,
                     LayoutOrder = 2,
                     ZIndex = 103,
@@ -481,6 +481,11 @@ local function DailyRewardsPanel(props)
                     TextStrokeTransparency = 0,
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
                 }, {
+                    -- Text size constraint to prevent text getting too large or small
+                    TextSizeConstraint = React.createElement("UITextSizeConstraint", {
+                        MinTextSize = ScreenUtils.getTextSize(18),
+                        MaxTextSize = ScreenUtils.getTextSize(32)
+                    }),
                     -- Thicker black outline for boost text
                     BoostTextStroke = React.createElement("UIStroke", {
                         Color = Color3.fromRGB(0, 0, 0),

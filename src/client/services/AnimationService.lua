@@ -76,7 +76,7 @@ function AnimationService:Initialize()
         end)
     end
     
-    print("AnimationService: Initialized")
+    -- AnimationService initialized
 end
 
 -- Create a breathing animation (smooth size pulsing)

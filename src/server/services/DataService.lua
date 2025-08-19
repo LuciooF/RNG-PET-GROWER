@@ -192,6 +192,10 @@ function DataService:UpdatePlayerResources(player, resourceType, amount)
         -- Sync updated data to client immediately via Rodux
         self:SyncPlayerDataToClient(player)
         
+        -- Update Roblox leaderstats immediately
+        local LeaderboardService = require(script.Parent.LeaderboardService)
+        LeaderboardService:UpdateLeaderstats(player, profile.Data)
+        
         return true
     end
     return false
@@ -247,6 +251,9 @@ function DataService:AddRobuxSpent(player, robuxAmount)
         local currentSpent = profile.Data.Resources.RobuxSpent or 0
         profile.Data.Resources.RobuxSpent = currentSpent + robuxAmount
         
+        -- Log robux spending for debugging (can be removed later)
+        print("DataService: Added", robuxAmount, "Robux spent for", player.Name, "- Total:", profile.Data.Resources.RobuxSpent, "(was:", currentSpent, ")")
+        
         -- Sync updated data to client immediately
         self:SyncPlayerDataToClient(player)
         
@@ -268,6 +275,10 @@ function DataService:AddPet(player, petData)
         
         -- Auto-sync to client Rodux store
         self:SyncPlayerDataToClient(player)
+        
+        -- Update Roblox leaderstats (in case rebirths or other stats changed)
+        local LeaderboardService = require(script.Parent.LeaderboardService)
+        LeaderboardService:UpdateLeaderstats(player, profile.Data)
         
         return true
     end
@@ -444,13 +455,13 @@ function DataService:ResetPlayerData(player)
             autoEquipDebounceTimers[player] = nil
         end
         
-        -- Reset data to template values (preserve RobuxSpent across rebirths)
+        -- Reset data to template values (preserve RobuxSpent but reset rebirths)
         local currentRobuxSpent = profile.Data.Resources.RobuxSpent or 0
         profile.Data.Resources = {
             Diamonds = 0,
             Money = 0, -- Starting money
-            Rebirths = 0,
-            RobuxSpent = currentRobuxSpent -- Keep robux spent across rebirths
+            Rebirths = 0, -- Reset rebirths to 0 for debug reset
+            RobuxSpent = currentRobuxSpent -- Keep robux spent (should never be reset)
         }
         profile.Data.Pets = {}
         profile.Data.EquippedPets = {}
@@ -740,6 +751,12 @@ function DataService:UpdateProcessingAndMoney(player, newProcessingPets, moneyTo
     
     -- Auto-sync to client Rodux store
     self:SyncPlayerDataToClient(player)
+    
+    -- Update Roblox leaderstats immediately if money was added
+    if moneyToAdd > 0 then
+        local LeaderboardService = require(script.Parent.LeaderboardService)
+        LeaderboardService:UpdateLeaderstats(player, profile.Data)
+    end
     
     return true, "Processing and money updated successfully"
 end

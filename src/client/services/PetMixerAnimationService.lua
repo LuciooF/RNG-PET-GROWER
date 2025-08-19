@@ -109,7 +109,7 @@ function PetMixerAnimationService:FindMixerParts()
                     mixerModel = child,
                     anchorPart = anchorPart
                 }
-                print("PetMixerAnimationService: Found mixer", mixerNumber, "with anchor part", anchorPart.Name)
+                -- PetMixerAnimationService found mixer
             else
                 warn("PetMixerAnimationService: No suitable anchor part found in", child.Name, "- Model structure:", child:GetChildren())
             end

@@ -53,7 +53,7 @@ end
 
 -- Initialize the service
 function PotionService:Initialize()
-    print("PotionService: Initializing server-side potion management")
+    -- PotionService server initialization
     
     -- Handle potion activation requests
     activatePotionRemote.OnServerEvent:Connect(function(player, potionId)
@@ -413,7 +413,7 @@ function PotionService:GetActivePotionsForClient(player)
         end
     end
     
-    print("PotionService: Sending", #formattedActivePotions, "active potions to client for", player.Name, "(cleaned up", #expiredPotions, "expired)")
+    -- PotionService syncing active potions
     return formattedActivePotions
 end
 
