@@ -358,7 +358,15 @@ function PetMixerButtonService:SetupDataSubscription(mixerButtonPart, mixerNumbe
     
     -- Clean up existing subscription for this mixer
     if dataSubscriptions[mixerNumber] then
-        dataSubscriptions[mixerNumber]()
+        if type(dataSubscriptions[mixerNumber]) == "function" then
+            dataSubscriptions[mixerNumber]()
+        elseif dataSubscriptions[mixerNumber] and dataSubscriptions[mixerNumber].disconnect then
+            dataSubscriptions[mixerNumber]:disconnect()
+        elseif dataSubscriptions[mixerNumber] and dataSubscriptions[mixerNumber].Disconnect then
+            dataSubscriptions[mixerNumber]:Disconnect()
+        else
+            warn("PetMixerButtonService: Invalid unsubscribe method for mixer", mixerNumber)
+        end
         dataSubscriptions[mixerNumber] = nil
     end
     
@@ -379,8 +387,12 @@ function PetMixerButtonService:SetupDataSubscription(mixerButtonPart, mixerNumbe
         end
     end)
     
-    -- Store the unsubscribe function
-    dataSubscriptions[mixerNumber] = unsubscribe
+    -- Store the unsubscribe function/connection
+    if type(unsubscribe) == "function" or (unsubscribe and (unsubscribe.disconnect or unsubscribe.Disconnect)) then
+        dataSubscriptions[mixerNumber] = unsubscribe
+    else
+        warn("PetMixerButtonService: DataSyncService:Subscribe did not return valid unsubscribe method, got:", type(unsubscribe))
+    end
 end
 
 -- Set callback for when mixer should open UI
@@ -433,8 +445,12 @@ function PetMixerButtonService:Cleanup()
     
     -- Clean up data subscriptions
     for mixerNumber, unsubscribe in pairs(dataSubscriptions) do
-        if unsubscribe and type(unsubscribe) == "function" then
+        if type(unsubscribe) == "function" then
             unsubscribe()
+        elseif unsubscribe and unsubscribe.disconnect then
+            unsubscribe:disconnect()
+        elseif unsubscribe and unsubscribe.Disconnect then
+            unsubscribe:Disconnect()
         end
     end
     dataSubscriptions = {}
