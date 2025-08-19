@@ -17,8 +17,8 @@ PlotConfig.LEVEL_CONFIG = {
 }
 
 -- Plot pricing configuration
-local PLOT_BASE_COST = 75 -- Set to 75
-local PLOT_SCALING_FACTOR = 1.8 -- Set to 1.8 (80% increment per plot)
+local PLOT_BASE_COST = 100 -- Reasonable base cost
+local PLOT_SCALING_FACTOR = 1.6 -- Moderate scaling (60% increment per plot)
 
 -- TubePlot pricing configuration  
 local TUBEPLOT_BASE_COST = 150 -- Increased from 50 to 150 for much higher base cost
@@ -56,11 +56,18 @@ function PlotConfig.getPlotCost(plotNumber, playerRebirths)
         return 0
     end
     
-    -- Use consistent pricing across all rebirth levels (no escalating difficulty)
     playerRebirths = playerRebirths or 0
-    local rebirthMultiplier = 1.0 -- Same base multiplier for all rebirth levels
+    local plotIndex = plotNumber - 2
     
-    local finalCost = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ (plotNumber - 2)) * rebirthMultiplier
+    -- Balanced scaling: exponential early, logarithmic late
+    local exponentialComponent = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ math.min(plotIndex, 8)) -- Cap at plot 10
+    local logComponent = plotIndex > 8 and (exponentialComponent * 0.3 * math.log(plotIndex - 7)) or 0
+    local baseCost = exponentialComponent + logComponent
+    
+    -- Extreme rebirth multiplier that scales aggressively
+    local rebirthMultiplier = 1.0 + (playerRebirths * playerRebirths * playerRebirths * 0.2) -- Cubic scaling: 0.2x, 1.6x, 5.4x, 12.8x, 25x, 43.2x...
+    
+    local finalCost = baseCost * rebirthMultiplier
     return math.floor(finalCost)
 end
 

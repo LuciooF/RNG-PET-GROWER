@@ -41,6 +41,9 @@ end
 function PetMixerAnimationService:Initialize()
     -- Animation service initialized
     
+    -- Delay initialization to ensure workspace is loaded
+    task.wait(1.5) -- Slightly longer wait for animation service
+    
     -- Find mixer parts in player's area
     self:FindMixerParts()
     
@@ -50,10 +53,14 @@ function PetMixerAnimationService:Initialize()
     -- Handle character respawn
     player.CharacterAdded:Connect(function()
         self:Cleanup()
-        -- Wait for area assignment handled by PlayerAreaFinder
+        -- Wait for area assignment and workspace loading
+        task.wait(2)
         self:FindMixerParts()
         self:SetupDataSubscription()
     end)
+    
+    -- Set up retry mechanism for failed part findings
+    self:SetupRetryMechanism()
 end
 
 function PetMixerAnimationService:FindMixerParts()
@@ -111,10 +118,62 @@ function PetMixerAnimationService:FindMixerParts()
                 }
                 -- PetMixerAnimationService found mixer
             else
-                warn("PetMixerAnimationService: No suitable anchor part found in", child.Name, "- Model structure:", child:GetChildren())
+                -- Store for retry instead of warning immediately
+                if not self.failedMixers then
+                    self.failedMixers = {}
+                end
+                table.insert(self.failedMixers, child)
             end
         end
     end
+end
+
+function PetMixerAnimationService:SetupRetryMechanism()
+    -- Retry finding mixer parts after a delay
+    task.spawn(function()
+        task.wait(3) -- Wait for workspace to fully load
+        
+        if self.failedMixers and #self.failedMixers > 0 then
+            warn("PetMixerAnimationService: Retrying", #self.failedMixers, "failed mixer part findings")
+            
+            for _, mixerModel in ipairs(self.failedMixers) do
+                -- Try to find anchor part again
+                local anchorPart = mixerModel:FindFirstChild("Cube.006")
+                    or mixerModel:FindFirstChild("Cube")
+                    or mixerModel:FindFirstChild("Anchor")
+                    or mixerModel:FindFirstChild("Center")
+                    or mixerModel:FindFirstChild("Union")
+                    or mixerModel:FindFirstChild("Part")
+                    or mixerModel:FindFirstChild("MeshPart")
+                    or mixerModel:FindFirstChildOfClass("BasePart")
+                
+                -- If still not found, search descendants
+                if not anchorPart then
+                    for _, descendant in pairs(mixerModel:GetDescendants()) do
+                        if descendant:IsA("BasePart") then
+                            anchorPart = descendant
+                            break
+                        end
+                    end
+                end
+                
+                if anchorPart and anchorPart:IsA("BasePart") then
+                    local mixerNumber = mixerModel.Name:match("PetMixer(%d*)") or "1"
+                    if mixerNumber == "" then mixerNumber = "1" end
+                    mixerParts[tonumber(mixerNumber)] = {
+                        mixerModel = mixerModel,
+                        anchorPart = anchorPart
+                    }
+                    print("PetMixerAnimationService: Successfully found mixer", mixerNumber, "on retry")
+                else
+                    warn("PetMixerAnimationService: Still couldn't find anchor part for", mixerModel.Name, "after retry")
+                end
+            end
+            
+            -- Clear the retry list
+            self.failedMixers = {}
+        end
+    end)
 end
 
 function PetMixerAnimationService:SetupDataSubscription()

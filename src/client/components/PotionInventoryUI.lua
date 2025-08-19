@@ -745,7 +745,7 @@ local function PotionInventoryUI(props)
                     BorderSizePixel = 0,
                     ScrollBarThickness = ScreenUtils.getProportionalSize(8),
                     ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
-                    CanvasSize = ScreenUtils.udim2(0, 0, 0, math.ceil((hasPotions and #PotionConfig.GetAllPotions() or 0) / 3) * ScreenUtils.getProportionalSize(360) + ScreenUtils.getProportionalSize(60)),
+                    CanvasSize = ScreenUtils.udim2(0, 0, 0, math.ceil((hasPotions and #PotionConfig.GetAllPotions() or 0) / 3) * ScreenUtils.getProportionalSize(360) + ScreenUtils.getProportionalSize(200)), -- Extra bottom padding
                     ZIndex = 5,
                 }, {
                     Layout = React.createElement("UIGridLayout", {

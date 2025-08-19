@@ -349,6 +349,20 @@ function PlotGUIService:ScanAndCreateGUIs()
                         self:CreateTubePlotGUI(area, tubePlot, i)
                     end
                 end
+                
+                -- Clean up any misplaced GUIs on mixer buttons
+                for _, child in pairs(buttonsFolder:GetChildren()) do
+                    if child.Name:match("^Mixer%dButton$") then
+                        -- Remove any plot-style GUIs from mixer buttons
+                        for _, descendant in pairs(child:GetDescendants()) do
+                            if descendant:IsA("BillboardGui") and 
+                               (descendant.Name == "PlotGUI" or descendant.Name == "TubePlotGUI") then
+                                descendant:Destroy()
+                                warn("PlotGUIService: Removed misplaced GUI from", child.Name)
+                            end
+                        end
+                    end
+                end
             end
         end
     end
@@ -357,6 +371,9 @@ end
 -- Initialize the service
 function PlotGUIService:Initialize()
     local success, error = pcall(function()
+        -- Wait a bit to ensure proper loading order
+        task.wait(0.5)
+        
         -- Scan and create GUIs
         self:ScanAndCreateGUIs()
         

@@ -21,8 +21,14 @@ local onMixerOpen = nil
 local onMixerClose = nil
 
 function PetMixerButtonService:Initialize()
+    -- Delay initialization to ensure workspace is loaded
+    task.wait(1)
+    
     -- Find all mixer buttons in the player's area
     self:FindMixerButtons()
+    
+    -- Set up retry mechanism for failed GUI attachments
+    self:SetupRetryMechanism()
 end
 
 function PetMixerButtonService:FindMixerButtons()
@@ -70,6 +76,25 @@ function PetMixerButtonService:SetupMixerButton(mixerButtonPart, mixerNumber)
     self:SetupDataSubscription(mixerButtonPart, mixerNumber)
 end
 
+function PetMixerButtonService:SetupRetryMechanism()
+    -- Retry failed attachments after a delay
+    task.spawn(function()
+        task.wait(3) -- Wait for workspace to fully load
+        
+        if self.failedAttachments and #self.failedAttachments > 0 then
+            warn("PetMixerButtonService: Retrying", #self.failedAttachments, "failed GUI attachments")
+            
+            for _, failedItem in ipairs(self.failedAttachments) do
+                -- Try to create GUI again
+                self:CreateMixerButtonGUI(failedItem.mixerButtonPart, failedItem.mixerNumber)
+            end
+            
+            -- Clear the retry list
+            self.failedAttachments = {}
+        end
+    end)
+end
+
 function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber)
     -- Find the best part to attach GUI to
     local targetPart = nil
@@ -95,7 +120,11 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
     end
     
     if not targetPart then
-        warn("PetMixerButtonService: No suitable part found for GUI attachment in", mixerButtonPart.Name, "- Model structure:", mixerButtonPart:GetChildren())
+        -- Store for retry instead of warning immediately
+        if not self.failedAttachments then
+            self.failedAttachments = {}
+        end
+        table.insert(self.failedAttachments, {mixerButtonPart = mixerButtonPart, mixerNumber = mixerNumber})
         return
     end
     
