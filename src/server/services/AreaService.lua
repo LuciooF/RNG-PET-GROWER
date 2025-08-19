@@ -408,7 +408,7 @@ function AreaService:AssignPlayerToArea(player)
             -- Update area nameplate
             self:UpdateAreaNameplate(areaNumber)
             
-            -- Initialize doors for this area based on player's owned plots
+            -- Initialize doors and level visibility for this area based on player's owned plots and rebirths
             local PlotService = require(script.Parent.PlotService)
             task.spawn(function()
                 -- Wait for player data to be ready instead of arbitrary delay
@@ -416,7 +416,14 @@ function AreaService:AssignPlayerToArea(player)
                 while not DataService:GetPlayerData(player) do
                     task.wait(0.1) -- Check every 100ms
                 end
+                
+                -- Initialize door states
                 PlotService:InitializeAreaDoors(areaData.model)
+                
+                -- Initialize level visibility based on player's rebirth level
+                local playerData = DataService:GetPlayerData(player)
+                local playerRebirths = playerData and playerData.Resources and playerData.Resources.Rebirths or 0
+                PlotService:UpdateLevelVisibility(areaData.model, playerRebirths)
             end)
             
             return

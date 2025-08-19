@@ -2075,6 +2075,58 @@ function PlotService:PlayPlotPressAnimation(area, plotNumber, isTubePlot)
     end
 end
 
+-- Update level visibility based on rebirth requirements
+function PlotService:UpdateLevelVisibility(area, playerRebirths)
+    -- Level configuration mapping rebirths to levels
+    local levelRebirthRequirements = {
+        [1] = 0,  -- Level 1 unlocked at rebirth 0 (starting)
+        [2] = 1,  -- Level 2 unlocked at rebirth 1
+        [3] = 2,  -- Level 3 unlocked at rebirth 2
+        [4] = 4,  -- Level 4 unlocked at rebirth 4 (skip rebirth 3)
+        [5] = 5,  -- Level 5 unlocked at rebirth 5
+        [6] = 6,  -- Level 6 unlocked at rebirth 6
+        [7] = 7   -- Level 7 unlocked at rebirth 7
+    }
+    
+    -- Scale levels based on unlock status
+    for levelNumber = 1, 7 do
+        local levelName = "Level" .. levelNumber
+        local level = area:FindFirstChild(levelName)
+        
+        if level then
+            local requiredRebirths = levelRebirthRequirements[levelNumber]
+            local isUnlocked = playerRebirths >= requiredRebirths
+            
+            if level:IsA("Model") then
+                -- Set scale for the entire level model
+                if isUnlocked then
+                    -- Scale to 0.8 when unlocked (visible)
+                    self:ScaleModel(level, 0.8)
+                else
+                    -- Scale to 0 when locked (invisible)
+                    self:ScaleModel(level, 0)
+                end
+            end
+        end
+    end
+end
+
+-- Helper function to scale a model 
+function PlotService:ScaleModel(model, scale)
+    if not model or not model:IsA("Model") then
+        return
+    end
+    
+    -- Simply scale the entire model - everything inside will scale automatically
+    if scale == 0 then
+        -- Make invisible by scaling to very small value (Roblox doesn't allow 0)
+        model:ScaleTo(0.001)
+    else
+        -- Scale to the desired size (0.8 for unlocked)
+        model:ScaleTo(scale)
+    end
+end
+
 -- Update plot and tubeplot visibility based on player rebirth level
 function PlotService:UpdatePlotVisibility(area, player)
     local areaNumber = tonumber(area.Name:match("PlayerArea(%d+)"))
@@ -2101,6 +2153,9 @@ function PlotService:UpdatePlotVisibility(area, player)
         local playerData = DataService:GetPlayerData(player)
         playerRebirths = playerData and playerData.Resources and playerData.Resources.Rebirths or 0
     end
+    
+    -- Update level visibility based on rebirth requirements
+    self:UpdateLevelVisibility(area, playerRebirths)
     
     local buttonsFolder = area:FindFirstChild("Buttons")
     if not buttonsFolder then
