@@ -74,11 +74,20 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
     -- Find the best part to attach GUI to
     local targetPart = nil
     if mixerButtonPart:IsA("Model") then
-        -- Look for a suitable part in the model
-        for _, part in pairs(mixerButtonPart:GetDescendants()) do
-            if part:IsA("BasePart") then
-                targetPart = part
-                break
+        -- Look for a suitable part in the model - try specific parts first, then any BasePart
+        targetPart = mixerButtonPart:FindFirstChild("Union") 
+            or mixerButtonPart:FindFirstChild("Mesh") 
+            or mixerButtonPart:FindFirstChild("Part") 
+            or mixerButtonPart:FindFirstChild("MeshPart")
+            or mixerButtonPart:FindFirstChildOfClass("BasePart")
+        
+        -- If still not found, search descendants
+        if not targetPart then
+            for _, part in pairs(mixerButtonPart:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "Cylinder.007" then -- Skip the cylinder we modify
+                    targetPart = part
+                    break
+                end
             end
         end
     else
@@ -86,7 +95,7 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
     end
     
     if not targetPart then
-        warn("PetMixerButtonService: No suitable part found for GUI attachment")
+        warn("PetMixerButtonService: No suitable part found for GUI attachment in", mixerButtonPart.Name, "- Model structure:", mixerButtonPart:GetChildren())
         return
     end
     
@@ -101,10 +110,13 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
         end
     end
     
-    -- Clean up existing GUIs
+    -- Clean up existing GUIs (but preserve static requirement GUIs managed by server)
     for _, child in pairs(mixerButtonPart:GetDescendants()) do
-        if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+        if child:IsA("BillboardGui") then
             child:Destroy()
+        elseif child:IsA("SurfaceGui") and child.Name:match("^MixerRequirementGui_") then
+            -- Disable static requirement GUIs to prevent conflicts
+            child.Enabled = false
         end
     end
     

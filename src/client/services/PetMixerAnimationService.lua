@@ -82,17 +82,36 @@ function PetMixerAnimationService:FindMixerParts()
     mixerParts = {}
     for _, child in pairs(tubesFolder:GetChildren()) do
         if child.Name:match("^PetMixer") then -- Matches PetMixer, PetMixer1, PetMixer2, etc.
-            local cube006 = child:FindFirstChild("Cube.006")
-            if cube006 and cube006:IsA("BasePart") then
+            -- Try to find an anchor part - be flexible about the name
+            local anchorPart = child:FindFirstChild("Cube.006")
+                or child:FindFirstChild("Cube")
+                or child:FindFirstChild("Anchor")
+                or child:FindFirstChild("Center")
+                or child:FindFirstChild("Union")
+                or child:FindFirstChild("Part")
+                or child:FindFirstChild("MeshPart")
+                or child:FindFirstChildOfClass("BasePart")
+            
+            -- If still not found, search descendants for any suitable part
+            if not anchorPart then
+                for _, descendant in pairs(child:GetDescendants()) do
+                    if descendant:IsA("BasePart") then
+                        anchorPart = descendant
+                        break
+                    end
+                end
+            end
+            
+            if anchorPart and anchorPart:IsA("BasePart") then
                 local mixerNumber = child.Name:match("PetMixer(%d*)") or "1"
                 if mixerNumber == "" then mixerNumber = "1" end
                 mixerParts[tonumber(mixerNumber)] = {
                     mixerModel = child,
-                    anchorPart = cube006
+                    anchorPart = anchorPart
                 }
-                -- Found mixer with anchor
+                print("PetMixerAnimationService: Found mixer", mixerNumber, "with anchor part", anchorPart.Name)
             else
-                warn("PetMixerAnimationService: Cube.006 not found in", child.Name)
+                warn("PetMixerAnimationService: No suitable anchor part found in", child.Name, "- Model structure:", child:GetChildren())
             end
         end
     end

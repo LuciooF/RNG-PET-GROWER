@@ -1329,7 +1329,7 @@ function PlotService:ColorPetMixerInArea(area, color)
         
         -- Show/hide requirement GUIs based on color/lock status
         local isLocked = (color ~= "RESTORE_ORIGINAL" and color.R < 0.2 and color.G < 0.2 and color.B < 0.2) -- Black = locked
-        self:UpdateMixerRequirementGUI(mixerButton, isLocked)
+        self:UpdateMixerRequirementGUI(mixerButton, isLocked, nil)
     end
 end
 
@@ -1378,7 +1378,7 @@ function PlotService:RestoreOriginalMixerColors(mixer)
 end
 
 -- Update mixer requirement GUI visibility based on lock status
-function PlotService:UpdateMixerRequirementGUI(mixerButton, isLocked)
+function PlotService:UpdateMixerRequirementGUI(mixerButton, isLocked, player)
     -- Find the button part that should have the GUI
     local buttonPart = nil
     if mixerButton:IsA("Model") then
@@ -1397,12 +1397,12 @@ function PlotService:UpdateMixerRequirementGUI(mixerButton, isLocked)
         return
     end
     
-    -- Find requirement GUIs and update visibility
+    -- Always hide the static requirement GUIs since PetMixerButtonService handles mixer UI now
     local faces = {"Front", "Top", "Back"}
     for _, face in ipairs(faces) do
         local gui = buttonPart:FindFirstChild("MixerRequirementGui_" .. face)
         if gui then
-            gui.Enabled = isLocked
+            gui.Enabled = false -- Always disabled - let PetMixerButtonService handle mixer UI
         end
     end
 end
