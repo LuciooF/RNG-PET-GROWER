@@ -483,6 +483,14 @@ if not getLeaderboardDataRemote then
     getLeaderboardDataRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote function for getting player rebirth data
+local getPlayerRebirthsRemote = ReplicatedStorage:FindFirstChild("GetPlayerRebirths")
+if not getPlayerRebirthsRemote then
+    getPlayerRebirthsRemote = Instance.new("RemoteFunction")
+    getPlayerRebirthsRemote.Name = "GetPlayerRebirths"
+    getPlayerRebirthsRemote.Parent = ReplicatedStorage
+end
+
 -- Create remote event for leaderboard manual refresh (authorized users only)
 local refreshLeaderboardRemote = ReplicatedStorage:FindFirstChild("RefreshLeaderboard")
 if not refreshLeaderboardRemote then
@@ -807,6 +815,31 @@ getLeaderboardDataRemote.OnServerInvoke = function(player, period, leaderboardTy
     local leaderboardData = CustomLeaderboardService:GetLeaderboard(period, leaderboardType, 50, player)
     
     return leaderboardData or {}
+end
+
+-- Handle player rebirth data requests from client
+getPlayerRebirthsRemote.OnServerInvoke = function(player, targetUserId)
+    if not player or not targetUserId then
+        warn("Main: Invalid player rebirth data request from", player and player.Name or "unknown")
+        return 0
+    end
+    
+    -- Find the target player by UserId
+    local Players = game:GetService("Players")
+    local targetPlayer = Players:GetPlayerByUserId(targetUserId)
+    
+    if not targetPlayer then
+        -- Player not online, return 0 (could be enhanced to query datastore later)
+        return 0
+    end
+    
+    -- Get target player's rebirth count
+    local targetPlayerData = DataService:GetPlayerData(targetPlayer)
+    if targetPlayerData and targetPlayerData.Resources then
+        return targetPlayerData.Resources.Rebirths or 0
+    end
+    
+    return 0
 end
 
 -- Notify CustomLeaderboardService when player data changes

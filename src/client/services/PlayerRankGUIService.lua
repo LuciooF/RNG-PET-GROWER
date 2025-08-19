@@ -93,14 +93,33 @@ function PlayerRankGUIService:CreatePlayerRankGUI(targetPlayer)
         return 
     end
     
-    -- Get player's rebirth count (default to 0 if can't get data)
+    -- Get player's rebirth count
     local rebirthCount = 0
-    local success, playerData = pcall(function()
-        return DataSyncService:GetPlayerData(targetPlayer)
-    end)
     
-    if success and playerData and playerData.Resources then
-        rebirthCount = playerData.Resources.Rebirths or 0
+    if targetPlayer == player then
+        -- For local player, use local data
+        local success, playerData = pcall(function()
+            return DataSyncService:GetPlayerData()
+        end)
+        
+        if success and playerData and playerData.Resources then
+            rebirthCount = playerData.Resources.Rebirths or 0
+        end
+    else
+        -- For other players, get data from server
+        local remote = ReplicatedStorage:FindFirstChild("GetPlayerRebirths")
+        if remote and remote:IsA("RemoteFunction") then
+            local success, serverRebirthCount = pcall(function()
+                return remote:InvokeServer(targetPlayer.UserId)
+            end)
+            
+            if success and serverRebirthCount then
+                rebirthCount = serverRebirthCount
+            end
+        else
+            -- Default to 0 if remote not found
+            rebirthCount = 0
+        end
     end
     
     -- Get rank info
