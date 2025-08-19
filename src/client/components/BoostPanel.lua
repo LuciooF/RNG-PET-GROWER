@@ -235,7 +235,7 @@ local function BoostPanel(props)
                 label = "Rebirths (" .. rebirths .. ")",
                 icon = IconAssets.getIcon("UI", "REBIRTH"),
                 color = Color3.fromRGB(255, 100, 200),
-                iconColor = Color3.fromRGB(255, 100, 200),
+                noTint = true, -- Don't tint the rebirth icon
                 key = "RebirthBoost"
             })
         end
