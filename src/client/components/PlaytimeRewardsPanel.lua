@@ -187,6 +187,10 @@ local function PlaytimeRewardsPanel(props)
         local timeUntilAvailable = 0
         local isOPReward = reward.isOP or false
         
+        -- Calculate progress percentage for progress bar (0-1)
+        local progressPercentage = math.min(currentPlaytime / reward.timeMinutes, 1.0)
+        
+        
         if isClaimed then
             if isOPReward then
                 cardColor = PlaytimeRewardsConfig.colors.opClaimed -- Darker gold for OP claimed
@@ -433,40 +437,63 @@ local function PlaytimeRewardsPanel(props)
                 })
             }),
             
-            -- Button positioned at bottom of card - FULLY RESPONSIVE
-            ClaimButton = React.createElement("Frame", {
-                Name = "ClaimButtonContainer",
-                Size = UDim2.new(0.9, 0, 0, ScreenUtils.getProportionalSize(60)), -- Wider button to prevent flickering
-                Position = UDim2.new(0.5, 0, 1, -ScreenUtils.getProportionalSize(15)), -- Responsive positioning (60/4 = 15)
-                AnchorPoint = Vector2.new(0.5, 0.5), -- Center horizontally, middle vertically
-                BackgroundColor3 = Color3.fromRGB(255, 255, 255), -- Base color for gradient
-                BorderSizePixel = 0,
-                ZIndex = 104, -- Above card
+            -- Button container frame
+            ButtonContainer = React.createElement("Frame", {
+                Name = "ButtonContainer",
+                Size = UDim2.new(0.9, 0, 0, ScreenUtils.getProportionalSize(60)), -- Same size as button
+                Position = UDim2.new(0.5, 0, 1, -ScreenUtils.getProportionalSize(15)), -- Same position as button
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1, -- Transparent container
+                ZIndex = 104
             }, {
-                -- Gradient overlay for shiny effect
-                ButtonGradient = React.createElement("UIGradient", {
-                    Color = ColorSequence.new({
-                        -- OP rewards get golden gradient, normal rewards get green/gray
-                        ColorSequenceKeypoint.new(0, canClaim and (isOPReward and Color3.fromRGB(255, 230, 100) or Color3.fromRGB(76, 175, 80)) or Color3.fromRGB(120, 120, 120)), -- Lighter shade on left
-                        ColorSequenceKeypoint.new(0.5, canClaim and (isOPReward and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(60, 140, 65)) or Color3.fromRGB(80, 80, 80)), -- Medium shade in middle
-                        ColorSequenceKeypoint.new(1, canClaim and (isOPReward and Color3.fromRGB(200, 160, 0) or Color3.fromRGB(45, 105, 50)) or Color3.fromRGB(50, 50, 50)) -- Darker shade on right
-                    }),
-                    Rotation = 0 -- Horizontal gradient (left to right)
-                }),
-                
-                -- Actual button with text
-                ActualButton = React.createElement("TextButton", {
-                    Name = "ActualButton",
+                -- Button background frame (gray/green base)
+                ButtonBackground = React.createElement("Frame", {
+                    Name = "ButtonBackground",
                     Size = UDim2.new(1, 0, 1, 0),
                     Position = UDim2.new(0, 0, 0, 0),
-                    BackgroundTransparency = 1, -- Transparent so gradient shows through
+                    BackgroundColor3 = buttonColor, -- Original button color logic
+                    BorderSizePixel = 0,
+                    ZIndex = 103, -- Below progress fill and text
+                }, {
+                    BackgroundCorner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(8))
+                    }),
+                    BackgroundOutline = React.createElement("UIStroke", {
+                        Color = Color3.fromRGB(0, 0, 0),
+                        Thickness = ScreenUtils.getProportionalSize(1),
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                    })
+                }),
+                
+                -- Progress fill overlay (green for normal, gold for OP)
+                progressPercentage > 0 and React.createElement("Frame", {
+                    Name = "ProgressFill",
+                    Size = UDim2.new(progressPercentage, 0, 1, 0), -- Width based on actual progress
+                    Position = UDim2.new(0, 0, 0, 0),
+                    BackgroundColor3 = isOPReward and Color3.fromRGB(255, 120, 50) or Color3.fromRGB(120, 220, 120), -- Bright orange-red for OP, nice light green for normal
+                    BackgroundTransparency = canClaim and 0.2 or 0.4, -- Semi-transparent so base button shows through
+                    BorderSizePixel = 0,
+                    ZIndex = 105, -- Above button background, below text
+                }, {
+                    -- Match button corner radius
+                    FillCorner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(8)) -- Match button corners
+                    })
+                }) or nil,
+                
+                -- Actual button
+                ClaimButton = React.createElement("TextButton", {
+                    Name = "ClaimButton",
+                    Size = UDim2.new(1, 0, 1, 0), -- Fill container
+                    Position = UDim2.new(0, 0, 0, 0),
+                    BackgroundTransparency = 1, -- Transparent so red bar shows through
                     Text = buttonText, -- Either "Claim" or timer
                     TextColor3 = Color3.fromRGB(255, 255, 255), -- White text
                     TextSize = ScreenUtils.getTextSize(40), -- RESPONSIVE button text size
                     Font = Enum.Font.SourceSans, -- SakuraOne equivalent
                     BorderSizePixel = 0,
                     Active = canClaim,
-                    ZIndex = 105, -- Above gradient
+                    ZIndex = 106, -- Above progress fill so text shows on top
                     -- Thicker black outline on button text
                     TextStrokeTransparency = 0, -- Make outline visible
                     TextStrokeColor3 = Color3.fromRGB(0, 0, 0), -- Black outline
@@ -491,18 +518,19 @@ local function PlaytimeRewardsPanel(props)
                         Color = Color3.fromRGB(0, 0, 0), -- Black outline for text
                         Thickness = ScreenUtils.getProportionalSize(2), -- Responsive text outline thickness
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual -- Apply to text
+                    }),
+                    
+                    -- Rounded button corners - RESPONSIVE
+                    ButtonCorner = React.createElement("UICorner", {
+                        CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(8)) -- Responsive corner radius
+                    }),
+                    
+                    -- Black outline around the BUTTON itself - RESPONSIVE thickness
+                    ButtonOutline = React.createElement("UIStroke", {
+                        Color = Color3.fromRGB(0, 0, 0), -- Black outline around button background
+                        Thickness = ScreenUtils.getProportionalSize(1), -- Responsive outline thickness
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- Apply only to border
                     })
-                }),
-                -- Rounded button corners - RESPONSIVE
-                ButtonCorner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getProportionalSize(8)) -- Responsive corner radius
-                }),
-                
-                -- Black outline around the BUTTON itself - RESPONSIVE thickness
-                ButtonOutline = React.createElement("UIStroke", {
-                    Color = Color3.fromRGB(0, 0, 0), -- Black outline around button background
-                    Thickness = ScreenUtils.getProportionalSize(1), -- Responsive outline thickness
-                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- Apply only to border
                 })
             }),
             

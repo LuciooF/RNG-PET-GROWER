@@ -114,29 +114,50 @@ PlaytimeRewardsConfig.rewards = {
         isOP = true -- Mark this high-value money reward as OP
     },
     {
-        timeMinutes = 45, -- 1 hour - CONFIGURABLE: Change to any time
+        timeMinutes = 45, -- 45 minutes - CONFIGURABLE: Change to any time
         type = "Diamonds", -- Reward 13: Diamonds (alternating pattern)
         amount = 10000, -- CONFIGURABLE: Change amount as needed
-        title = "One Hour",
-        description = "Play for 1 hour",
+        title = "Forty-Five Minutes",
+        description = "Play for 45 minutes",
         icon = "💎"
     },
     {
-        timeMinutes = 50, -- 2 hours - CONFIGURABLE: Change to any time
-        type = "Money", -- Reward 14: Money (alternating pattern)
-        amount = 500000, -- CONFIGURABLE: Change amount as needed
-        title = "Two Hours",
-        description = "Play for 2 hours",
+        timeMinutes = 48, -- 48 minutes - New reward for smoother progression
+        type = "Potion", -- Auto Heaven Potion
+        potionId = "auto_heaven_20m", -- Auto Heaven potion for 20 minutes
+        quantity = 1, -- One potion
+        title = "Auto Heaven",
+        description = "Auto-send pets for 20 minutes",
+        icon = "🧪"
+    },
+    {
+        timeMinutes = 52, -- 52 minutes - New reward for smoother progression
+        type = "Money", -- High-value money reward
+        amount = 750000, -- CONFIGURABLE: Change amount as needed
+        title = "Big Money",
+        description = "Play for 52 minutes",
         icon = "💰"
     },
     {
-        timeMinutes = 60, -- 3 hours - CONFIGURABLE: Change to any time
-        type = "Diamonds", -- Reward 15: Diamonds (alternating pattern)
-        amount = 20000, -- CONFIGURABLE: Change amount as needed
-        title = "Three Hours",
-        description = "Play for 3 hours",
+        timeMinutes = 56, -- 56 minutes - New reward for smoother progression
+        type = "Diamonds", -- High-value diamond reward
+        amount = 25000, -- CONFIGURABLE: Change amount as needed
+        title = "Diamond Haul",
+        description = "Play for 56 minutes",
         icon = "💎",
-        isOP = true -- Mark this ultimate reward as OP
+        isOP = true -- Mark high-value diamond reward as OP
+    },
+    {
+        timeMinutes = 60, -- 1 hour - ULTIMATE REWARD
+        type = "Pet", -- Ultimate Pet reward - 100x boost!
+        petName = "Valentines Bee", -- CONFIGURABLE: Ultimate pet asset name
+        amount = 1, -- CONFIGURABLE: Number of pets to give
+        boost = 100, -- CONFIGURABLE: ULTIMATE 100x boost multiplier!
+        value = 2000, -- CONFIGURABLE: Higher base value for ultimate pet
+        title = "Valentines Bee Reward",
+        description = "Play for 1 hour - ULTIMATE REWARD!",
+        icon = "💕",
+        isOP = true -- Mark ultimate 100x boost pet as OP
     }
 }
 

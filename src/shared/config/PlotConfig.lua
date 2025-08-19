@@ -45,23 +45,9 @@ function PlotConfig.getPlotCost(plotNumber, playerRebirths)
         return 0
     end
     
-    -- Apply rebirth-based multipliers to the base cost
+    -- Use consistent pricing across all rebirth levels (no escalating difficulty)
     playerRebirths = playerRebirths or 0
-    local rebirthMultiplier = 1.0
-    
-    if playerRebirths == 0 then
-        -- First rebirth slightly easier (20% cheaper)
-        rebirthMultiplier = 0.8
-    elseif playerRebirths <= 2 then
-        -- Normal pricing for rebirths 1-2
-        rebirthMultiplier = 1.0
-    elseif playerRebirths <= 4 then
-        -- Double cost for rebirths 3-4
-        rebirthMultiplier = 2.0
-    else
-        -- Triple cost after rebirth 5+
-        rebirthMultiplier = 3.0
-    end
+    local rebirthMultiplier = 1.0 -- Same base multiplier for all rebirth levels
     
     local finalCost = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ (plotNumber - 2)) * rebirthMultiplier
     return math.floor(finalCost)
@@ -74,19 +60,10 @@ function PlotConfig.getTubePlotCost(tubePlotNumber, playerRebirths)
         return 0
     end
     
-    -- Make tube plots quite hard with aggressive scaling
+    -- Use consistent tube plot pricing across all rebirth levels (no escalating difficulty)
     playerRebirths = playerRebirths or 0
-    local baseCost = TUBEPLOT_BASE_COST
-    local scalingFactor = TUBEPLOT_SCALING_FACTOR
-    
-    -- Even harder scaling for higher rebirths to maintain challenge
-    if playerRebirths >= 4 then
-        baseCost = 1250 -- Set to 1250 for late-game cost
-        scalingFactor = 8.0 -- Increased from 4.0 to 8.0 for exponential scaling
-    elseif playerRebirths >= 2 then
-        baseCost = 1000 -- Set to 1000 for mid-game cost
-        scalingFactor = 7.0 -- Increased from 3.8 to 7.0 for aggressive scaling
-    end
+    local baseCost = TUBEPLOT_BASE_COST -- Use base cost for all rebirth levels
+    local scalingFactor = TUBEPLOT_SCALING_FACTOR -- Use base scaling for all rebirth levels
     
     return math.floor(baseCost * (scalingFactor ^ (tubePlotNumber - 2)))
 end

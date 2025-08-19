@@ -115,8 +115,8 @@ function AnnouncementService:AnnouncePetDiscovery(player, petData)
         end
     end
     
-    -- Only announce pets rarer than 1 in 250
-    if odds < 250 then
+    -- Only announce pets rarer than 1 in 750
+    if odds < 750 then
         return
     else
         odds = PetConstants.getCombinedRarityChance(petConfig.Rarity, variation)
