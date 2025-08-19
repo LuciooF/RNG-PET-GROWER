@@ -59,10 +59,8 @@ function PlotConfig.getPlotCost(plotNumber, playerRebirths)
     playerRebirths = playerRebirths or 0
     local plotIndex = plotNumber - 2
     
-    -- Balanced scaling: exponential early, logarithmic late
-    local exponentialComponent = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ math.min(plotIndex, 8)) -- Cap at plot 10
-    local logComponent = plotIndex > 8 and (exponentialComponent * 0.3 * math.log(plotIndex - 7)) or 0
-    local baseCost = exponentialComponent + logComponent
+    -- Pure exponential scaling - no cap for aggressive high-end costs
+    local baseCost = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ plotIndex)
     
     -- Extreme rebirth multiplier that scales aggressively
     local rebirthMultiplier = 1.0 + (playerRebirths * playerRebirths * playerRebirths * 0.2) -- Cubic scaling: 0.2x, 1.6x, 5.4x, 12.8x, 25x, 43.2x...

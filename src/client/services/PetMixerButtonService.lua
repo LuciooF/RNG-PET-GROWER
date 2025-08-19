@@ -37,31 +37,40 @@ function PetMixerButtonService:FindMixerButtons()
         player.CharacterAdded:Wait()
     end
     
-    -- Use the improved PlayerAreaFinder utility
-    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
-    local playerArea = PlayerAreaFinder:WaitForPlayerArea(15)
-    
-    if not playerArea then
-        warn("PetMixerButtonService: Player area not found")
+    -- Use modern approach like other services - scan all areas
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        warn("PetMixerButtonService: PlayerAreas folder not found")
         return
     end
     
-    -- Find the Buttons folder
-    local buttonsFolder = playerArea:FindFirstChild("Buttons")
-    if not buttonsFolder then
-        warn("PetMixerButtonService: Buttons folder not found")
-        return
-    end
-    
-    -- Look for mixer buttons (Mixer1Button, Mixer2Button, etc.)
-    for _, child in pairs(buttonsFolder:GetChildren()) do
-        if child.Name:match("^Mixer%dButton$") then -- Matches Mixer1Button, Mixer2Button, etc.
-            local mixerNumber = tonumber(child.Name:match("Mixer(%d)Button"))
-            if mixerNumber then
-                self:SetupMixerButton(child, mixerNumber)
-                -- Set up mixer button
+    -- Find buttons in all player areas (more reliable than nameplate matching)
+    local foundButtons = false
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("^PlayerArea%d+$") then
+            local buttonsFolder = area:FindFirstChild("Buttons")
+            if buttonsFolder then
+                -- Look for mixer buttons in this area
+                local areaButtons = 0
+                for i = 1, 3 do -- Support up to 3 mixers per area
+                    local mixerButton = buttonsFolder:FindFirstChild("Mixer" .. i .. "Button")
+                    if mixerButton then
+                        self:SetupMixerButton(mixerButton, i)
+                        areaButtons = areaButtons + 1
+                        foundButtons = true
+                    end
+                end
+                if areaButtons > 0 then
+                    -- Found buttons in this area, we can return early if needed
+                    -- But continue scanning to support multiple areas if needed
+                end
             end
         end
+    end
+    
+    if not foundButtons then
+        warn("PetMixerButtonService: No mixer buttons found in any player area")
+        return
     end
 end
 

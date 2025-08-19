@@ -69,62 +69,67 @@ function PetMixerAnimationService:FindMixerParts()
         player.CharacterAdded:Wait()
     end
     
-    -- Use the improved PlayerAreaFinder utility
-    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
-    local playerArea = PlayerAreaFinder:WaitForPlayerArea(15)
-
-    if not playerArea then
-        warn("PetMixerAnimationService: Player area not found")
+    -- Use modern approach like other services - scan all areas
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        warn("PetMixerAnimationService: PlayerAreas folder not found")
         return
     end
     
-    -- Find Tubes folder and PetMixer parts
-    local tubesFolder = playerArea:FindFirstChild("Tubes")
-    if not tubesFolder then
-        warn("PetMixerAnimationService: Tubes folder not found")
-        return
-    end
-    
-    -- Cache all PetMixer parts
+    -- Find mixers in all player areas (more reliable than nameplate matching)
+    local foundMixers = false
     mixerParts = {}
-    for _, child in pairs(tubesFolder:GetChildren()) do
-        if child.Name:match("^PetMixer") then -- Matches PetMixer, PetMixer1, PetMixer2, etc.
-            -- Try to find an anchor part - be flexible about the name
-            local anchorPart = child:FindFirstChild("Cube.006")
-                or child:FindFirstChild("Cube")
-                or child:FindFirstChild("Anchor")
-                or child:FindFirstChild("Center")
-                or child:FindFirstChild("Union")
-                or child:FindFirstChild("Part")
-                or child:FindFirstChild("MeshPart")
-                or child:FindFirstChildOfClass("BasePart")
-            
-            -- If still not found, search descendants for any suitable part
-            if not anchorPart then
-                for _, descendant in pairs(child:GetDescendants()) do
-                    if descendant:IsA("BasePart") then
-                        anchorPart = descendant
-                        break
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("^PlayerArea%d+$") then
+            local tubesFolder = area:FindFirstChild("Tubes")
+            if tubesFolder then
+                -- Look for mixer parts in this area
+                for _, child in pairs(tubesFolder:GetChildren()) do
+                    if child.Name:match("^PetMixer") then -- Matches PetMixer, PetMixer1, PetMixer2, etc.
+                        -- Try to find an anchor part - be flexible about the name
+                        local anchorPart = child:FindFirstChild("Cube.006")
+                            or child:FindFirstChild("Cube")
+                            or child:FindFirstChild("Anchor")
+                            or child:FindFirstChild("Center")
+                            or child:FindFirstChild("Union")
+                            or child:FindFirstChild("Part")
+                            or child:FindFirstChild("MeshPart")
+                            or child:FindFirstChildOfClass("BasePart")
+                        
+                        -- If still not found, search descendants for any suitable part
+                        if not anchorPart then
+                            for _, descendant in pairs(child:GetDescendants()) do
+                                if descendant:IsA("BasePart") then
+                                    anchorPart = descendant
+                                    break
+                                end
+                            end
+                        end
+                        
+                        if anchorPart and anchorPart:IsA("BasePart") then
+                            local mixerNumber = child.Name:match("PetMixer(%d*)") or "1"
+                            if mixerNumber == "" then mixerNumber = "1" end
+                            mixerParts[tonumber(mixerNumber)] = {
+                                mixerModel = child,
+                                anchorPart = anchorPart
+                            }
+                            foundMixers = true
+                            -- PetMixerAnimationService found mixer
+                        else
+                            -- Store for retry instead of warning immediately
+                            if not self.failedMixers then
+                                self.failedMixers = {}
+                            end
+                            table.insert(self.failedMixers, child)
+                        end
                     end
                 end
             end
-            
-            if anchorPart and anchorPart:IsA("BasePart") then
-                local mixerNumber = child.Name:match("PetMixer(%d*)") or "1"
-                if mixerNumber == "" then mixerNumber = "1" end
-                mixerParts[tonumber(mixerNumber)] = {
-                    mixerModel = child,
-                    anchorPart = anchorPart
-                }
-                -- PetMixerAnimationService found mixer
-            else
-                -- Store for retry instead of warning immediately
-                if not self.failedMixers then
-                    self.failedMixers = {}
-                end
-                table.insert(self.failedMixers, child)
-            end
         end
+    end
+    
+    if not foundMixers then
+        warn("PetMixerAnimationService: No mixer parts found in any player area")
     end
 end
 

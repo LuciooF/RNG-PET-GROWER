@@ -16,6 +16,7 @@ local INTERACTION_DISTANCE = 10 -- Distance in studs to trigger interaction
 
 -- Use shared rebirth cost calculation
 local RebirthUtils = require(ReplicatedStorage.utils.RebirthUtils)
+local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 
 -- Callback functions
 local onRebirthButtonOpen = nil
@@ -43,25 +44,30 @@ function RebirthButtonService:FindRebirthButton()
         player.CharacterAdded:Wait()
     end
     
-    -- Use the improved PlayerAreaFinder utility
-    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
-    local playerArea = PlayerAreaFinder:WaitForPlayerArea(15)
-    
-    if not playerArea then
-        warn("RebirthButtonService: Player area not found")
+    -- Use modern approach like other services - scan all areas
+    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
+    if not playerAreas then
+        warn("RebirthButtonService: PlayerAreas folder not found")
         return
     end
     
-    -- Find the rebirth button
-    local buttonsFolder = playerArea:FindFirstChild("Buttons")
-    if not buttonsFolder then
-        warn("RebirthButtonService: Buttons folder not found")
-        return
+    -- Find rebirth button in all player areas (more reliable than nameplate matching)
+    for _, area in pairs(playerAreas:GetChildren()) do
+        if area.Name:match("^PlayerArea%d+$") then
+            local buttonsFolder = area:FindFirstChild("Buttons")
+            if buttonsFolder then
+                local rebirthButton = buttonsFolder:FindFirstChild("RebirthButton")
+                if rebirthButton then
+                    rebirthButtonPart = rebirthButton
+                    -- RebirthButtonService found rebirth button
+                    break
+                end
+            end
+        end
     end
     
-    rebirthButtonPart = buttonsFolder:FindFirstChild("RebirthButton")
     if not rebirthButtonPart then
-        warn("RebirthButtonService: RebirthButton not found")
+        warn("RebirthButtonService: RebirthButton not found in any player area")
         return
     end
     
@@ -145,7 +151,7 @@ function RebirthButtonService:CreateRebirthButtonGUI()
     progressLabel.Position = UDim2.new(0, 0, 0, 0)
     progressLabel.BackgroundTransparency = 1 -- No background like processing counter
     progressLabel.Font = Enum.Font.FredokaOne
-    progressLabel.Text = "$0 / $500" -- Will be updated dynamically with correct cost
+    progressLabel.Text = "$0 / $500" -- Will be updated dynamically with formatted cost
     progressLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     progressLabel.TextSize = 24 -- Smaller than billboard, similar to processing counter
     progressLabel.TextStrokeTransparency = 0
@@ -188,7 +194,7 @@ function RebirthButtonService:UpdateProgressDisplay()
         local currentMoney = playerData.Resources.Money or 0
         local currentRebirths = playerData.Resources.Rebirths or 0
         local rebirthCost = RebirthUtils.getRebirthCost(currentRebirths)
-        local progressText = "$" .. currentMoney .. " / $" .. rebirthCost
+        local progressText = "$" .. NumberFormatter.format(currentMoney) .. " / $" .. NumberFormatter.format(rebirthCost)
         self.progressLabel.Text = progressText
         
         -- Change color based on progress
