@@ -155,10 +155,10 @@ local function PotionInventoryUI(props)
         local rarityColor = PotionConfig.GetRarityColor(potionConfig.Rarity)
         local timeRemaining = activePotionData.RemainingTime or 0
         local formattedTime = PotionConfig.FormatDuration(timeRemaining)
-        local cardSize = ScreenUtils.getProportionalSize(240) -- Even bigger cards
+        local cardSize = ScreenUtils.getProportionalSize(200) -- Smaller cards to fit in active section
 
         return React.createElement("Frame", {
-            Size = UDim2.new(0, cardSize, 0, cardSize + 40), -- Square + extra height for text
+            Size = UDim2.new(0, cardSize, 0, cardSize + 30), -- Square + less extra height for text
             BackgroundTransparency = 1,
             LayoutOrder = index,
             ZIndex = 10,
@@ -197,10 +197,10 @@ local function PotionInventoryUI(props)
                 })
             }),
 
-            -- Potion icon (much bigger)
+            -- Potion icon (smaller for compact cards)
             PotionIcon = React.createElement("ImageLabel", {
-                Size = UDim2.new(0, ScreenUtils.getProportionalSize(140), 0, ScreenUtils.getProportionalSize(140)),
-                Position = UDim2.new(0.5, 0, 0.35, 0),
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(100), 0, ScreenUtils.getProportionalSize(100)),
+                Position = UDim2.new(0.5, 0, 0.3, 0),
                 AnchorPoint = Vector2.new(0.5, 0.5),
                 BackgroundTransparency = 1,
                 Image = potionConfig.Icon,
@@ -208,14 +208,14 @@ local function PotionInventoryUI(props)
                 ZIndex = 11,
             }),
 
-            -- Potion name (bigger text)
+            -- Potion name (smaller text)
             PotionName = React.createElement("TextLabel", {
-                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(40)),
-                Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0.65, 0),
+                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(30)),
+                Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0.6, 0),
                 BackgroundTransparency = 1,
                 Text = potionConfig.Name,
                 TextColor3 = Color3.fromRGB(50, 50, 50),
-                TextSize = ScreenUtils.TEXT_SIZES.HEADER(), -- Even bigger text
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Smaller text for compact cards
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
@@ -223,14 +223,14 @@ local function PotionInventoryUI(props)
                 ZIndex = 11,
             }),
 
-            -- Boost amount (bigger text)
+            -- Boost amount (smaller text)
             BoostAmount = React.createElement("TextLabel", {
-                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(35)),
-                Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0.8, 0),
+                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(25)),
+                Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0.75, 0),
                 BackgroundTransparency = 1,
                 Text = potionConfig.BoostType == PotionConfig.BoostTypes.PET_MAGNET and potionConfig.BoostType or (PotionConfig.FormatBoostAmount(potionConfig.BoostAmount, potionConfig.BoostType) .. " " .. potionConfig.BoostType),
                 TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = ScreenUtils.TEXT_SIZES.HEADER(), -- Bigger boost text
+                TextSize = ScreenUtils.TEXT_SIZES.LARGE(), -- Smaller boost text
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
@@ -242,14 +242,14 @@ local function PotionInventoryUI(props)
                 BoostGradient = GradientUtils.CreateReactGradient(GradientUtils.SHINY_BOOST)
             }),
 
-            -- Time remaining (main feature, much bigger text)
+            -- Time remaining (important, but smaller)
             TimeRemaining = React.createElement("TextLabel", {
-                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(45)),
-                Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0.92, 0),
+                Size = UDim2.new(1, -ScreenUtils.getProportionalSize(10), 0, ScreenUtils.getProportionalSize(35)),
+                Position = UDim2.new(0, ScreenUtils.getProportionalSize(5), 0.9, 0),
                 BackgroundTransparency = 1,
                 Text = "⏰ " .. formattedTime,
                 TextColor3 = timeRemaining <= 60 and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100), -- Red if < 1 minute
-                TextSize = ScreenUtils.TEXT_SIZES.TITLE(), -- Biggest text for time
+                TextSize = ScreenUtils.TEXT_SIZES.HEADER(), -- Smaller time text
                 Font = Enum.Font.FredokaOne,
                 TextXAlignment = Enum.TextXAlignment.Center,
                 TextYAlignment = Enum.TextYAlignment.Center,
@@ -258,17 +258,17 @@ local function PotionInventoryUI(props)
                 ZIndex = 11,
             }),
 
-            -- Active status badge (bigger and better positioned)
+            -- Active status badge (smaller)
             ActiveBadge = React.createElement("Frame", {
-                Size = UDim2.new(0, ScreenUtils.getProportionalSize(80), 0, ScreenUtils.getProportionalSize(25)),
-                Position = UDim2.new(0.5, 0, 1, -ScreenUtils.getProportionalSize(30)),
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(60), 0, ScreenUtils.getProportionalSize(20)),
+                Position = UDim2.new(0.5, 0, 1, -ScreenUtils.getProportionalSize(25)),
                 AnchorPoint = Vector2.new(0.5, 0),
                 BackgroundColor3 = Color3.fromRGB(50, 205, 50),
                 BorderSizePixel = 0,
                 ZIndex = 12,
             }, {
                 Corner = React.createElement("UICorner", {
-                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getCornerRadius(6))
+                    CornerRadius = ScreenUtils.udim(0, ScreenUtils.getCornerRadius(4))
                 }),
                 
                 ActiveText = React.createElement("TextLabel", {
@@ -276,7 +276,7 @@ local function PotionInventoryUI(props)
                     BackgroundTransparency = 1,
                     Text = "ACTIVE",
                     TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = ScreenUtils.TEXT_SIZES.MEDIUM(),
+                    TextSize = ScreenUtils.TEXT_SIZES.SMALL(),
                     Font = Enum.Font.FredokaOne,
                     TextXAlignment = Enum.TextXAlignment.Center,
                     TextYAlignment = Enum.TextYAlignment.Center,
@@ -286,10 +286,10 @@ local function PotionInventoryUI(props)
                 })
             }),
 
-            -- Close button (X) to cancel the potion (bigger)
+            -- Close button (X) to cancel the potion (smaller)
             CloseButton = React.createElement("ImageButton", {
-                Size = UDim2.new(0, ScreenUtils.getProportionalSize(30), 0, ScreenUtils.getProportionalSize(30)),
-                Position = UDim2.new(1, -ScreenUtils.getProportionalSize(35), 0, ScreenUtils.getProportionalSize(5)),
+                Size = UDim2.new(0, ScreenUtils.getProportionalSize(24), 0, ScreenUtils.getProportionalSize(24)),
+                Position = UDim2.new(1, -ScreenUtils.getProportionalSize(28), 0, ScreenUtils.getProportionalSize(4)),
                 BackgroundTransparency = 1,
                 Image = IconAssets.getIcon("UI", "X_BUTTON"),
                 ScaleType = Enum.ScaleType.Fit,
@@ -648,7 +648,7 @@ local function PotionInventoryUI(props)
 
                 -- Active Potions Section
                 ActivePotionsSection = hasActivePotions and React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(260)), -- Bigger for larger cards
+                    Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(340)), -- Increased from 260 to fit full cards (280px + padding)
                     Position = ScreenUtils.udim2(0, 0, 0, ScreenUtils.getProportionalSize(10)), -- At top now since description moved to bottom
                     BackgroundTransparency = 1,
                     ZIndex = 5,
@@ -671,13 +671,13 @@ local function PotionInventoryUI(props)
 
                     -- Active potions grid
                     ActivePotionsGrid = React.createElement("ScrollingFrame", {
-                        Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(220)), -- Bigger for larger cards
+                        Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(300)), -- Increased from 220 to 300 to fit full cards
                         Position = ScreenUtils.udim2(0, 0, 0, ScreenUtils.getProportionalSize(40)),
                         BackgroundTransparency = 1,
                         BorderSizePixel = 0,
                         ScrollBarThickness = ScreenUtils.getProportionalSize(6),
                         ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100),
-                        CanvasSize = ScreenUtils.udim2(0, 0, 0, ScreenUtils.getProportionalSize(220)),
+                        CanvasSize = ScreenUtils.udim2(0, 0, 0, ScreenUtils.getProportionalSize(300)), -- Match ScrollingFrame height
                         ZIndex = 5,
                         ScrollingDirection = Enum.ScrollingDirection.X,
                     }, {
@@ -724,7 +724,7 @@ local function PotionInventoryUI(props)
                 -- Inventory header (bigger text)
                 InventoryHeader = React.createElement("TextLabel", {
                     Size = ScreenUtils.udim2(1, 0, 0, ScreenUtils.getProportionalSize(35)),
-                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and ScreenUtils.getProportionalSize(280) or ScreenUtils.getProportionalSize(10)),
+                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and ScreenUtils.getProportionalSize(360) or ScreenUtils.getProportionalSize(10)), -- Updated from 280 to 360 for larger active section
                     BackgroundTransparency = 1,
                     Text = "🧪 Potion Inventory", -- Using potion emoji for consistency
                     TextColor3 = Color3.fromRGB(100, 150, 255),
@@ -739,8 +739,8 @@ local function PotionInventoryUI(props)
 
                 -- Potions grid (with padding from header)
                 PotionsGrid = React.createElement("ScrollingFrame", {
-                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and ScreenUtils.getProportionalSize(-420) or ScreenUtils.getProportionalSize(-160)), -- Reduced height to make room for bottom description
-                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and ScreenUtils.getProportionalSize(330) or ScreenUtils.getProportionalSize(60)), -- Added 50px padding from header
+                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and ScreenUtils.getProportionalSize(-500) or ScreenUtils.getProportionalSize(-160)), -- Updated from -420 to -500 for larger active section
+                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and ScreenUtils.getProportionalSize(410) or ScreenUtils.getProportionalSize(60)), -- Updated from 330 to 410 for larger active section
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
                     ScrollBarThickness = ScreenUtils.getProportionalSize(8),
@@ -780,8 +780,8 @@ local function PotionInventoryUI(props)
 
                 -- Empty state
                 EmptyState = (not hasPotions) and React.createElement("Frame", {
-                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and ScreenUtils.getProportionalSize(-420) or ScreenUtils.getProportionalSize(-160)), -- Match grid size for bottom description
-                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and ScreenUtils.getProportionalSize(330) or ScreenUtils.getProportionalSize(60)),
+                    Size = ScreenUtils.udim2(1, 0, 1, hasActivePotions and ScreenUtils.getProportionalSize(-500) or ScreenUtils.getProportionalSize(-160)), -- Updated to match grid size
+                    Position = ScreenUtils.udim2(0, 0, 0, hasActivePotions and ScreenUtils.getProportionalSize(410) or ScreenUtils.getProportionalSize(60)), -- Updated to match grid position
                     BackgroundTransparency = 1,
                     ZIndex = 5,
                 }, {

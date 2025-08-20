@@ -59,13 +59,80 @@ function PlotConfig.getPlotCost(plotNumber, playerRebirths)
     playerRebirths = playerRebirths or 0
     local plotIndex = plotNumber - 2
     
-    -- Pure exponential scaling - no cap for aggressive high-end costs
-    local baseCost = PLOT_BASE_COST * (PLOT_SCALING_FACTOR ^ plotIndex)
+    -- Get the rebirth level where this plot unlocks
+    local unlockRebirth = PlotConfig.getPlotRebirthRequirement(plotNumber)
     
-    -- Extreme rebirth multiplier that scales aggressively
-    local rebirthMultiplier = 1.0 + (playerRebirths * playerRebirths * playerRebirths * 0.2) -- Cubic scaling: 0.2x, 1.6x, 5.4x, 12.8x, 25x, 43.2x...
+    -- Use rebirth-relative pricing where last plot in tier costs ~80% of next rebirth
+    local RebirthUtils = require(game.ReplicatedStorage.utils.RebirthUtils)
+    local nextRebirthCost = RebirthUtils.getRebirthCost(unlockRebirth + 1)
     
-    local finalCost = baseCost * rebirthMultiplier
+    -- Define plot ranges for each tier
+    local tierInfo = {}
+    if plotNumber >= 1 and plotNumber <= 5 then
+        tierInfo = {startPlot = 1, endPlot = 5, tierSize = 5}
+    elseif plotNumber >= 8 and plotNumber <= 14 then
+        tierInfo = {startPlot = 8, endPlot = 14, tierSize = 7}
+    elseif plotNumber >= 15 and plotNumber <= 21 then
+        tierInfo = {startPlot = 15, endPlot = 21, tierSize = 7}
+    elseif plotNumber >= 22 and plotNumber <= 28 then
+        tierInfo = {startPlot = 22, endPlot = 28, tierSize = 7}
+    elseif plotNumber >= 29 and plotNumber <= 35 then
+        tierInfo = {startPlot = 29, endPlot = 35, tierSize = 7}
+    elseif plotNumber >= 36 and plotNumber <= 42 then
+        tierInfo = {startPlot = 36, endPlot = 42, tierSize = 7}
+    elseif plotNumber >= 43 and plotNumber <= 49 then
+        tierInfo = {startPlot = 43, endPlot = 49, tierSize = 7}
+    end
+    
+    -- Position within tier (0 = first plot, 1 = last plot)
+    local tierPosition = (plotNumber - tierInfo.startPlot) / (tierInfo.tierSize - 1)
+    
+    -- NEW SYSTEM: Total of all available plots = 90% of current rebirth cost
+    -- Create ordered list of all available plots for progressive pricing
+    local availablePlotNumbers = {}
+    for i = 1, 49 do
+        if PlotConfig.getPlotRebirthRequirement(i) <= playerRebirths then
+            table.insert(availablePlotNumbers, i)
+        end
+    end
+    
+    -- Get current rebirth cost (what player paid to reach their current level)
+    local currentRebirthCost = RebirthUtils.getRebirthCost(playerRebirths)
+    
+    -- Target: all available plots should total 90% of current rebirth cost
+    local targetTotalCost = currentRebirthCost * 0.9
+    
+    -- Find this plot's position in the ordered list of available plots
+    local plotPosition = 0
+    for i, availablePlotNumber in ipairs(availablePlotNumbers) do
+        if availablePlotNumber == plotNumber then
+            plotPosition = i
+            break
+        end
+    end
+    
+    -- Skip plot 1 (free) in calculations
+    local paidPlots = #availablePlotNumbers - 1 -- Subtract 1 for free plot 1
+    local paidPlotIndex = plotPosition - 1 -- Position among paid plots (plot 1 is index 0, skipped)
+    
+    if paidPlotIndex <= 0 then
+        -- This is plot 1 (free) or something went wrong
+        return 0
+    end
+    
+    -- Progressive pricing: each plot costs more than the previous
+    -- Use quadratic growth for smooth progression
+    local plotWeight = paidPlotIndex ^ 1.5 -- Quadratic-ish growth for smooth progression
+    
+    -- Calculate total weight for all paid plots
+    local totalWeight = 0
+    for i = 1, paidPlots do
+        totalWeight = totalWeight + (i ^ 1.5)
+    end
+    
+    -- Calculate this plot's cost as its weighted share of the target total
+    local finalCost = (targetTotalCost * plotWeight) / totalWeight
+    
     return math.floor(finalCost)
 end
 

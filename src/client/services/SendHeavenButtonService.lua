@@ -2,11 +2,15 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
+local DataSyncService = require(script.Parent.DataSyncService)
+
 local SendHeavenButtonService = {}
 SendHeavenButtonService.__index = SendHeavenButtonService
 
 local player = Players.LocalPlayer
 local sendHeavenButtonPart = nil
+local processingTextLabel = nil -- Store reference to update processing count
+local dataSubscription = nil -- Track data subscription for cleanup
 
 function SendHeavenButtonService:Initialize()
     -- Find the SendHeaven button in the player's area
@@ -107,25 +111,78 @@ function SendHeavenButtonService:CreateSendHeavenButtonGUI()
     -- Create processor text label (positioned right next to icon)
     local processorLabel = Instance.new("TextLabel")
     processorLabel.Name = "ProcessorText"
-    processorLabel.Size = UDim2.new(0, 80, 1, 0) -- Width for "Processor!" text
-    processorLabel.Position = UDim2.new(0, 40, 0, 0) -- Right next to icon
+    processorLabel.Size = UDim2.new(0, 80, 0.5, 0) -- Half height for first line
+    processorLabel.Position = UDim2.new(0, 40, 0, 0) -- Right next to icon, top half
     processorLabel.BackgroundTransparency = 1
     processorLabel.Font = Enum.Font.FredokaOne
     processorLabel.Text = "Processor!"
     processorLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color to match heaven theme
-    processorLabel.TextSize = 20 -- Match other button text sizes
+    processorLabel.TextSize = 18 -- Slightly smaller to fit both lines
     processorLabel.TextStrokeTransparency = 0
     processorLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     processorLabel.TextXAlignment = Enum.TextXAlignment.Left
     processorLabel.TextYAlignment = Enum.TextYAlignment.Center
     processorLabel.Parent = container
     
+    -- Create processing count label (second line)
+    local processingLabel = Instance.new("TextLabel")
+    processingLabel.Name = "ProcessingText"
+    processingLabel.Size = UDim2.new(0, 80, 0.5, 0) -- Half height for second line
+    processingLabel.Position = UDim2.new(0, 40, 0.5, 0) -- Right next to icon, bottom half
+    processingLabel.BackgroundTransparency = 1
+    processingLabel.Font = Enum.Font.FredokaOne
+    processingLabel.Text = "Processing: 0 pets!" -- Default text, will be updated dynamically
+    processingLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green color for processing status
+    processingLabel.TextSize = 16 -- Smaller text for secondary info
+    processingLabel.TextStrokeTransparency = 0
+    processingLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    processingLabel.TextXAlignment = Enum.TextXAlignment.Left
+    processingLabel.TextYAlignment = Enum.TextYAlignment.Center
+    processingLabel.Parent = container
+    
+    -- Store reference for dynamic updates
+    processingTextLabel = processingLabel
+    
+    -- Set up data subscription to monitor processing pets
+    self:SetupProcessingMonitor()
+    
 end
 
--- Cleanup method (minimal - this service doesn't track much state)
+-- Set up monitoring for processing pets count changes
+function SendHeavenButtonService:SetupProcessingMonitor()
+    -- Get initial processing count
+    local initialData = DataSyncService:GetPlayerData()
+    if initialData and initialData.ProcessingPets then
+        self:UpdateProcessingCount(#initialData.ProcessingPets)
+    end
+    
+    -- Subscribe to data changes to update processing count
+    dataSubscription = DataSyncService:Subscribe(function(newState)
+        if newState and newState.player and newState.player.ProcessingPets then
+            local processingCount = #newState.player.ProcessingPets
+            self:UpdateProcessingCount(processingCount)
+        end
+    end)
+end
+
+-- Update processing count display
+function SendHeavenButtonService:UpdateProcessingCount(processingCount)
+    if processingTextLabel then
+        processingTextLabel.Text = string.format("Processing: %d pets!", processingCount)
+    end
+end
+
+-- Cleanup method
 function SendHeavenButtonService:Cleanup()
-    -- Nothing to clean up for this simple service
+    -- Clean up data subscription
+    if dataSubscription and type(dataSubscription) == "function" then
+        dataSubscription()
+        dataSubscription = nil
+    end
+    
+    -- Clear references
     sendHeavenButtonPart = nil
+    processingTextLabel = nil
 end
 
 -- Handle character respawn

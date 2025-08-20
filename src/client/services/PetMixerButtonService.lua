@@ -91,11 +91,25 @@ function PetMixerButtonService:SetupRetryMechanism()
         task.wait(3) -- Wait for workspace to fully load
         
         if self.failedAttachments and #self.failedAttachments > 0 then
-            warn("PetMixerButtonService: Retrying", #self.failedAttachments, "failed GUI attachments")
+            local retryCount = #self.failedAttachments
+            local successfulRetries = 0
             
             for _, failedItem in ipairs(self.failedAttachments) do
                 -- Try to create GUI again
-                self:CreateMixerButtonGUI(failedItem.mixerButtonPart, failedItem.mixerNumber)
+                local success = self:CreateMixerButtonGUI(failedItem.mixerButtonPart, failedItem.mixerNumber)
+                if success then
+                    successfulRetries = successfulRetries + 1
+                end
+            end
+            
+            -- Only warn if some retries failed or if we actually recovered from failures
+            if successfulRetries > 0 then
+                -- Successfully recovered, just a debug print
+                print("PetMixerButtonService: Successfully attached", successfulRetries, "mixer GUIs on retry")
+            end
+            
+            if successfulRetries < retryCount then
+                warn("PetMixerButtonService: Still failed to attach", retryCount - successfulRetries, "mixer GUIs after retry")
             end
             
             -- Clear the retry list
@@ -134,7 +148,7 @@ function PetMixerButtonService:CreateMixerButtonGUI(mixerButtonPart, mixerNumber
             self.failedAttachments = {}
         end
         table.insert(self.failedAttachments, {mixerButtonPart = mixerButtonPart, mixerNumber = mixerNumber})
-        return
+        return false
     end
     
     -- Paint Cylinder.007 black for Mixer1Button
@@ -350,6 +364,8 @@ function PetMixerButtonService:SetupProximityDetection(mixerButtonPart, mixerNum
             end
         end
     end)
+    
+    return true -- Success
 end
 
 -- Set up data subscription to update mixer GUI when rebirth count changes

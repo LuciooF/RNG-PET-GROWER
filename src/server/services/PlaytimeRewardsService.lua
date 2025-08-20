@@ -160,7 +160,7 @@ function PlaytimeRewardsService:ClaimReward(player, timeMinutes, sessionTime)
             end
         end
     elseif reward.type == "Potion" then
-        -- Give potion with reward popup
+        -- Give potion with reward popup (PotionService handles data sync)
         local PotionService = require(script.Parent.PotionService)
         success = PotionService:GivePotionWithReward(player, reward.potionId, reward.quantity, "Playtime Rewards")
     end
@@ -172,8 +172,10 @@ function PlaytimeRewardsService:ClaimReward(player, timeMinutes, sessionTime)
     -- For session-based rewards, we don't persistently store claimed rewards
     -- Each session allows claiming all eligible rewards
     
-    -- Sync to client (DataService auto-syncs)
-    DataService:SyncPlayerDataToClient(player)
+    -- Sync to client (only if not a potion reward, as PotionService already syncs)
+    if reward.type ~= "Potion" then
+        DataService:SyncPlayerDataToClient(player)
+    end
     
     print("PlaytimeRewardsService: Player", player.Name, "claimed", reward.amount, reward.type, "for", timeMinutes, "minutes playtime")
     return true, "Reward claimed successfully"

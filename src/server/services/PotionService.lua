@@ -51,8 +51,17 @@ if not cancelPotionRemote then
     cancelPotionRemote.Parent = ReplicatedStorage
 end
 
+-- Track if service is already initialized
+local initialized = false
+
 -- Initialize the service
 function PotionService:Initialize()
+    if initialized then
+        warn("PotionService: Already initialized, skipping duplicate initialization")
+        return
+    end
+    
+    initialized = true
     -- PotionService server initialization
     
     -- Handle potion activation requests
@@ -81,6 +90,8 @@ function PotionService:Initialize()
             self:LoadPlayerActivePotions(player)
         end)
     end
+    
+    print("PotionService: Initialized successfully")
 end
 
 -- Handle potion activation request from client
