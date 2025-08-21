@@ -38,7 +38,7 @@ local function playDiscoverySound()
 end
 
 function PetDiscoveryService:Initialize()
-    -- Subscribe to data changes to detect new pet discoveries
+    -- Subscribe to data changes to detect new pet discoveries (backup method)
     local unsubscribe = DataSyncService:Subscribe(function(newState)
         if newState.player and newState.player.CollectedPets then
             self:CheckForNewDiscoveries(newState.player.CollectedPets)
@@ -46,6 +46,18 @@ function PetDiscoveryService:Initialize()
     end)
     
     connections.dataSubscription = unsubscribe
+    
+    -- Set up direct discovery remote event listener (primary method)
+    task.spawn(function()
+        local discoveryRemote = ReplicatedStorage:WaitForChild("PetDiscovery", 10)
+        if discoveryRemote then
+            connections.discoveryRemote = discoveryRemote.OnClientEvent:Connect(function(discoveryData)
+                self:HandleDirectDiscovery(discoveryData)
+            end)
+        else
+            warn("PetDiscoveryService: PetDiscovery remote event not found after 10 seconds")
+        end
+    end)
     
     -- Initialize previous collected pets (prevent spam on first load)
     local initialData = DataSyncService:GetPlayerData()
@@ -65,6 +77,50 @@ function PetDiscoveryService:CloneTable(original)
         end
     end
     return copy
+end
+
+-- Handle direct discovery from server remote event
+function PetDiscoveryService:HandleDirectDiscovery(discoveryData)
+    if not discoveryData then return end
+    
+    local currentTime = tick()
+    if currentTime - lastPopupTime < POPUP_COOLDOWN then
+        return -- Too soon since last popup
+    end
+    
+    -- If there's already a popup showing, ignore new discoveries
+    if isShowingDiscovery then
+        return
+    end
+    
+    -- Extract variation name from discovery data
+    local variationName = "Bronze" -- default
+    if type(discoveryData.variation) == "string" then
+        variationName = discoveryData.variation
+    elseif discoveryData.variation and discoveryData.variation.VariationName then
+        variationName = discoveryData.variation.VariationName
+    end
+    
+    -- Check if this discovery meets the rarity threshold for popup
+    local petConfig = self:FindPetByName(discoveryData.name)
+    if petConfig then
+        -- Get actual rarity using the accurate calculation
+        local rarity = PetConfig.getActualPetRarity(discoveryData.name, variationName, discoveryData.data.SpawnLevel, discoveryData.data.SpawnDoor)
+        if type(rarity) == "number" and rarity >= 750 then
+            -- Update last popup time to prevent spam
+            lastPopupTime = currentTime
+            
+            -- Format discovery data for popup
+            local formattedDiscovery = {
+                name = discoveryData.name,
+                variation = variationName,
+                data = discoveryData.data,
+                timestamp = discoveryData.timestamp
+            }
+            
+            self:ShowDiscoveryPopup(formattedDiscovery)
+        end
+    end
 end
 
 function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)

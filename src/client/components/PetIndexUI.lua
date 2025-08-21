@@ -107,8 +107,15 @@ local function PetIndexUI(props)
     local bounceOffset, setBounceOffset = React.useState(0)
     local activeAnimations = React.useRef({})
     
-    -- Subscribe to player data changes
+    -- Subscribe to player data changes and get initial data
     React.useEffect(function()
+        -- Get initial data when component mounts
+        local initialData = DataSyncService:GetPlayerData()
+        if initialData then
+            setPlayerData(initialData)
+        end
+        
+        -- Subscribe to future changes
         local unsubscribe = DataSyncService:Subscribe(function(newState)
             if newState and newState.player then
                 setPlayerData(newState.player)
@@ -158,51 +165,61 @@ local function PetIndexUI(props)
     -- Tooltip position state
     local tooltipPosition, setTooltipPosition = React.useState(UDim2.new(0, 0, 0, 0))
     
-    if not visible then
-        return nil
-    end
+    -- Get all possible pets from selected level (memoized) - MUST be before conditional return
+    local allPets = React.useMemo(function()
+        return PetConfig.getPetsByLevel(selectedLevel)
+    end, {selectedLevel})
     
-    -- Get all possible pets from selected level
-    local allPets = PetConfig.getPetsByLevel(selectedLevel)
-    
-    -- Get collected pets data from player data
-    local collectedData = {}
-    local ownedPetNames = {}
-    
-    -- Build collection data from collected pets (permanent collection tracking)
-    if playerData and playerData.CollectedPets then
-        for collectionKey, collectionInfo in pairs(playerData.CollectedPets) do
-            local petName = collectionInfo.petName
-            local variationName = collectionInfo.variationName
-            local count = collectionInfo.count or 1
-            
-            if petName then
-                if not collectedData[petName] then
-                    collectedData[petName] = {
-                        variations = {},
-                        totalCollected = 0,
-                        rarestVariation = nil
-                    }
-                end
+    -- Get collected pets data from player data (memoized to prevent unnecessary recalculations) - MUST be before conditional return
+    local collectedData, ownedPetNames = React.useMemo(function()
+        local collected = {}
+        local owned = {}
+        
+        -- Build collection data from collected pets (permanent collection tracking)
+        if playerData and playerData.CollectedPets then
+            for collectionKey, collectionInfo in pairs(playerData.CollectedPets) do
+                local petName = collectionInfo.petName
+                local variationName = collectionInfo.variationName
+                local count = collectionInfo.count or 1
                 
-                -- Track variations
-                if variationName then
-                    collectedData[petName].variations[variationName] = true
-                    -- Update rarest variation (prioritize rarer variations)
-                    if not collectedData[petName].rarestVariation or 
-                       PetConstants.getVariationMultiplier(variationName) > PetConstants.getVariationMultiplier(collectedData[petName].rarestVariation) then
-                        collectedData[petName].rarestVariation = variationName
+                if petName then
+                    if not collected[petName] then
+                        collected[petName] = {
+                            variations = {},
+                            totalCollected = 0,
+                            rarestVariation = nil
+                        }
                     end
+                    
+                    -- Track variations
+                    if variationName then
+                        collected[petName].variations[variationName] = true
+                        -- Update rarest variation (prioritize rarer variations)
+                        if not collected[petName].rarestVariation or 
+                           PetConstants.getVariationMultiplier(variationName) > PetConstants.getVariationMultiplier(collected[petName].rarestVariation) then
+                            collected[petName].rarestVariation = variationName
+                        end
+                    end
+                    
+                    collected[petName].totalCollected = collected[petName].totalCollected + count
+                    owned[petName] = true
                 end
-                
-                collectedData[petName].totalCollected = collectedData[petName].totalCollected + count
-                ownedPetNames[petName] = true
             end
         end
-    end
+        
+        return collected, owned
+    end, {playerData})
     
-    -- Create pet cards EXACTLY like Pets UI
-    local function createPetCard(petConfig, cardIndex)
+    -- Create pet cards with memoization (MUST be before conditional return)
+    local petCards = React.useMemo(function()
+        if not visible then
+            return {} -- Return empty array when not visible
+        end
+        
+        local cards = {}
+        
+        -- Create pet cards EXACTLY like Pets UI
+        local function createPetCard(petConfig, cardIndex)
         if not petConfig or not petConfig.Name then
             return nil
         end
@@ -362,30 +379,69 @@ local function PetIndexUI(props)
                 Position = ScreenUtils.udim2(0, 5, 0, 5), -- Same position as Pet Inventory
                 BackgroundTransparency = 1, -- Transparent viewport
                 ZIndex = 111, -- Above squiggle background
-                key = "viewport_" .. selectedLevel .. "_" .. petName, -- Force recreation when level changes
+                key = "viewport_L" .. selectedLevel .. "_" .. petName, -- Level-specific key to prevent model conflicts
+                
                 
                 [React.Event.AncestryChanged] = function(rbx)
                     if rbx.Parent then
-                        task.spawn(function()
-                            task.wait(0.1)
-                            
-                            local petModel = createPetModelForIndex(petName)
-                            if petModel then
-                                petModel.Parent = rbx
+                        -- Check if viewport already has a pet model
+                        local hasModel = false
+                        local modelCount = 0
+                        for _, child in pairs(rbx:GetChildren()) do
+                            if child:IsA("Model") then
+                                hasModel = true
+                                modelCount = modelCount + 1
+                            end
+                        end
+                        
+                        
+                        -- Only create model if viewport doesn't have one
+                        if not hasModel then
+                            task.spawn(function()
+                                task.wait(0.1)
                                 
-                                -- If not collected, make it black/locked
-                                if not isCollected then
-                                    for _, descendant in pairs(petModel:GetDescendants()) do
-                                        if descendant:IsA("BasePart") then
-                                            descendant.Color = Color3.fromRGB(20, 20, 20) -- Very dark
-                                            descendant.Material = Enum.Material.Plastic
+                                -- Double check viewport still exists and doesn't have a model
+                                if rbx.Parent then
+                                    local stillNoModel = true
+                                    local finalModelCount = 0
+                                    for _, child in pairs(rbx:GetChildren()) do
+                                        if child:IsA("Model") then
+                                            stillNoModel = false
+                                            finalModelCount = finalModelCount + 1
+                                        end
+                                    end
+                                    
+                                    
+                                    if stillNoModel then
+                                        local petModel = createPetModelForIndex(petName)
+                                        if petModel then
+                                            petModel.Parent = rbx
+                                            
+                                            -- If not collected, make it black/locked
+                                            if not isCollected then
+                                                for _, descendant in pairs(petModel:GetDescendants()) do
+                                                    if descendant:IsA("BasePart") then
+                                                        descendant.Color = Color3.fromRGB(20, 20, 20) -- Very dark
+                                                        descendant.Material = Enum.Material.Plastic
+                                                    end
+                                                end
+                                            end
+                                            
+                                            setupPetViewportCamera(rbx, petModel)
                                         end
                                     end
                                 end
-                                
-                                setupPetViewportCamera(rbx, petModel)
+                            end)
+                        end
+                    else
+                        -- Clean up models when viewport is removed from tree
+                        local cleanupCount = 0
+                        for _, child in pairs(rbx:GetChildren()) do
+                            if child:IsA("Model") then
+                                cleanupCount = cleanupCount + 1
+                                child:Destroy()
                             end
-                        end)
+                        end
                     end
                 end,
             }, {
@@ -429,6 +485,43 @@ local function PetIndexUI(props)
                 })
             }),
         })
+        end
+        
+        -- Sort pets by rarity (rarest first) using rarity ordering
+        local rarityOrder = {
+            ["Omniscient"] = 1,     -- 1 in 1M (rarest)
+            ["Infinite"] = 2,       -- 1 in 100k
+            ["Cosmic"] = 3,         -- 1 in 50k
+            ["Primordial"] = 4,     -- 1 in 25k
+            ["Ethereal"] = 5,       -- 1 in 10k
+            ["Omnipotent"] = 6,     -- 1 in 5k
+            ["Transcendent"] = 7,   -- 1 in 2.5k
+            ["Celestial"] = 8,      -- 1 in 1k
+            ["Ancient"] = 9,        -- 1 in 500
+            ["Mythic"] = 10,        -- 1 in 250
+            ["Legendary"] = 11,     -- 1 in 100
+            ["Epic"] = 12,          -- 1 in 50
+            ["Rare"] = 13,          -- 1 in 25
+            ["Uncommon"] = 14,      -- 1 in 10
+            ["Common"] = 15         -- 1 in 5 (most common)
+        }
+        
+        table.sort(allPets, function(a, b)
+            local aOrder = rarityOrder[a.Rarity] or 99
+            local bOrder = rarityOrder[b.Rarity] or 99
+            return aOrder > bOrder -- Common first (higher number = more common)
+        end)
+        
+        for i, petConfig in ipairs(allPets) do
+            local card = createPetCard(petConfig, i)
+            cards[i] = card
+        end
+        
+        return cards
+    end, {visible, selectedLevel, allPets, collectedData})
+    
+    if not visible then
+        return nil
     end
     
     -- Create tooltip
@@ -520,7 +613,7 @@ local function PetIndexUI(props)
                         Text = "1 in " .. (function()
                             -- Use UI display rarity for consistent display
                             if PetConfig.getUIDisplayRarity then
-                                local rarity = PetConfig.getUIDisplayRarity(petConfig.Name, variation, level)
+                                local rarity = PetConfig.getUIDisplayRarity(petConfig.Name, variation, petLevel)
                                 if type(rarity) == "number" then
                                     return NumberFormatter.format(rarity)
                                 else
@@ -528,7 +621,7 @@ local function PetIndexUI(props)
                                 end
                             elseif PetConfig.getActualPetRarity then
                                 -- Fallback to actual rarity if new function doesn't exist
-                                local rarity = PetConfig.getActualPetRarity(petConfig.Name, variation, level, nil)
+                                local rarity = PetConfig.getActualPetRarity(petConfig.Name, variation, petLevel, nil)
                                 if type(rarity) == "number" then
                                     return NumberFormatter.format(rarity)
                                 else
@@ -704,38 +797,6 @@ local function PetIndexUI(props)
                 ZIndex = 104,
             }),
         })
-    end
-    
-    -- Sort pets by rarity (rarest first) using rarity ordering
-    local rarityOrder = {
-        ["Omniscient"] = 1,     -- 1 in 1M (rarest)
-        ["Infinite"] = 2,       -- 1 in 100k
-        ["Cosmic"] = 3,         -- 1 in 50k
-        ["Primordial"] = 4,     -- 1 in 25k
-        ["Ethereal"] = 5,       -- 1 in 10k
-        ["Omnipotent"] = 6,     -- 1 in 5k
-        ["Transcendent"] = 7,   -- 1 in 2.5k
-        ["Celestial"] = 8,      -- 1 in 1k
-        ["Ancient"] = 9,        -- 1 in 500
-        ["Mythic"] = 10,        -- 1 in 250
-        ["Legendary"] = 11,     -- 1 in 100
-        ["Epic"] = 12,          -- 1 in 50
-        ["Rare"] = 13,          -- 1 in 25
-        ["Uncommon"] = 14,      -- 1 in 10
-        ["Common"] = 15         -- 1 in 5 (most common)
-    }
-    
-    table.sort(allPets, function(a, b)
-        local aOrder = rarityOrder[a.Rarity] or 99
-        local bOrder = rarityOrder[b.Rarity] or 99
-        return aOrder > bOrder -- Common first (higher number = more common)
-    end)
-    
-    -- Create pet cards
-    local petCards = {}
-    for i, petConfig in ipairs(allPets) do
-        local card = createPetCard(petConfig, i)
-        petCards[i] = card
     end
     
     -- Main UI (EXACT structure as Pets UI)

@@ -598,8 +598,8 @@ local function PetInventoryUI(props)
                 Text = "Chance: 1 in " .. (function()
                     local PetConfig = require(ReplicatedStorage.config.PetConfig)
                     local variationName = type(hoveredPet.Variation) == "table" and hoveredPet.Variation.VariationName or hoveredPet.Variation
-                    local spawnLevel = hoveredPet.SpawnLevel or 1
-                    local spawnDoor = hoveredPet.SpawnDoor or nil
+                    local spawnLevel = (hoveredPet.SamplePet and hoveredPet.SamplePet.SpawnLevel) or hoveredPet.SpawnLevel or 1
+                    local spawnDoor = (hoveredPet.SamplePet and hoveredPet.SamplePet.SpawnDoor) or hoveredPet.SpawnDoor or nil
                     if PetConfig.getActualPetRarity then
                         local rarity = PetConfig.getActualPetRarity(hoveredPet.Name, variationName, spawnLevel, spawnDoor)
                         if type(rarity) == "number" then

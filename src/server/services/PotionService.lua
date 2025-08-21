@@ -498,6 +498,6 @@ end
 
 -- Singleton instance
 local instance = PotionService
-instance:Initialize()
+-- Note: Initialize() is called from Main.server.lua, not here to avoid duplicates
 
 return instance

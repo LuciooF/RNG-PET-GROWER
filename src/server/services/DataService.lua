@@ -209,6 +209,15 @@ function DataService:SyncPlayerDataToClient(player)
         updateDataRemote.Parent = ReplicatedStorage
     end
     
+    -- Create the PetDiscovery RemoteEvent for discovery popups
+    local discoveryRemote = ReplicatedStorage:FindFirstChild("PetDiscovery")
+    if not discoveryRemote then
+        discoveryRemote = Instance.new("RemoteEvent")
+        discoveryRemote.Name = "PetDiscovery"
+        discoveryRemote.Parent = ReplicatedStorage
+        print("DataService: Created PetDiscovery remote event")
+    end
+    
     -- Syncing player data to client
     
     -- Send updated data to client Rodux store
@@ -387,6 +396,17 @@ function DataService:AddPetToPlayer(player, petData)
         -- Only announce rare pet discoveries for first-time discoveries (same as popup)
         if isNewDiscovery then
             AnnouncementService:AnnouncePetDiscovery(player, petData)
+            
+            -- Also trigger discovery popup on client
+            local discoveryRemote = ReplicatedStorage:FindFirstChild("PetDiscovery")
+            
+            -- Send discovery data to client for popup
+            discoveryRemote:FireClient(player, {
+                name = petData.Name,
+                variation = petData.Variation,
+                data = petData,
+                timestamp = tick()
+            })
         end
         
         -- Sanitize pet data for DataStore compatibility
