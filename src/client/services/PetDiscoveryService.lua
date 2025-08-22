@@ -422,14 +422,36 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
     
+    local yOffset = 0
+    
+    -- Variation label (if exists)
+    if discovery.variation then
+        local variationLabel = Instance.new("TextLabel")
+        variationLabel.Name = "Variation"
+        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, 34)
+        variationLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
+        variationLabel.BackgroundTransparency = 1
+        variationLabel.Text = discovery.variation
+        variationLabel.TextColor3 = variationColor
+        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.1
+        variationLabel.Font = Enum.Font.FredokaOne
+        variationLabel.TextXAlignment = Enum.TextXAlignment.Center
+        variationLabel.TextStrokeTransparency = 0
+        variationLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        variationLabel.ZIndex = 1002
+        variationLabel.Parent = infoPanel
+        yOffset = yOffset + 40
+    end
+    
+    -- Pet name label
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "PetName"
-    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, 68)
-    nameLabel.Position = ScreenUtils.udim2(0, 0, 0, 0)
+    nameLabel.Size = ScreenUtils.udim2(1, 0, 0, 34)
+    nameLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = actualPetName
-    nameLabel.TextColor3 = rarityColor
-    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.2 -- A smidge bigger
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+    nameLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.2
     nameLabel.Font = Enum.Font.FredokaOne
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.TextStrokeTransparency = 0
@@ -437,24 +459,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     nameLabel.ZIndex = 1002
     nameLabel.Parent = infoPanel
     
-    local yOffset = 75
-    if discovery.variation then
-        local variationLabel = Instance.new("TextLabel")
-        variationLabel.Name = "Variation"
-        variationLabel.Size = ScreenUtils.udim2(1, 0, 0, 41)
-        variationLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
-        variationLabel.BackgroundTransparency = 1
-        variationLabel.Text = discovery.variation .. " Variation"
-        variationLabel.TextColor3 = variationColor
-        variationLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.1 -- A smidge bigger
-        variationLabel.Font = Enum.Font.FredokaOne
-        variationLabel.TextXAlignment = Enum.TextXAlignment.Center
-        variationLabel.TextStrokeTransparency = 0
-        variationLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        variationLabel.ZIndex = 1002
-        variationLabel.Parent = infoPanel
-        yOffset = yOffset + 50
-    end
+    yOffset = yOffset + 45 -- Update yOffset to continue after pet name
     
     local rarityChance = 1000000 -- fallback
     
@@ -486,7 +491,7 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
     rarityPrefixLabel.Position = ScreenUtils.udim2(0, 0, 0, yOffset)
     rarityPrefixLabel.BackgroundTransparency = 1
     rarityPrefixLabel.Text = "Rarity:"
-    rarityPrefixLabel.TextColor3 = Color3.fromRGB(150, 150, 150) -- Grey color
+    rarityPrefixLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
     rarityPrefixLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0 -- A smidge bigger
     rarityPrefixLabel.Font = Enum.Font.Gotham
     rarityPrefixLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -598,8 +603,9 @@ function PetDiscoveryService:ShowDiscoveryPopup(discovery)
         {element = congratsLabel, delay = 0.6, type = "fade_in"}
     }
     
+    -- Add variation label animation if it exists
     if discovery.variation then
-        table.insert(elementsToAnimate, 4, {element = infoPanel:FindFirstChild("Variation"), delay = 0.35, type = "slide_right"})
+        table.insert(elementsToAnimate, 3, {element = infoPanel:FindFirstChild("Variation"), delay = 0.25, type = "slide_right"})
     end
     
     local originalProperties = {}

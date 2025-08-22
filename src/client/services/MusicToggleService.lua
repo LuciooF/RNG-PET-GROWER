@@ -68,7 +68,7 @@ function MusicToggleService:CreateTopBarPlusButton(BackgroundMusicService)
     musicIcon = Icon.new()
         :setImage(isMusicEnabled and MUSIC_ON_ICON or MUSIC_OFF_ICON)
         :setCaption(isMusicEnabled and "Music is ON - Click to turn OFF" or "Music is OFF - Click to turn ON")
-        :setOrder(-1) -- Place at the left side
+        :align("Right") -- Position on the right side of the screen
         :oneClick(true) -- Make it behave like a button
         :bindEvent("selected", function()
             self:ToggleMusic(BackgroundMusicService)

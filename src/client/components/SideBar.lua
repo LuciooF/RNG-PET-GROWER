@@ -277,21 +277,13 @@ local function SideBar(props)
         IndexButton = buttons[3]  -- Index
     })
     
-    -- Row 3: Rebirth Button | Boost Button (side by side)
-    children["Row3_RebirthAndBoost"] = React.createElement("Frame", {
-        Size = UDim2.new(0, buttonPixelSize * 2 + spacingPixelSize * 0.5, 0, buttonPixelSize),
+    -- Row 3: Just Rebirth Button (Boost moved to bottom left)
+    children["Row3_Rebirth"] = React.createElement("Frame", {
+        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
         BackgroundTransparency = 1,
         ZIndex = 50
     }, {
-        Layout = React.createElement("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
-            HorizontalAlignment = Enum.HorizontalAlignment.Center,
-            VerticalAlignment = Enum.VerticalAlignment.Center,
-            Padding = UDim.new(0, spacingPixelSize * 0.5),
-            SortOrder = Enum.SortOrder.Name
-        }),
-        RebirthButton = buttons[4],  -- Rebirth
-        BoostButton = buttons[6]  -- Boost
+        RebirthButton = buttons[4]  -- Rebirth only
     })
     
     
@@ -313,7 +305,19 @@ local function SideBar(props)
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundTransparency = 1,
             ZIndex = 50
-        }, children)
+        }, children),
+        
+        -- Boost button positioned at bottom left corner
+        BoostButtonBottomLeft = React.createElement("Frame", {
+            Name = "BoostButtonBottomLeft",
+            Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
+            Position = UDim2.new(0, 10, 1, -10), -- Very bottom left corner with minimal 10px padding
+            AnchorPoint = Vector2.new(0, 1), -- Anchor to bottom left
+            BackgroundTransparency = 1,
+            ZIndex = 50
+        }, {
+            BoostButton = buttons[6] -- Boost button
+        })
     })
 end
 
