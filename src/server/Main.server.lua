@@ -331,6 +331,13 @@ if not requestDataRemote then
     requestDataRemote.Parent = ReplicatedStorage
 end
 
+local updatePlayerSettingsRemote = ReplicatedStorage:FindFirstChild("UpdatePlayerSettings")
+if not updatePlayerSettingsRemote then
+    updatePlayerSettingsRemote = Instance.new("RemoteEvent")
+    updatePlayerSettingsRemote.Name = "UpdatePlayerSettings"
+    updatePlayerSettingsRemote.Parent = ReplicatedStorage
+end
+
 -- Create remote events for OP pet system
 local purchaseOPPetRemote = ReplicatedStorage:FindFirstChild("PurchaseOPPet")
 if not purchaseOPPetRemote then
@@ -1096,5 +1103,18 @@ tutorialRewardRemote.OnServerEvent:Connect(function(player, stepIndex, rewardDat
         print("Main: Granted tutorial reward to", player.Name, "- Step", stepIndex, ":", amount, "diamonds")
     else
         warn("Main: Failed to grant tutorial reward to", player.Name)
+    end
+end)
+
+-- Handle player settings updates from client
+updatePlayerSettingsRemote.OnServerEvent:Connect(function(player, settings)
+    if not player or not settings or type(settings) ~= "table" then
+        warn("Main: Invalid player settings update from", player and player.Name or "unknown")
+        return
+    end
+    
+    local success = DataService:UpdatePlayerSettings(player, settings)
+    if not success then
+        warn("Main: Failed to update player settings for", player.Name)
     end
 end)

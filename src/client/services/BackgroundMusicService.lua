@@ -11,7 +11,7 @@ local backgroundMusic = nil
 -- Configuration
 local MUSIC_ASSET_ID = "rbxassetid://1840684529"
 local MUSIC_VOLUME = 0.1
-local FADE_TIME = 2 -- Seconds for fade in/out
+local FADE_TIME = 0.5 -- Seconds for fade in/out
 
 function BackgroundMusicService:Initialize()
     -- Create the background music sound
@@ -76,7 +76,6 @@ end
 function BackgroundMusicService:FadeOut()
     if not backgroundMusic then return end
     
-    print("BackgroundMusicService: Fading out music...")
     
     -- Create fade out tween
     local TweenService = game:GetService("TweenService")
@@ -111,7 +110,6 @@ function BackgroundMusicService:SetVolume(volume)
         backgroundMusic.Volume = volume
     end
     
-    print("BackgroundMusicService: Volume set to", volume)
 end
 
 function BackgroundMusicService:StopMusic()
@@ -132,8 +130,6 @@ end
 
 -- Clean up when service is destroyed
 function BackgroundMusicService:Cleanup()
-    print("BackgroundMusicService: Cleaning up...")
-    
     if backgroundMusic then
         backgroundMusic:Stop()
         backgroundMusic:Destroy()

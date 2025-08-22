@@ -21,7 +21,7 @@ end)
 
 -- Store/State management
 local store = require(ReplicatedStorage.store)
-local Actions = require(ReplicatedStorage.store.actions)
+local DataSyncService = require(script.Parent.DataSyncService)
 
 function MusicToggleService:Initialize()
     -- Import the BackgroundMusicService
@@ -43,8 +43,6 @@ function MusicToggleService:Initialize()
         warn("MusicToggleService: TopBarPlus not available, using fallback GUI")
         self:CreateFallbackButton(BackgroundMusicService)
     end
-    
-    print("MusicToggleService: Initialized music toggle button (Music:", isMusicEnabled and "ON" or "OFF", ")")
 end
 
 function MusicToggleService:LoadMusicSetting()
@@ -52,35 +50,30 @@ function MusicToggleService:LoadMusicSetting()
     local state = store:getState()
     if state.player and state.player.Settings and state.player.Settings.MusicEnabled ~= nil then
         isMusicEnabled = state.player.Settings.MusicEnabled
-        print("MusicToggleService: Loaded music setting from data:", isMusicEnabled and "ON" or "OFF")
     else
         -- Default to music on if no setting found
         isMusicEnabled = true
-        print("MusicToggleService: Using default music setting: ON")
     end
 end
 
 function MusicToggleService:SaveMusicSetting()
-    -- Dispatch action to save music setting to store
-    -- This will automatically sync to server via DataSyncService
-    store:dispatch(Actions.updatePlayerSettings({
+    -- Save music setting via DataSyncService (syncs to server)
+    DataSyncService:UpdatePlayerSettings({
         MusicEnabled = isMusicEnabled
-    }))
-    print("MusicToggleService: Saved music setting:", isMusicEnabled and "ON" or "OFF")
+    })
 end
 
 function MusicToggleService:CreateTopBarPlusButton(BackgroundMusicService)
     -- Create music toggle icon using TopBarPlus
     musicIcon = Icon.new()
         :setImage(isMusicEnabled and MUSIC_ON_ICON or MUSIC_OFF_ICON)
-        :setTip(isMusicEnabled and "Music is ON - Click to turn OFF" or "Music is OFF - Click to turn ON")
+        :setCaption(isMusicEnabled and "Music is ON - Click to turn OFF" or "Music is OFF - Click to turn ON")
         :setOrder(-1) -- Place at the left side
-        :bindEvent("activated", function()
+        :oneClick(true) -- Make it behave like a button
+        :bindEvent("selected", function()
             self:ToggleMusic(BackgroundMusicService)
             self:UpdateTopBarIcon()
         end)
-    
-    print("MusicToggleService: Created TopBarPlus music toggle")
 end
 
 function MusicToggleService:CreateFallbackButton(BackgroundMusicService)
@@ -127,8 +120,6 @@ function MusicToggleService:CreateFallbackButton(BackgroundMusicService)
     
     -- Store reference for updates
     self.toggleButton = toggleButton
-    
-    print("MusicToggleService: Created fallback GUI button")
 end
 
 function MusicToggleService:ToggleMusic(BackgroundMusicService)
@@ -137,11 +128,9 @@ function MusicToggleService:ToggleMusic(BackgroundMusicService)
     if isMusicEnabled then
         -- Turn music ON
         BackgroundMusicService:ResumeMusic()
-        print("MusicToggleService: Music enabled")
     else
         -- Turn music OFF
         BackgroundMusicService:StopMusic()
-        print("MusicToggleService: Music disabled")
     end
     
     -- Save the setting
@@ -152,7 +141,7 @@ function MusicToggleService:UpdateTopBarIcon()
     if not musicIcon then return end
     
     musicIcon:setImage(isMusicEnabled and MUSIC_ON_ICON or MUSIC_OFF_ICON)
-        :setTip(isMusicEnabled and "Music is ON - Click to turn OFF" or "Music is OFF - Click to turn ON")
+        :setCaption(isMusicEnabled and "Music is ON - Click to turn OFF" or "Music is OFF - Click to turn ON")
 end
 
 function MusicToggleService:UpdateButtonAppearance(button)
@@ -181,8 +170,6 @@ function MusicToggleService:Cleanup()
     if self.toggleButton and self.toggleButton.Parent then
         self.toggleButton.Parent:Destroy()
     end
-    
-    print("MusicToggleService: Cleaned up")
 end
 
 -- Handle player leaving

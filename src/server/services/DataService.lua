@@ -56,7 +56,10 @@ local PROFILE_TEMPLATE = {
         PendingReward = nil -- Stored pending reward from chest opening
     },
     Potions = {}, -- Dictionary of owned potions: {["diamond_2x_10m"] = 3, ["money_2x_10m"] = 1}
-    ActivePotions = {} -- Array of currently active potions with timestamps
+    ActivePotions = {}, -- Array of currently active potions with timestamps
+    Settings = { -- Player preferences and settings
+        MusicEnabled = true -- Whether background music is enabled
+    }
 }
 
 local DATASTORE_NAME = "PlayerData"
@@ -941,6 +944,31 @@ function DataService:GetChestLuckUpgradeCost(player)
     local currentLuck = profile.Data.CrazyChest.Luck
     local CrazyChestPricing = require(game.ReplicatedStorage.config.CrazyChestPricing)
     return CrazyChestPricing.GetLuckUpgradeCost(currentLuck)
+end
+
+-- Update player settings (e.g., music preferences)
+function DataService:UpdatePlayerSettings(player, settings)
+    local profile = Profiles[player]
+    if not profile then
+        return false
+    end
+    
+    -- Initialize Settings if it doesn't exist (for existing saves)
+    if not profile.Data.Settings then
+        profile.Data.Settings = {
+            MusicEnabled = true
+        }
+    end
+    
+    -- Update settings
+    for key, value in pairs(settings) do
+        profile.Data.Settings[key] = value
+    end
+    
+    -- Auto-sync to client Rodux store
+    self:SyncPlayerDataToClient(player)
+    
+    return true
 end
 
 return DataService

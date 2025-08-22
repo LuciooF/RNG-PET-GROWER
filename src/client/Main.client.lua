@@ -64,6 +64,10 @@ GlobalChatService:Initialize()
 local PetProcessingSoundService = require(script.Parent.services.PetProcessingSoundService)
 PetProcessingSoundService:Initialize()
 
+-- Initialize data sync service (handles client-server data synchronization)
+local DataSyncService = require(script.Parent.services.DataSyncService)
+DataSyncService:Initialize()
+
 LoadingService:SetProgress(0.1, "Rigging crazy chest results...")
 
 -- Initialize welcome camera service early (doesn't need player data to start)

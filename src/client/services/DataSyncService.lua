@@ -124,6 +124,20 @@ function DataSyncService:GetOwnedPlots()
     return playerData.OwnedPlots or {}
 end
 
+-- Update player settings and sync to server
+function DataSyncService:UpdatePlayerSettings(settings)
+    -- Update local state immediately for responsive UI
+    store:dispatch(Actions.updatePlayerSettings(settings))
+    
+    -- Send to server for persistence
+    local updateSettingsRemote = ReplicatedStorage:FindFirstChild("UpdatePlayerSettings")
+    if updateSettingsRemote then
+        updateSettingsRemote:FireServer(settings)
+    else
+        warn("DataSyncService: UpdatePlayerSettings remote not found")
+    end
+end
+
 -- Subscribe to state changes
 function DataSyncService:Subscribe(callback)
     -- Rodux uses the 'changed' signal for subscriptions
