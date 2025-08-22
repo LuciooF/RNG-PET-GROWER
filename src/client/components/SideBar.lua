@@ -294,14 +294,6 @@ local function SideBar(props)
         BoostButton = buttons[6]  -- Boost
     })
     
-    -- Row 4: Gamepass Button (centered)
-    children["Row4_Gamepass"] = React.createElement("Frame", {
-        Size = UDim2.new(0, buttonPixelSize, 0, buttonPixelSize),
-        BackgroundTransparency = 1,
-        ZIndex = 50
-    }, {
-        GamepassButton = buttons[5]
-    })
     
     -- Calculate proper width for 2 buttons side by side plus spacing
     local sidebarWidth = buttonPixelSize * 2 + spacingPixelSize * 0.5 + 100 -- Width for 2 buttons + safe padding
