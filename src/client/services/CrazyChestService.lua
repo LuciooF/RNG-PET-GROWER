@@ -65,8 +65,8 @@ function CrazyChestService:Initialize()
 end
 
 function CrazyChestService:FindChestInPlayerArea()
-    -- Use shared utility to find player's area
-    local playerArea = PlayerAreaFinder:WaitForPlayerArea(30)
+    -- Use shared utility to find player's area (reduced timeout since PlayerAreas already exist)
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(5)
     if not playerArea then
         warn("CrazyChestService: Player area not found for", player.Name)
         return

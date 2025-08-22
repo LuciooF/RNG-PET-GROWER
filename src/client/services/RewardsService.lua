@@ -524,7 +524,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     
     -- Create main popup frame expansion
     local expandTween = TweenService:Create(popupFrame, TweenInfo.new(
-        0.6, -- Faster main expansion
+        0.4, -- Faster main expansion
         Enum.EasingStyle.Back,
         Enum.EasingDirection.Out
     ), {
@@ -666,13 +666,13 @@ function RewardsService:ShowRewardPopup(rewardData)
         animateRainbowBorder()
     end)
     
-    -- Auto-dismiss after 4 seconds
+    -- Auto-dismiss after 2.5 seconds
     task.spawn(function()
-        task.wait(4)
+        task.wait(2.5)
         
         -- Shrinking animation (reverse of expanding)
         local shrinkTween = TweenService:Create(popupFrame, TweenInfo.new(
-            0.5,
+            0.3,
             Enum.EasingStyle.Back,
             Enum.EasingDirection.In
         ), {

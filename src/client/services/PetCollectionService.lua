@@ -8,18 +8,28 @@ local PetCollectionService = {}
 PetCollectionService.__index = PetCollectionService
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local character = nil
+local humanoidRootPart = nil
 
--- Remote events - wait for server to create it
-local collectPetRemote = ReplicatedStorage:WaitForChild("CollectPet")
+-- Remote events
+local collectPetRemote = nil
 
 -- Track collected balls to prevent double collection
 local collectedBalls = {}
 
 function PetCollectionService:Initialize()
-    -- Set up collection detection
-    self:SetupCollectionDetection()
+    -- Initialize character and remote asynchronously
+    task.spawn(function()
+        -- Wait for character
+        character = player.Character or player.CharacterAdded:Wait()
+        humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        
+        -- Wait for remote event
+        collectPetRemote = ReplicatedStorage:WaitForChild("CollectPet")
+        
+        -- Set up collection detection once everything is ready
+        self:SetupCollectionDetection()
+    end)
     
     -- Handle character respawn
     player.CharacterAdded:Connect(function(newCharacter)
@@ -65,6 +75,11 @@ function PetCollectionService:SetupBallCollection(petBall)
 end
 
 function PetCollectionService:CollectPetBall(petBall, connection)
+    -- Check if remote is ready
+    if not collectPetRemote then
+        return
+    end
+    
     -- Prevent double collection
     if collectedBalls[petBall] then
         return

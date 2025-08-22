@@ -616,8 +616,10 @@ end
 
 -- Initialize all physical leaderboards
 function PhysicalLeaderboardService:Initialize()
-	-- small delay for world to be ready
-	task.wait(2)
+	-- Initialize asynchronously to avoid blocking loading screen
+	task.spawn(function()
+		-- small delay for world to be ready (moved to async)
+		task.wait(2)
 
 	local managers = {}
 
@@ -675,6 +677,7 @@ function PhysicalLeaderboardService:Initialize()
 			end
 		end
 	end)
+	end) -- Close task.spawn
 end
 
 function PhysicalLeaderboardService:Cleanup()

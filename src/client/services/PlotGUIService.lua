@@ -321,47 +321,50 @@ function PlotGUIService:UpdateAllGUIs()
     end
 end
 
--- Scan for plots and tubeplots to create GUIs
+-- Scan for plots and tubeplots to create GUIs (optimized to only scan local player area)
 function PlotGUIService:ScanAndCreateGUIs()
-    local playerAreas = Workspace:FindFirstChild("PlayerAreas")
-    if not playerAreas then
+    -- Use PlayerAreaFinder to get only the local player's area
+    local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
+    local playerArea = PlayerAreaFinder:WaitForPlayerArea(5)
+    
+    if not playerArea then
+        warn("PlotGUIService: Could not find local player area")
         return
     end
     
-    for _, area in pairs(playerAreas:GetChildren()) do
-        if area.Name:match("^PlayerArea%d+$") then
-            local buttonsFolder = area:FindFirstChild("Buttons")
-            if buttonsFolder then
-                -- Create plot GUIs
-                for i = 1, PlotConfig.TOTAL_PLOTS do
-                    if i ~= 6 and i ~= 7 then -- Skip non-existent plots
-                        local plot = buttonsFolder:FindFirstChild("Plot" .. i)
-                        if plot then
-                            self:CreatePlotGUI(area, plot, i)
-                        end
-                    end
-                end
-                
-                -- Create tubeplot GUIs
-                for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
-                    local tubePlot = buttonsFolder:FindFirstChild("TubePlot" .. i)
-                    if tubePlot then
-                        self:CreateTubePlotGUI(area, tubePlot, i)
-                    end
-                end
-                
-                -- Clean up any misplaced GUIs on mixer buttons
-                for _, child in pairs(buttonsFolder:GetChildren()) do
-                    if child.Name:match("^Mixer%dButton$") then
-                        -- Remove any plot-style GUIs from mixer buttons
-                        for _, descendant in pairs(child:GetDescendants()) do
-                            if descendant:IsA("BillboardGui") and 
-                               (descendant.Name == "PlotGUI" or descendant.Name == "TubePlotGUI") then
-                                descendant:Destroy()
-                                warn("PlotGUIService: Removed misplaced GUI from", child.Name)
-                            end
-                        end
-                    end
+    local buttonsFolder = playerArea:FindFirstChild("Buttons")
+    if not buttonsFolder then
+        warn("PlotGUIService: Buttons folder not found in player area")
+        return
+    end
+    
+    -- Create plot GUIs for local player area only
+    for i = 1, PlotConfig.TOTAL_PLOTS do
+        if i ~= 6 and i ~= 7 then -- Skip non-existent plots
+            local plot = buttonsFolder:FindFirstChild("Plot" .. i)
+            if plot then
+                self:CreatePlotGUI(playerArea, plot, i)
+            end
+        end
+    end
+    
+    -- Create tubeplot GUIs for local player area only
+    for i = 1, PlotConfig.TOTAL_TUBEPLOTS do
+        local tubePlot = buttonsFolder:FindFirstChild("TubePlot" .. i)
+        if tubePlot then
+            self:CreateTubePlotGUI(playerArea, tubePlot, i)
+        end
+    end
+    
+    -- Clean up any misplaced GUIs on mixer buttons
+    for _, child in pairs(buttonsFolder:GetChildren()) do
+        if child.Name:match("^Mixer%dButton$") then
+            -- Remove any plot-style GUIs from mixer buttons
+            for _, descendant in pairs(child:GetDescendants()) do
+                if descendant:IsA("BillboardGui") and 
+                   (descendant.Name == "PlotGUI" or descendant.Name == "TubePlotGUI") then
+                    descendant:Destroy()
+                    warn("PlotGUIService: Removed misplaced GUI from", child.Name)
                 end
             end
         end
@@ -371,10 +374,7 @@ end
 -- Initialize the service
 function PlotGUIService:Initialize()
     local success, error = pcall(function()
-        -- Wait a bit to ensure proper loading order
-        task.wait(0.5)
-        
-        -- Scan and create GUIs
+        -- Scan and create GUIs (PlayerAreaFinder handles waiting properly)
         self:ScanAndCreateGUIs()
         
         -- Subscribe to store changes

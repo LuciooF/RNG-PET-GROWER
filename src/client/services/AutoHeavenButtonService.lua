@@ -52,10 +52,8 @@ function AutoHeavenButtonService:FindAutoHeavenButton()
     if not playerArea then
         warn("AutoHeavenButtonService: Player area not found after 10 seconds, retrying...")
         
-        -- Clear cache and try again with longer timeout
+        -- Clear cache and try again with longer timeout (no blocking wait)
         PlayerAreaFinder:ClearCache()
-        task.wait(2) -- Wait a bit longer for area initialization
-        
         playerArea = PlayerAreaFinder:WaitForPlayerArea(15) -- Even longer retry timeout
         if not playerArea then
             warn("AutoHeavenButtonService: Player area not found after retries - service will retry later")

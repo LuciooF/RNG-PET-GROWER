@@ -20,8 +20,10 @@ local SHOW_DISTANCE = 80 -- Show when within 80 studs
 local HIDE_DISTANCE = 100 -- Hide when beyond 100 studs
 
 function PlayerRankGUIService:Initialize()
-    -- Wait a bit for the game to fully load
-    task.wait(2)
+    -- Initialize asynchronously to avoid blocking loading screen
+    task.spawn(function()
+        -- Wait a bit for the game to fully load (moved to async)
+        task.wait(2)
     
     -- Create GUIs for ALL players (including local player for 3rd person view)
     for _, targetPlayer in pairs(Players:GetPlayers()) do
@@ -60,6 +62,7 @@ function PlayerRankGUIService:Initialize()
     end)
     
     -- Service initialized successfully
+    end) -- Close task.spawn
 end
 
 -- Get rank info based on rebirth count (use shared utility)

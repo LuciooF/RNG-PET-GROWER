@@ -459,6 +459,14 @@ if not updateTutorialProgressRemote then
     updateTutorialProgressRemote.Parent = ReplicatedStorage
 end
 
+-- Create remote event for tutorial step rewards
+local tutorialRewardRemote = ReplicatedStorage:FindFirstChild("TutorialReward")
+if not tutorialRewardRemote then
+    tutorialRewardRemote = Instance.new("RemoteEvent")
+    tutorialRewardRemote.Name = "TutorialReward"
+    tutorialRewardRemote.Parent = ReplicatedStorage
+end
+
 -- Create remote event for pet processing sound effects
 local petProcessedRemote = ReplicatedStorage:FindFirstChild("PetProcessed")
 if not petProcessedRemote then
@@ -1046,3 +1054,47 @@ debugCommandRemote.OnServerEvent:Connect(function(player, commandType, ...)
 end)
 
 -- All remote events are now handled directly here with DataService auto-sync
+
+-- Handle tutorial reward requests
+tutorialRewardRemote.OnServerEvent:Connect(function(player, stepIndex, rewardData)
+    -- Validate parameters
+    if not player or not stepIndex or not rewardData then
+        warn("Main: Invalid tutorial reward parameters")
+        return
+    end
+    
+    -- Security check - verify player exists and has profile
+    local profile = DataService:GetPlayerProfile(player)
+    if not profile then
+        warn("Main: No profile found for player", player.Name, "tutorial reward")
+        return
+    end
+    
+    -- Validate reward data
+    if rewardData.type ~= "Diamonds" then
+        warn("Main: Invalid reward type:", rewardData.type)
+        return
+    end
+    
+    local amount = tonumber(rewardData.amount)
+    if not amount or amount <= 0 or amount > 1000 then -- Cap at 1000 diamonds for security
+        warn("Main: Invalid reward amount:", rewardData.amount)
+        return
+    end
+    
+    -- Grant the reward
+    local success = DataService:UpdatePlayerResources(player, "Diamonds", amount)
+    if success then
+        -- Show reward popup using ShowReward RemoteEvent
+        local rewardPopupData = {
+            type = "Diamonds",
+            amount = amount,
+            source = "Tutorial Reward"
+        }
+        showRewardRemote:FireClient(player, rewardPopupData)
+        
+        print("Main: Granted tutorial reward to", player.Name, "- Step", stepIndex, ":", amount, "diamonds")
+    else
+        warn("Main: Failed to grant tutorial reward to", player.Name)
+    end
+end)
