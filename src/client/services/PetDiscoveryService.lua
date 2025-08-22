@@ -124,7 +124,7 @@ function PetDiscoveryService:HandleDirectDiscovery(discoveryData)
 end
 
 function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
-    if not currentCollectedPets then return end
+    if not currentCollectedPets or type(currentCollectedPets) ~= "table" then return end
     
     local newDiscoveries = {}
     
@@ -153,7 +153,7 @@ function PetDiscoveryService:CheckForNewDiscoveries(currentCollectedPets)
         end
         
         -- Check for new variations of existing pets
-        if wasDiscovered and isNowDiscovered and petData.variations then
+        if wasDiscovered and isNowDiscovered and petData.variations and type(petData.variations) == "table" then
             local previousVariations = previousCollectedPets[petName].variations or {}
             for variation, _ in pairs(petData.variations) do
                 if not previousVariations[variation] then
