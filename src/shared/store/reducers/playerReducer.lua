@@ -11,7 +11,10 @@ local defaultState = {
     Pets = {},
     EquippedPets = {},
     OwnedTubes = {},
-    OwnedPlots = {}
+    OwnedPlots = {},
+    Settings = {
+        MusicEnabled = true -- Default to music on
+    }
 }
 
 local function playerReducer(state, action)
@@ -157,6 +160,27 @@ local function playerReducer(state, action)
                     newState[key][i] = plotNumber
                 end
                 table.insert(newState[key], action.payload)
+            else
+                newState[key] = value
+            end
+        end
+        return newState
+        
+    elseif action.type == Actions.UPDATE_PLAYER_SETTINGS then
+        local newState = {}
+        for key, value in pairs(state) do
+            if key == "Settings" then
+                newState[key] = {}
+                -- Copy existing settings
+                if value then
+                    for settingKey, settingValue in pairs(value) do
+                        newState[key][settingKey] = settingValue
+                    end
+                end
+                -- Update with new settings
+                for settingKey, settingValue in pairs(action.payload) do
+                    newState[key][settingKey] = settingValue
+                end
             else
                 newState[key] = value
             end

@@ -9,6 +9,7 @@ react = "jsdotlua/react@^17.1.0"
 react-roblox = "jsdotlua/react-roblox@^17.1.0"
 rodux = "roblox/rodux@^3.0.0"
 promise = "evaera/promise@^4.0.0"
+topbarplus = "1foreverhd/topbarplus@^3.3.0"
 
 [server-dependencies]
 profilestore = "lm-loleris/profilestore@^1.0.3"

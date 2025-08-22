@@ -48,6 +48,10 @@ PetFollowService:Initialize()
 local BackgroundMusicService = require(script.Parent.services.BackgroundMusicService)
 BackgroundMusicService:Initialize()
 
+-- Initialize music toggle service (doesn't depend on player data)
+local MusicToggleService = require(script.Parent.services.MusicToggleService)
+MusicToggleService:Initialize()
+
 -- Initialize petball collection sound service (doesn't depend on player data)
 local PetballCollectionSoundService = require(script.Parent.services.PetballCollectionSoundService)
 PetballCollectionSoundService:Initialize()
@@ -182,6 +186,10 @@ task.spawn(function()
     -- Hide loading screen and start camera animation
     LoadingService:Hide()
     task.wait(0.2) -- Small delay for loading screen to fade
+    
+    -- Signal that loading is complete - pets can now start spawning
+    ClientPetBallService:CompleteLoading()
+    
     WelcomeCameraService:StartWelcomeAnimation()
     
 end)

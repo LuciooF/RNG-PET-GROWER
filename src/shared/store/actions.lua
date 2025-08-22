@@ -13,6 +13,9 @@ Actions.EQUIP_PET = "EQUIP_PET"
 Actions.UNEQUIP_PET = "UNEQUIP_PET"
 Actions.UPDATE_PET = "UPDATE_PET"
 
+-- Settings Actions
+Actions.UPDATE_PLAYER_SETTINGS = "UPDATE_PLAYER_SETTINGS"
+
 -- Other Actions
 Actions.ADD_OWNED_TUBE = "ADD_OWNED_TUBE"
 Actions.ADD_OWNED_PLOT = "ADD_OWNED_PLOT"
@@ -91,6 +94,13 @@ function Actions.addOwnedPlot(plotNumber)
     return {
         type = Actions.ADD_OWNED_PLOT,
         payload = plotNumber
+    }
+end
+
+function Actions.updatePlayerSettings(settings)
+    return {
+        type = Actions.UPDATE_PLAYER_SETTINGS,
+        payload = settings
     }
 end
 
