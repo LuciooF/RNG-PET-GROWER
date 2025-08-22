@@ -254,10 +254,10 @@ function RewardsService:ShowRewardPopup(rewardData)
     local popupFrame = Instance.new("Frame")
     popupFrame.Name = "PopupFrame"
     popupFrame.Size = UDim2.new(0, 0, 0, 0) -- Start at size 0 for expanding animation
-    popupFrame.Position = UDim2.new(0.5, 0, 0.75, 0) -- Bottom-middle with padding from screen edge
-    popupFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    popupFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Dark background
-    popupFrame.BackgroundTransparency = 0.1
+    popupFrame.Position = UDim2.new(1, -20, 1, -20) -- Bottom-right with padding from screen edge
+    popupFrame.AnchorPoint = Vector2.new(1, 1) -- Anchor to bottom-right
+    popupFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+    popupFrame.BackgroundTransparency = 0 -- Fully opaque white
     popupFrame.BorderSizePixel = 0
     popupFrame.ZIndex = 1000
     popupFrame.Parent = popupGui
@@ -267,6 +267,15 @@ function RewardsService:ShowRewardPopup(rewardData)
     corner.CornerRadius = ScreenUtils.udim(0, ScreenUtils.getCornerRadius(20))
     corner.Parent = popupFrame
     
+    -- Subtle white gradient background
+    local backgroundGradient = Instance.new("UIGradient")
+    backgroundGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), -- Pure white at top
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 240, 240))  -- Very light gray at bottom
+    })
+    backgroundGradient.Rotation = 90 -- Vertical gradient
+    backgroundGradient.Parent = popupFrame
+    
     -- Drop shadow
     local shadow = Instance.new("UIStroke")
     shadow.Color = Color3.fromRGB(0, 0, 0)
@@ -274,16 +283,6 @@ function RewardsService:ShowRewardPopup(rewardData)
     shadow.Transparency = 0.5
     shadow.Parent = popupFrame
     
-    -- Rainbow gradient border for excitement
-    local gradientBorder = Instance.new("UIStroke")
-    gradientBorder.Color = Color3.fromRGB(255, 255, 255)
-    gradientBorder.Thickness = 5 -- Fixed thickness instead of double scaling
-    gradientBorder.Transparency = 0.3
-    gradientBorder.Parent = popupFrame
-    
-    local rainbowGradient = Instance.new("UIGradient")
-    rainbowGradient.Parent = gradientBorder
-    GradientUtils.ApplyGradient(GradientUtils.RAINBOW, rainbowGradient)
     
     -- Icon/Viewport (left side)
     local iconOrViewport
@@ -291,8 +290,8 @@ function RewardsService:ShowRewardPopup(rewardData)
         -- Pet viewport
         iconOrViewport = Instance.new("ViewportFrame")
         iconOrViewport.Name = "PetViewport"
-        iconOrViewport.Size = ScreenUtils.udim2(0, 270, 0, 270) -- Scaled down by 10%
-        iconOrViewport.Position = ScreenUtils.udim2(0, 23, 0, 45) -- Scaled down by 10%
+        iconOrViewport.Size = ScreenUtils.udim2(0, 216, 0, 216) -- Smaller (20% smaller)
+        iconOrViewport.Position = ScreenUtils.udim2(0, 18, 0, 36) -- Adjusted position
         iconOrViewport.BackgroundTransparency = 1
         iconOrViewport.ZIndex = 1001
         iconOrViewport.Parent = popupFrame
@@ -307,8 +306,8 @@ function RewardsService:ShowRewardPopup(rewardData)
         -- Icon display
         iconOrViewport = Instance.new("ImageLabel")
         iconOrViewport.Name = "RewardIcon"
-        iconOrViewport.Size = ScreenUtils.udim2(0, 225, 0, 225) -- Scaled down by 10%
-        iconOrViewport.Position = ScreenUtils.udim2(0, 45, 0, 68) -- Scaled down by 10%
+        iconOrViewport.Size = ScreenUtils.udim2(0, 180, 0, 180) -- Smaller (20% smaller)
+        iconOrViewport.Position = ScreenUtils.udim2(0, 36, 0, 54) -- Adjusted position
         iconOrViewport.BackgroundTransparency = 1
         iconOrViewport.Image = displayInfo.icon
         iconOrViewport.ImageColor3 = displayInfo.iconColor
@@ -320,12 +319,12 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Title (top center)
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
-    titleLabel.Size = ScreenUtils.udim2(1, -54, 0, 54) -- Scaled down by 10%
-    titleLabel.Position = ScreenUtils.udim2(0, 27, 0, 14) -- Scaled down by 10%
+    titleLabel.Size = ScreenUtils.udim2(1, -43, 0, 43) -- Smaller
+    titleLabel.Position = ScreenUtils.udim2(0, 22, 0, 11) -- Adjusted position
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = displayInfo.title
     titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.4
+    titleLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.9 -- Smaller text
     titleLabel.Font = Enum.Font.FredokaOne
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.TextStrokeTransparency = 0
@@ -336,8 +335,8 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Info panel (right side of icon/viewport)
     local infoPanel = Instance.new("Frame")
     infoPanel.Name = "InfoPanel"
-    infoPanel.Size = ScreenUtils.udim2(0, 324, 0, 243) -- Scaled down by 10%
-    infoPanel.Position = ScreenUtils.udim2(0, 315, 0, 68) -- Scaled down by 10%
+    infoPanel.Size = ScreenUtils.udim2(0, 259, 0, 194) -- Smaller (20% smaller)
+    infoPanel.Position = ScreenUtils.udim2(0, 252, 0, 54) -- Adjusted position
     infoPanel.BackgroundTransparency = 1
     infoPanel.ZIndex = 1001
     infoPanel.Parent = popupFrame
@@ -350,7 +349,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     mainLabel.BackgroundTransparency = 1
     mainLabel.Text = displayInfo.mainText
     mainLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White for rainbow gradient
-    mainLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 2.2
+    mainLabel.TextSize = ScreenUtils.TEXT_SIZES.HEADER() * 1.8 -- Smaller text
     mainLabel.Font = Enum.Font.FredokaOne
     mainLabel.TextXAlignment = Enum.TextXAlignment.Center
     mainLabel.TextStrokeTransparency = 0
@@ -380,7 +379,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     subLabel.BackgroundTransparency = 1
     subLabel.Text = displayInfo.subText
     subLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    subLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 2.1
+    subLabel.TextSize = ScreenUtils.TEXT_SIZES.LARGE() * 1.7 -- Smaller text
     subLabel.Font = Enum.Font.FredokaOne
     subLabel.TextXAlignment = Enum.TextXAlignment.Center
     subLabel.TextStrokeTransparency = 0
@@ -396,7 +395,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     sourceLabel.BackgroundTransparency = 1
     sourceLabel.Text = "From: " .. displayInfo.sourceText
     sourceLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    sourceLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.0
+    sourceLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.6 -- Smaller text
     sourceLabel.Font = Enum.Font.Gotham
     sourceLabel.TextXAlignment = Enum.TextXAlignment.Center
     sourceLabel.TextStrokeTransparency = 0
@@ -412,7 +411,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     congratsLabel.BackgroundTransparency = 1
     congratsLabel.Text = "Reward Added!"
     congratsLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Bright green
-    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 2.3
+    congratsLabel.TextSize = ScreenUtils.TEXT_SIZES.MEDIUM() * 1.8 -- Smaller text
     congratsLabel.Font = Enum.Font.FredokaOne
     congratsLabel.TextXAlignment = Enum.TextXAlignment.Center
     congratsLabel.TextStrokeTransparency = 0
@@ -455,7 +454,7 @@ function RewardsService:ShowRewardPopup(rewardData)
     end)
     
     -- AMAZING POP OUT ANIMATION - Every element animates individually!
-    local finalSize = ScreenUtils.udim2(0, 675, 0, 351) -- Scaled down by 10%
+    local finalSize = ScreenUtils.udim2(0, 540, 0, 280) -- Smaller size (20% smaller)
     
     -- Set all elements to start invisible/small for pop-out effect
     local elementsToAnimate = {
@@ -550,22 +549,6 @@ function RewardsService:ShowRewardPopup(rewardData)
         end
     end
     
-    -- Rainbow border pulsing animation
-    local function animateRainbowBorder()
-        task.spawn(function()
-            local rotationTween = TweenService:Create(rainbowGradient, TweenInfo.new(
-                3, -- 3 second rotation
-                Enum.EasingStyle.Linear,
-                Enum.EasingDirection.InOut,
-                -1, -- Infinite repeat
-                false, -- No reverse
-                0
-            ), {
-                Rotation = 360
-            })
-            rotationTween:Play()
-        end)
-    end
     
     -- Start main popup expansion
     expandTween:Play()
@@ -663,7 +646,6 @@ function RewardsService:ShowRewardPopup(rewardData)
     -- Start secondary animations after main expansion
     expandTween.Completed:Connect(function()
         animatePetModel()
-        animateRainbowBorder()
     end)
     
     -- Auto-dismiss after 2.5 seconds

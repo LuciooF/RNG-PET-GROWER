@@ -11,6 +11,10 @@ local IconAssets = require(ReplicatedStorage.utils.IconAssets)
 local ClientPetBallService = {}
 ClientPetBallService.__index = ClientPetBallService
 
+-- Loading state management
+local isLoadingComplete = false
+local queuedSpawnRequests = {} -- Queue spawn requests during loading
+
 -- Helper function to safely extract pet name from pet data
 local function getSafePetName(petData)
     if not petData.Name then
@@ -89,12 +93,32 @@ function ClientPetBallService:Initialize()
     
     -- Listen for pet ball spawn requests from server
     spawnPetBallRemote.OnClientEvent:Connect(function(doorPosition, petData, areaName)
-        self:CreatePetBall(doorPosition, petData, areaName)
+        if isLoadingComplete then
+            self:CreatePetBall(doorPosition, petData, areaName)
+        else
+            -- Queue the spawn request during loading
+            table.insert(queuedSpawnRequests, {
+                type = "normal",
+                doorPosition = doorPosition,
+                petData = petData,
+                areaName = areaName
+            })
+        end
     end)
     
     -- Listen for heaven pet ball spawn requests from server
     spawnHeavenPetBallRemote.OnClientEvent:Connect(function(petData, tubeNumber, areaName)
-        self:CreateHeavenPetBall(petData, tubeNumber, areaName)
+        if isLoadingComplete then
+            self:CreateHeavenPetBall(petData, tubeNumber, areaName)
+        else
+            -- Queue the spawn request during loading
+            table.insert(queuedSpawnRequests, {
+                type = "heaven",
+                petData = petData,
+                tubeNumber = tubeNumber,
+                areaName = areaName
+            })
+        end
     end)
     
     -- Listen for clear requests from server (for rebirth) - non-blocking
@@ -136,6 +160,26 @@ function ClientPetBallService:Initialize()
             end
         end
     end)
+end
+
+-- Call this function when loading is complete to process queued spawn requests
+function ClientPetBallService:CompleteLoading()
+    isLoadingComplete = true
+    
+    -- Process all queued spawn requests
+    for _, request in ipairs(queuedSpawnRequests) do
+        if request.type == "normal" then
+            self:CreatePetBall(request.doorPosition, request.petData, request.areaName)
+        elseif request.type == "heaven" then
+            self:CreateHeavenPetBall(request.petData, request.tubeNumber, request.areaName)
+        end
+    end
+    
+    -- Clear the queue
+    local processedCount = #queuedSpawnRequests
+    queuedSpawnRequests = {}
+    
+    print("ClientPetBallService: Loading complete, processed", processedCount, "queued spawn requests")
 end
 
 function ClientPetBallService:CreatePetBall(doorPosition, petData, areaName)
@@ -343,39 +387,43 @@ end
 
 -- Create floating name GUI for pet balls
 function ClientPetBallService:CreatePetNameGUI(petBall, petData)
-    -- Create BillboardGui
+    -- Get screen-scaled size using ScreenUtils
+    local ScreenUtils = require(ReplicatedStorage.utils.ScreenUtils)
+    local scaledWidth = ScreenUtils.getProportionalSize(35) -- A bit bigger
+    local scaledHeight = ScreenUtils.getProportionalSize(18) -- A bit bigger
+    
+    -- Create BillboardGui that follows ball position but stays upright
     local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "PetNameGUI"
-    billboardGui.Size = UDim2.new(0, 35, 0, 35) -- Even smaller: 35x35 pixels
-    billboardGui.StudsOffset = Vector3.new(0, 2.5, 0) -- Bit higher: 2.5 studs above ball
+    billboardGui.Name = "PetValueGUI"
+    billboardGui.Size = UDim2.new(0, scaledWidth, 0, scaledHeight) -- Screen-scaled size
+    billboardGui.StudsOffset = Vector3.new(0, 1.8, 0) -- Closer to ball (was 2.5)
     billboardGui.LightInfluence = 0
-    billboardGui.AlwaysOnTop = true
+    billboardGui.AlwaysOnTop = false -- Don't show through walls
     billboardGui.Enabled = false -- Start hidden
-    billboardGui.Parent = petBall
+    billboardGui.Parent = petBall -- Directly on the ball
     
     -- Create TextLabel
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
-    nameLabel.BackgroundTransparency = 1 -- No background
-    -- Create text with variation and pet name using helper functions
-    local variationName = getSafeVariationName(petData)
-    local petName = getSafePetName(petData)
-    nameLabel.Text = variationName .. "\n" .. petName
-    nameLabel.TextScaled = true
-    nameLabel.Font = Enum.Font.SourceSansBold
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "ValueLabel"
+    valueLabel.Size = UDim2.new(1, 0, 1, 0)
+    valueLabel.Position = UDim2.new(0, 0, 0, 0)
+    valueLabel.BackgroundTransparency = 1 -- No background
     
-    -- Get variation color (same as the ball color)
-    local PetConstants = require(ReplicatedStorage.constants.PetConstants)
-    local variationColor = PetConstants.getVariationColor(petData.Variation or "Bronze")
-    nameLabel.TextColor3 = variationColor
+    -- Format the pet value with NumberFormatter
+    local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
+    local petValue = petData.FinalValue or petData.BaseValue or 0
+    valueLabel.Text = "$" .. NumberFormatter.format(petValue)
+    valueLabel.TextScaled = true
+    valueLabel.Font = Enum.Font.FredokaOne
     
-    -- Add black outline
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
+    -- Use green color for money values
+    valueLabel.TextColor3 = Color3.fromRGB(50, 255, 50) -- Bright green
     
-    nameLabel.Parent = billboardGui
+    -- Add black outline for better visibility
+    valueLabel.TextStrokeTransparency = 0
+    valueLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Black outline
+    
+    valueLabel.Parent = billboardGui
     
     -- Add distance-based visibility with hysteresis to prevent flickering
     local Players = game:GetService("Players")
