@@ -7,11 +7,19 @@ local PathfindingService = game:GetService("PathfindingService")
 local CollectionService = game:GetService("CollectionService")
 
 local store = require(ReplicatedStorage.store)
-local NumberFormatter = require(ReplicatedStorage.utils.NumberFormatter)
 local PlayerAreaFinder = require(ReplicatedStorage.utils.PlayerAreaFinder)
 
 local TutorialService = {}
 TutorialService.__index = TutorialService
+
+-- Constants
+local CONSTANTS = {
+	UPDATE_THROTTLE = 0.02, -- ~50 FPS
+	BEAM_OFFSET = Vector3.new(0, 0.5, 0),
+	PLAYER_OFFSET = Vector3.new(0, 3, 0),
+	RARE_PET_THRESHOLD = 250,
+	STEP_COMPLETION_DELAY = 0.5,
+}
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -32,7 +40,6 @@ local currentTargetInstance: Instance? = nil
 
 -- Small throttle since we're only moving attachments (cheap)
 local lastUpdateTime = 0
-local UPDATE_THROTTLE = 0.02 -- ~50 FPS
 
 -- ========= Helpers =========
 
@@ -169,8 +176,8 @@ end
 
 local function setBeamPositions(startPos: Vector3, endPos: Vector3)
 	if not beam or not startPart or not endPart then return end
-	startPart.Position = startPos + Vector3.new(0, 0.5, 0)
-	endPart.Position = endPos + Vector3.new(0, 0.5, 0)
+	startPart.Position = startPos + CONSTANTS.BEAM_OFFSET
+	endPart.Position = endPos + CONSTANTS.BEAM_OFFSET
 end
 
 -- ========= Steps =========
@@ -182,6 +189,7 @@ local TUTORIAL_STEPS = {
 		description = "Follow the glowing path to Plot 1 and click on it to unlock it. This will cost you 0 money (it's free!)",
 		targetType = "plot",
 		targetId = 1,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if not area then return nil end
@@ -196,6 +204,7 @@ local TUTORIAL_STEPS = {
 		description = "Pet balls will spawn near unlocked doors! Walk over them to collect pets. Collect 10 pets total.",
 		targetType = "collection",
 		targetCount = 10,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if area then
@@ -214,6 +223,7 @@ local TUTORIAL_STEPS = {
 		description = "Great! Now follow the path to TubePlot 1 to unlock your first processing tube. This is where you'll process pets for rewards!",
 		targetType = "tubeplot",
 		targetId = 1,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if not area then return nil end
@@ -228,6 +238,7 @@ local TUTORIAL_STEPS = {
 		description = "Go to your tube and process some pets! Click on the tube to start processing. You need to process 20 pets.",
 		targetType = "processing",
 		targetCount = 20,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if area then
@@ -253,6 +264,7 @@ local TUTORIAL_STEPS = {
 		description = "Great progress! Now unlock Plot 2 to open the next door and access more pet spawning areas. This will cost 10 money.",
 		targetType = "plot",
 		targetId = 2,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if area then
@@ -274,6 +286,7 @@ local TUTORIAL_STEPS = {
 		title = "✨ Get a Rare Pet",
 		description = "Keep collecting pets until you get one that's rarer than 1 in 250! Check the Pet Index to see your collection.",
 		targetType = "rarity",
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if area then
@@ -291,6 +304,7 @@ local TUTORIAL_STEPS = {
 		title = "🎁 Open the Crazy Pet Chest",
 		description = "Great job! Now try the Crazy Pet Chest for amazing rewards! Follow the path to the chest and click on it to open it.",
 		targetType = "chest",
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if not area then return nil end
@@ -307,6 +321,7 @@ local TUTORIAL_STEPS = {
 		description = "You're ready to rebirth! This will reset your progress but give you permanent bonuses. Walk to the Rebirth button in your area or use the Rebirth UI button on screen.",
 		targetType = "rebirth",
 		targetCount = 1,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if not area then return nil end
@@ -323,6 +338,7 @@ local TUTORIAL_STEPS = {
 		description = "Now that you've rebirthed, collect 100 pets total. Your rebirth bonuses will help you collect pets faster!",
 		targetType = "collection",
 		targetCount = 100,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if area then
@@ -341,6 +357,7 @@ local TUTORIAL_STEPS = {
 		description = "Process 500 pets total through your tubes. This will give you lots of money and help you progress faster!",
 		targetType = "processing",
 		targetCount = 500,
+		reward = { type = "Diamonds", amount = 10 },
 		pathTarget = function()
 			local area = getPlayerArea()
 			if area then
@@ -366,6 +383,7 @@ local TUTORIAL_STEPS = {
 		description = "Reach 3 rebirths to unlock the Pet Mixer! This powerful feature lets you combine pets for better ones.",
 		targetType = "rebirth",
 		targetCount = 3,
+		reward = { type = "Diamonds", amount = 100 },
 		pathTarget = function()
 			return nil -- GUI-driven
 		end
@@ -398,7 +416,7 @@ local function updatePathVisual()
 	if not tutorialData.active or tutorialData.completed then return end
 
 	local now = os.clock()
-	if now - lastUpdateTime < UPDATE_THROTTLE then return end
+	if now - lastUpdateTime < CONSTANTS.UPDATE_THROTTLE then return end
 	lastUpdateTime = now
 
 	character = player.Character
@@ -418,7 +436,7 @@ local function updatePathVisual()
 	local targetPos = resolveTargetPosition(target)
 	if not targetPos then return end
 
-	local startPos = root.Position - Vector3.new(0, 3, 0)
+	local startPos = root.Position - CONSTANTS.PLAYER_OFFSET
 	setBeamPositions(startPos, targetPos)
 
 	-- Optional: distance-based progress for specific steps
@@ -484,7 +502,24 @@ function TutorialService:StopTutorial()
 	saveTutorialProgress()
 end
 
+-- Grant reward for completing a tutorial step
+function TutorialService:GrantStepReward(stepIndex)
+	local step = TUTORIAL_STEPS[stepIndex]
+	if not step or not step.reward then return end
+	
+	-- Send reward to server via RemoteEvent
+	local tutorialRewardRemote = ReplicatedStorage:FindFirstChild("TutorialReward")
+	if tutorialRewardRemote then
+		tutorialRewardRemote:FireServer(stepIndex, step.reward)
+	else
+		warn("TutorialService: TutorialReward remote not found!")
+	end
+end
+
 function TutorialService:NextStep()
+	-- Grant reward for the completed step before moving to next
+	self:GrantStepReward(tutorialData.currentStep)
+	
 	if tutorialData.currentStep < #TUTORIAL_STEPS then
 		tutorialData.currentStep += 1
 
